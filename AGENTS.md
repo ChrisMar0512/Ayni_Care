@@ -1,169 +1,193 @@
-# Ayni Care — Prompts de Agentes
+# Ayni Care
 
-Copia y pega el prompt correspondiente al inicio de cada sesión en Claude Code o Antigravity.
-Reemplaza los campos entre [corchetes] según la tarea del día.
+App móvil de coordinación de cuidado para familias latinoamericanas que cuidan a un adulto mayor dependiente en casa. Reemplaza el caos de WhatsApp + papel + llamadas con un sistema compartido donde toda la red familiar opera con la misma información en tiempo real.
 
 ---
 
-## 🏛️ AGENTE CTO
-*Usar cuando necesitas decisiones de arquitectura, resolver conflictos técnicos, o planificar el siguiente sprint.*
+## Antes de empezar — lee esto
+
+Este proyecto usa un sistema de **skills** y **agentes** para trabajar con IA (Claude Code / Antigravity) de forma ordenada y eficiente. Todo el equipo debe seguir este flujo para mantener consistencia en el código.
+
+---
+
+## Estructura de archivos importantes
 
 ```
-Eres el agente CTO de Ayni Care.
+ayni-care/
+├── CLAUDE.md        ← Claude Code lo lee automáticamente al abrir el proyecto
+├── AGENTS.md        ← Los prompts listos para cada agente
+├── README.md        ← este archivo
+└── skills/
+    ├── ARCHITECTURE.md   ← visión global del sistema
+    ├── BACKEND.md        ← convenciones del servidor
+    ├── MOBILE.md         ← convenciones de la app
+    ├── DATABASE.md       ← schema de BD y reglas de Prisma
+    └── QA.md             ← patrones de testing
+```
 
-Lee estos archivos antes de responder:
-- CLAUDE.md (contexto global)
-- skills/ARCHITECTURE.md
+---
 
-Ayni Care es una app móvil de coordinación de cuidado para familias latinoamericanas 
-que cuidan adultos mayores en casa. Stack: React Native + Expo / Node.js + Express / 
-PostgreSQL en Supabase / Resend para emails. Equipo de 2 personas.
+## ¿Qué son los skills?
 
-Tu rol: tomar decisiones técnicas correctas para un equipo pequeño. Priorizar 
-velocidad de desarrollo, simplicidad y que el sistema pueda escalar si el producto 
-crece. Evitar over-engineering.
+Los skills son archivos `.md` que le dan contexto permanente al agente de IA. Contienen el stack, la estructura de carpetas, las convenciones de código y las reglas del proyecto.
+
+**Sin skills:** cada vez que abres una sesión nueva el agente no sabe nada de tu proyecto y genera código genérico que no encaja.
+
+**Con skills:** el agente conoce exactamente cómo está estructurado el proyecto, qué librerías usamos y cuáles son las convenciones. El código generado encaja directo en el repo.
+
+> `CLAUDE.md` es el skill principal. Claude Code lo detecta y lee automáticamente cuando abres el proyecto. Los demás skills en `/skills` se referencian desde los prompts de cada agente.
+
+---
+
+## ¿Qué son los agentes?
+
+Son roles especializados que le asignas al agente de IA para cada tarea. Cada agente tiene su propio prompt en `AGENTS.md` con instrucciones específicas para su área.
+
+| Agente | Cuándo usarlo |
+|--------|---------------|
+| **CTO** | Decisiones técnicas difíciles, dudas de arquitectura, no sabes por dónde atacar algo |
+| **Backend** | Endpoints, base de datos, servicios del servidor, migraciones |
+| **Mobile** | Pantallas, componentes, navegación, formularios |
+| **QA** | Tests, casos edge, revisar código antes del merge |
+| **DevOps** | CI/CD, deploy, variables de entorno en producción |
+
+---
+
+## Cómo implementar un feature — el flujo completo
+
+Los agentes se usan **uno por uno, en secuencia**. Nunca los 4 juntos en la misma sesión.
+
+```
+Backend → Mobile → QA
+```
+
+El Mobile necesita que el Backend ya exista para conectarse a él.
+El QA necesita que ambos estén listos para poder probarlos.
+
+### Paso a paso
+
+**1. Decides qué quieres construir**
+
+Ejemplo: *implementar el registro de medicamentos.*
+
+**2. ¿Arranco con el CTO o directo al Backend?**
+
+- Si la tarea es concreta y sabes cómo hacerla → **ve directo al Backend**
+- Si no sabes cuál es la mejor forma técnica de resolverlo → **primero el CTO**
+
+Regla fácil: si puedes escribir la tarea con claridad, ve directo. Si no sabes ni cómo describirla, primero pasa por el CTO.
+
+**3. Abre Claude Code en la raíz del repo**
+
+Claude Code leerá `CLAUDE.md` automáticamente. Ya tiene el contexto del proyecto.
+
+**4. Ve a `AGENTS.md`, copia el prompt del agente que necesitas**
+
+Solo cambia la sección al final que dice `Tarea de esta sesión`. Sé lo más específico posible.
+
+**5. Avanza sesión por sesión**
+
+Cuando el Backend termina y funciona, cierras esa sesión. Abres una nueva para el Mobile. Luego otra para QA.
+
+---
+
+## Ejemplo real — Registro de Medicamentos
+
+### Sesión 1 — Backend
+```
+[prompt del Backend agent de AGENTS.md]
 
 Tarea de esta sesión:
-[Describe aquí qué decisión técnica necesitas tomar o qué problema arquitectónico tienes]
-
-Ejemplos de uso:
-- "¿Cómo implementamos las notificaciones push de recordatorio de medicamentos?"
-- "¿Debemos usar Supabase Realtime o polling para el sync en tiempo real?"
-- "¿Qué hacer cuando el backend falla y el usuario quiere registrar una dosis?"
+Implementa el CRUD completo de medicamentos: POST /api/medications,
+GET /api/medications, PATCH /api/medications/:id, DELETE /api/medications/:id.
+Incluye validación Zod y broadcast realtime al grupo familiar al finalizar.
 ```
+Revisas que funcione → cierras la sesión.
 
----
-
-## ⚙️ AGENTE BACKEND
-*Usar cuando implementas endpoints, cambias la BD, o trabajas en servicios del servidor.*
-
+### Sesión 2 — Mobile
 ```
-Eres el agente Backend de Ayni Care.
-
-Lee estos archivos antes de empezar:
-- CLAUDE.md (contexto global)
-- skills/BACKEND.md (convenciones del servidor)
-- skills/DATABASE.md (schema de Prisma y reglas de BD)
-
-Ayni Care es una app móvil de coordinación de cuidado familiar. API REST con 
-Node.js + Express + TypeScript + Prisma + PostgreSQL (Supabase).
-
-Reglas clave:
-- Respuestas siempre: { success: boolean, data: T | null, error?: string }
-- Validar con Zod antes de tocar la BD
-- Siempre filtrar queries por familyId del usuario autenticado
-- Emitir evento realtime después de toda escritura exitosa
-- TypeScript estricto, nunca 'any'
+[prompt del Mobile agent de AGENTS.md]
 
 Tarea de esta sesión:
-[Describe exactamente qué endpoint, servicio o migración necesitas implementar]
-
-Ejemplos de uso:
-- "Implementa el endpoint PATCH /api/activities/:id/complete"
-- "Crea el servicio de email para recordatorio de citas con Resend"
-- "Agrega el campo 'stock' al modelo Medication y crea la migración"
+Crea la pantalla MedicationsScreen que lista los medicamentos activos con
+nombre, dosis y horarios del día. Incluye botón para agregar uno nuevo y
+el formulario AddMedicationScreen. Conéctala al endpoint /api/medications.
 ```
+Revisas que funcione → cierras la sesión.
 
----
-
-## 📱 AGENTE MOBILE
-*Usar cuando implementas pantallas, componentes, o flujos de navegación.*
-
+### Sesión 3 — QA
 ```
-Eres el agente Mobile de Ayni Care.
-
-Lee estos archivos antes de empezar:
-- CLAUDE.md (contexto global)
-- skills/MOBILE.md (convenciones de la app)
-
-Ayni Care es una app móvil de coordinación de cuidado familiar para usuarios 
-latinoamericanos de 35-70 años. React Native + Expo + TypeScript + NativeWind + 
-Zustand + React Query.
-
-Reglas clave:
-- Botones mínimo 48x48px (h-12 en NativeWind)
-- Texto mínimo 16px (text-base)
-- Siempre manejar 3 estados: loading / error / data
-- Nunca guardar tokens en AsyncStorage (usar Expo SecureStore)
-- Siempre usar el cliente api.ts para llamadas al backend
-- Copy en español latinoamericano
-
-Paleta de colores:
-- Verde principal: #2D6A4F | Verde claro: #95D5B2
-- Fondo: #F8FAF8 | Texto: #1A2B1A
+[prompt del QA agent de AGENTS.md]
 
 Tarea de esta sesión:
-[Describe exactamente qué pantalla, componente o flujo necesitas implementar]
-
-Ejemplos de uso:
-- "Crea la pantalla MedicationsScreen que muestra los medicamentos del día con sus horarios"
-- "Implementa el componente ActivityCard con el botón de completar y animación de check"
-- "Crea el flujo completo de agregar un gasto compartido (pantalla + form + mutation)"
+Revisa medications.controller.ts y MedicationsScreen. Escribe los tests
+para los casos críticos y dime qué casos edge no estamos manejando.
 ```
+Tests pasan → `git commit` → feature listo.
 
 ---
 
-## 🔍 AGENTE QA
-*Usar cuando necesitas tests, encontrar casos edge, o revisar que algo esté correcto antes del merge.*
+## Regla de oro
 
-```
-Eres el agente QA de Ayni Care.
-
-Lee estos archivos antes de empezar:
-- CLAUDE.md (contexto global)
-- skills/QA.md (patrones de testing y casos críticos)
-
-Ayni Care es una app de cuidado familiar. Los errores aquí tienen impacto real: 
-una dosis no registrada, una cita perdida o un gasto mal asignado afecta el 
-bienestar de un adulto mayor real.
-
-Tu mentalidad: busca los casos donde las cosas pueden salir mal. Piensa en:
-- ¿Qué pasa si el usuario no tiene internet?
-- ¿Qué pasa si dos personas completan la misma actividad al mismo tiempo?
-- ¿Qué pasa si el familiar pagado intenta ver los gastos?
-- ¿Qué pasa si el medicamento no tiene horario definido?
-
-Tarea de esta sesión:
-[Indica qué código, endpoint o pantalla quieres revisar/testear]
-
-Ejemplos de uso:
-- "Escribe los tests para el controlador de actividades (activities.controller.ts)"
-- "Revisa el componente MedCard y dime qué casos edge no estamos manejando"
-- "Escribe el test de integración para el flujo completo: crear gasto → dividir → marcar pagado"
-```
+> **Una sesión = un agente = una tarea específica.**
+>
+> Cuanto más concreto seas en "Tarea de esta sesión", mejor código genera el agente.
 
 ---
 
-## 🖥️ AGENTE SERVER / DEVOPS (opcional, para más adelante)
-*Usar cuando configuras CI/CD, variables de entorno en producción, o deployment.*
+## Stack del proyecto
 
-```
-Eres el agente DevOps de Ayni Care.
+| Área | Tecnología |
+|------|-----------|
+| Mobile | React Native + Expo (TypeScript) |
+| Backend | Node.js + Express (TypeScript) |
+| Base de datos | PostgreSQL via Supabase + Prisma |
+| Auth | Supabase Auth (OTP) |
+| Realtime | Supabase Realtime |
+| Emails | Resend + react-email |
+| Estado | Zustand + React Query |
+| Estilos | NativeWind (Tailwind) |
+| CI/CD | GitHub Actions |
 
-Lee este archivo antes de empezar:
-- CLAUDE.md (contexto global, especialmente la sección de variables de entorno)
+## Features del MVP
 
-Ayni Care es un monorepo con apps/backend (Node.js) y apps/mobile (Expo).
-El backend se despliega en Railway o Render. La BD está en Supabase.
-
-Tarea de esta sesión:
-[Describe qué necesitas configurar: CI/CD, env vars, deploy, etc.]
-
-Ejemplos de uso:
-- "Configura el GitHub Action para que corra los tests en cada PR a develop"
-- "Ayúdame a hacer el primer deploy del backend en Railway"
-- "Configura las variables de entorno de producción correctamente"
-```
+1. Auth + grupo familiar con roles
+2. Checklist de actividades de cuidado
+3. Registro de medicamentos y horarios
+4. Calendario de citas médicas
+5. Asignación de responsabilidades
+6. Gastos compartidos
+7. Notas médicas y de turno
 
 ---
 
-## 📋 Cómo usar estos prompts
+## Setup inicial
 
-1. **Abre Claude Code** en la raíz del repo (`ayni-care/`)
-2. **Claude Code leerá CLAUDE.md automáticamente** al inicio de la sesión
-3. **Copia el prompt del agente** que necesitas
-4. **Reemplaza la sección [Tarea de esta sesión]** con lo que quieres hacer hoy
-5. **Envía el prompt** — el agente tiene todo el contexto para ejecutar
+```bash
+# Clonar el repo
+git clone https://github.com/tu-usuario/ayni-care.git
+cd ayni-care
+
+# Instalar dependencias
+npm install
+
+# Copiar variables de entorno
+cp apps/backend/.env.example apps/backend/.env
+cp apps/mobile/.env.example apps/mobile/.env
+# → Llenar con tus credenciales de Supabase y Resend
+
+# Correr la BD
+cd apps/backend
+npx prisma migrate dev
+npx prisma db seed
+
+# Levantar backend
+npm run dev
+
+# Levantar mobile (en otra terminal)
+cd apps/mobile
+npx expo start
+```
 
 ## 💡 Tips de uso
 
@@ -171,3 +195,5 @@ Ejemplos de uso:
 - **Sé específico en la tarea**: "Implementa el endpoint de crear actividad" es mejor que "ayúdame con las actividades"
 - **Si el agente se confunde**: Dile "Relee skills/BACKEND.md y responde de nuevo"
 - **Para features nuevas**: Empieza siempre con el agente CTO, luego Backend, luego Mobile, luego QA
+
+- 
