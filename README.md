@@ -17,6 +17,36 @@ Para mantener un entorno limpio y evitar conflictos de configuración entre herr
 
 ---
 
+## 🛠️ Stack Tecnológico
+
+El proyecto está estructurado como un **Monorepo (npm workspaces)** y utiliza el siguiente stack tecnológico principal:
+
+- **Mobile:** React Native + Expo (TypeScript) para la aplicación cliente.
+- **Backend:** Node.js + Express (TypeScript) para la API del servidor.
+- **Base de Datos & ORM:** PostgreSQL (alojado en Supabase) y Prisma ORM.
+- **Autenticación:** Supabase Auth (OTP por teléfono o email).
+- **Comunicación en Tiempo Real:** Supabase Realtime para sincronizar cambios familiares.
+- **Gestión de Estado:** Zustand para estado local de la app y React Query (`@tanstack/react-query`) para la sincronización del servidor.
+- **Estilos:** NativeWind (Tailwind CSS adaptado a React Native).
+- **Servicio de Correos:** Resend + React Email para notificaciones y alertas.
+- **Infraestructura:** GitHub Actions para el flujo de CI/CD.
+
+---
+
+## 📋 Features del MVP (En orden de prioridad)
+
+El MVP de **Ayni Care** contempla las siguientes funcionalidades esenciales para la coordinación familiar:
+
+1. **Auth + Grupo Familiar:** Registro y login seguro con OTP, creación de grupos familiares, invitaciones a otros miembros y roles definidos.
+2. **Checklist de Actividades:** Tareas de cuidado diarias para el adulto mayor (baño, comida, paseos), con posibilidad de asignación y check de completado.
+3. **Registro de Medicamentos:** Gestión de medicamentos activos, dosis, horarios y recordatorios automáticos.
+4. **Calendario de Citas:** Gestión de citas médicas o eventos importantes, con recordatorios y envío de correos automáticos.
+5. **Asignación de Responsabilidades:** Distribución clara de quién realiza cada tarea o turno.
+6. **Gastos Compartidos:** Registro de compras y gastos médicos compartidos, división proporcional entre los familiares e historial de pagos.
+7. **Notas Médicas y de Turno:** Anotaciones de eventos o el handoff (entrega de turno) para reportar novedades de salud del adulto mayor.
+
+---
+
 ## 🧠 ¿Qué son los Skills?
 Los **Skills** son archivos markdown de referencia que definen los estándares de código, patrones arquitectónicos y convenciones del proyecto. Le dan a la IA el contexto necesario para escribir código alineado con el proyecto.
 
