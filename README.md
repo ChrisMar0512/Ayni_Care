@@ -11,7 +11,9 @@ Este proyecto usa un sistema de **skills** y **agentes** para trabajar con IA (C
 | Herramienta | Cómo funciona |
 |-------------|---------------|
 | **Claude Code** | Lee `CLAUDE.md` automáticamente al abrir el proyecto. Pegas el prompt del agente. |
-| **Antigravity** | `CLAUDE.md` se configura como user rule (se inyecta en cada sesión). Pegas el prompt del agente. |
+| **Antigravity** | Lee `.agent/rules/ayni-care.md` automáticamente al abrir el proyecto. Pegas el prompt del agente. |
+
+> ⚠️ **Branches**: el código generado por **Antigravity** va al branch `antigravity`. El código generado por **Claude Code** va al branch `claude-code`. Ninguno toca `main` directamente.
 
 ---
 
@@ -19,9 +21,12 @@ Este proyecto usa un sistema de **skills** y **agentes** para trabajar con IA (C
 
 ```
 ayni-care/
-├── CLAUDE.md        ← Contexto global (Claude Code lo autodetecta, Antigravity lo usa como user rule)
-├── AGENTS.md        ← Los prompts listos para cada agente
-├── README.md        ← este archivo
+├── .agent/
+│   └── rules/
+│       └── ayni-care.md  ← Reglas del proyecto (Antigravity las inyecta automáticamente)
+├── CLAUDE.md             ← Contexto global (Claude Code lo autodetecta)
+├── AGENTS.md             ← Los prompts listos para cada agente
+├── README.md             ← este archivo
 └── skills/
     ├── ARCHITECTURE.md   ← visión global del sistema + matriz de permisos RBAC
     ├── BACKEND.md        ← convenciones del servidor
@@ -60,42 +65,70 @@ Son roles especializados que le asignas al agente de IA para cada tarea. Cada ag
 
 ---
 
-## Cómo implementar un feature — el flujo completo
+## Cómo implementar un feature en Antigravity — flujo completo
 
 Los agentes se usan **uno por uno, en secuencia**. Nunca los 4 juntos en la misma sesión.
 
 ```
-Backend → Mobile → QA
+[opcional] CTO → Backend → Mobile → QA
 ```
 
-El Mobile necesita que el Backend ya exista para conectarse a él.
+El Mobile necesita que el Backend ya exista para conectarse a él.  
 El QA necesita que ambos estén listos para poder probarlos.
 
 ### Paso a paso
 
-**1. Decides qué quieres construir**
+**1. Crea un branch para el feature**
+
+```bash
+git checkout antigravity          # asegúrate de estar en antigravity
+git checkout -b feature/nombre-del-feature
+```
+
+**2. Decide qué quieres construir**
 
 Ejemplo: *implementar el registro de medicamentos.*
 
-**2. ¿Arranco con el CTO o directo al Backend?**
+**3. ¿Arranco con el CTO o directo al Backend?**
 
 - Si la tarea es concreta y sabes cómo hacerla → **ve directo al Backend**
 - Si no sabes cuál es la mejor forma técnica de resolverlo → **primero el CTO**
 
-Regla fácil: si puedes escribir la tarea con claridad, ve directo. Si no sabes ni cómo describirla, primero pasa por el CTO.
+Regla fácil: si puedes escribir la tarea con claridad, ve directo al Backend. Si no sabes cómo describirla, primero pasa por el CTO.
 
-**3. Abre Claude Code o Antigravity en la raíz del repo**
+**4. Abre Antigravity en la raíz del repo**
 
-- **Claude Code**: lee `CLAUDE.md` automáticamente. Ya tiene el contexto.
-- **Antigravity**: tiene `CLAUDE.md` como user rule. Ya tiene el contexto.
+Antigravity detecta automáticamente `.agent/rules/ayni-care.md` y lo inyecta como contexto. No necesitas hacer nada extra.
 
-**4. Ve a `AGENTS.md`, copia el prompt del agente que necesitas**
+**5. Copia el prompt del agente desde `AGENTS.md`**
 
-Solo cambia la sección al final que dice `Tarea de esta sesión`. Sé lo más específico posible.
+Solo cambia la sección `Tarea de esta sesión`. Sé específico: describe el endpoint, pantalla o componente exacto que quieres construir.
 
-**5. Avanza sesión por sesión**
+**6. Avanza sesión por sesión, haciendo commit entre cada una**
 
-Cuando el Backend termina y funciona, cierras esa sesión. Abres una nueva para el Mobile. Luego otra para QA.
+```bash
+# Cuando el Backend termina y funciona:
+git add -A
+git commit -m "feat(medications): implementar CRUD de medicamentos"
+# → Abre nueva sesión para Mobile
+
+# Cuando el Mobile termina:
+git add -A
+git commit -m "feat(medications): agregar MedicationsScreen y AddMedicationScreen"
+# → Abre nueva sesión para QA
+
+# Cuando los tests pasan:
+git add -A
+git commit -m "test(medications): agregar tests del controlador y casos edge"
+```
+
+**7. Merge al branch `antigravity` cuando el feature esté completo**
+
+```bash
+git checkout antigravity
+git merge feature/nombre-del-feature
+git branch -d feature/nombre-del-feature
+```
 
 ---
 
