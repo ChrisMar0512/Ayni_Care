@@ -15,20 +15,20 @@
 
 ## Roles de usuario en la familia
 
-```
-primary_caregiver  → Cuidadora principal (vive con el adulto mayor). Acceso total.
-remote_family      → Familiar que vive lejos. Puede ver todo, crear tareas y notas. No puede completar actividades ni administrar medicamentos.
-weekend_helper     → Familiar que ayuda ocasionalmente. Acceso presencial (puede completar tareas y dar meds) pero no puede gestionar la familia.
-paid_caregiver     → Cuidador pagado. Solo ve actividades y medicamentos. No ve gastos, no puede invitar miembros.
-```
+Para organizar el cuidado, cada miembro de la familia tiene un rol específico asociado a su nivel de involucramiento:
+
+* **Cuidador Principal (`primary_caregiver`):** Es la persona que vive con el adulto mayor o asume la mayor carga de cuidado diario. Tiene acceso total para administrar el grupo, invitar miembros, gestionar gastos y modificar actividades o medicamentos.
+* **Familiar Remoto (`remote_family`):** Familiar que apoya a la distancia. Puede ver todo, crear actividades, citas y gastos para coordinar desde lejos, pero no tiene acceso físico de cuidado (no administra medicamentos ni marca actividades como completadas) ni puede invitar/eliminar miembros.
+* **Ayudante Ocasional (`weekend_helper`):** Familiar que ayuda de forma presencial esporádicamente (fines de semana, turnos cortos). Puede completar tareas diarias y administrar dosis de medicamentos, pero no tiene permisos para crear o eliminar configuraciones globales de medicamentos/actividades ni ver finanzas familiares.
+* **Cuidador Pagado (`paid_caregiver`):** Enfermero o cuidador contratado externo. Solo tiene acceso a la información operativa del cuidado diario (ver actividades/medicamentos, completar tareas, registrar dosis y escribir notas de turno). Por privacidad y seguridad, tiene prohibido el acceso a gastos compartidos y administración familiar.
 
 ## Matriz de permisos RBAC
 
-Referencia completa de qué puede hacer cada rol. Implementación del middleware en `skills/SECURITY.md`.
+Referencia completa de qué puede hacer cada rol. La implementación técnica de este middleware se encuentra en [`skills/SECURITY.md`](file:///c:/Ayni%20Care/Ayni%20Care%20Github/skills/SECURITY.md).
 
 ### Actividades
 
-| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+| Acción | Cuidador Principal | Familiar Remoto | Ayudante Ocasional | Cuidador Pagado |
 |--------|:-:|:-:|:-:|:-:|
 | Ver actividades | ✅ | ✅ | ✅ | ✅ |
 | Crear actividades | ✅ | ✅ | ✅ | ❌ |
@@ -37,7 +37,7 @@ Referencia completa de qué puede hacer cada rol. Implementación del middleware
 
 ### Medicamentos
 
-| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+| Acción | Cuidador Principal | Familiar Remoto | Ayudante Ocasional | Cuidador Pagado |
 |--------|:-:|:-:|:-:|:-:|
 | Ver medicamentos | ✅ | ✅ | ✅ | ✅ |
 | Crear medicamentos | ✅ | ❌ | ❌ | ❌ |
@@ -46,7 +46,7 @@ Referencia completa de qué puede hacer cada rol. Implementación del middleware
 
 ### Citas
 
-| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+| Acción | Cuidador Principal | Familiar Remoto | Ayudante Ocasional | Cuidador Pagado |
 |--------|:-:|:-:|:-:|:-:|
 | Ver citas | ✅ | ✅ | ✅ | ✅ |
 | Crear citas | ✅ | ✅ | ✅ | ❌ |
@@ -54,7 +54,7 @@ Referencia completa de qué puede hacer cada rol. Implementación del middleware
 
 ### Gastos
 
-| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+| Acción | Cuidador Principal | Familiar Remoto | Ayudante Ocasional | Cuidador Pagado |
 |--------|:-:|:-:|:-:|:-:|
 | Ver gastos | ✅ | ✅ | ✅ | ❌ |
 | Crear gastos | ✅ | ✅ | ✅ | ❌ |
@@ -62,14 +62,14 @@ Referencia completa de qué puede hacer cada rol. Implementación del middleware
 
 ### Notas
 
-| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+| Acción | Cuidador Principal | Familiar Remoto | Ayudante Ocasional | Cuidador Pagado |
 |--------|:-:|:-:|:-:|:-:|
 | Ver notas | ✅ | ✅ | ✅ | ✅ |
 | Crear notas | ✅ | ✅ | ✅ | ✅ |
 
 ### Familia y adulto mayor
 
-| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+| Acción | Cuidador Principal | Familiar Remoto | Ayudante Ocasional | Cuidador Pagado |
 |--------|:-:|:-:|:-:|:-:|
 | Invitar miembros | ✅ | ❌ | ❌ | ❌ |
 | Eliminar miembros | ✅ | ❌ | ❌ | ❌ |
