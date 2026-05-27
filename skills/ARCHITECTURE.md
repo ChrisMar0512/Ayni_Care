@@ -17,10 +17,63 @@
 
 ```
 primary_caregiver  → Cuidadora principal (vive con el adulto mayor). Acceso total.
-remote_family      → Familiar que vive lejos. Puede ver todo, crear tareas y notas.
-weekend_helper     → Familiar que ayuda ocasionalmente. Acceso completo.
-paid_caregiver     → Cuidador pagado. Solo ve actividades y medicamentos del turno.
+remote_family      → Familiar que vive lejos. Puede ver todo, crear tareas y notas. No puede completar actividades ni administrar medicamentos.
+weekend_helper     → Familiar que ayuda ocasionalmente. Acceso presencial (puede completar tareas y dar meds) pero no puede gestionar la familia.
+paid_caregiver     → Cuidador pagado. Solo ve actividades y medicamentos. No ve gastos, no puede invitar miembros.
 ```
+
+## Matriz de permisos RBAC
+
+Referencia completa de qué puede hacer cada rol. Implementación del middleware en `skills/SECURITY.md`.
+
+### Actividades
+
+| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+|--------|:-:|:-:|:-:|:-:|
+| Ver actividades | ✅ | ✅ | ✅ | ✅ |
+| Crear actividades | ✅ | ✅ | ✅ | ❌ |
+| Completar actividades | ✅ | ❌ | ✅ | ✅ |
+| Eliminar actividades | ✅ | ❌ | ❌ | ❌ |
+
+### Medicamentos
+
+| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+|--------|:-:|:-:|:-:|:-:|
+| Ver medicamentos | ✅ | ✅ | ✅ | ✅ |
+| Crear medicamentos | ✅ | ❌ | ❌ | ❌ |
+| Administrar dosis | ✅ | ❌ | ✅ | ✅ |
+| Eliminar medicamentos | ✅ | ❌ | ❌ | ❌ |
+
+### Citas
+
+| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+|--------|:-:|:-:|:-:|:-:|
+| Ver citas | ✅ | ✅ | ✅ | ✅ |
+| Crear citas | ✅ | ✅ | ✅ | ❌ |
+| Eliminar citas | ✅ | ❌ | ❌ | ❌ |
+
+### Gastos
+
+| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+|--------|:-:|:-:|:-:|:-:|
+| Ver gastos | ✅ | ✅ | ✅ | ❌ |
+| Crear gastos | ✅ | ✅ | ✅ | ❌ |
+| Eliminar gastos | ✅ | ❌ | ❌ | ❌ |
+
+### Notas
+
+| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+|--------|:-:|:-:|:-:|:-:|
+| Ver notas | ✅ | ✅ | ✅ | ✅ |
+| Crear notas | ✅ | ✅ | ✅ | ✅ |
+
+### Familia y adulto mayor
+
+| Acción | primary_caregiver | remote_family | weekend_helper | paid_caregiver |
+|--------|:-:|:-:|:-:|:-:|
+| Invitar miembros | ✅ | ❌ | ❌ | ❌ |
+| Eliminar miembros | ✅ | ❌ | ❌ | ❌ |
+| Editar datos del adulto mayor | ✅ | ✅ | ❌ | ❌ |
 
 ## Flujo de datos principal
 

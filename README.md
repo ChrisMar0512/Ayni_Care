@@ -8,21 +8,28 @@ App móvil de coordinación de cuidado para familias latinoamericanas que cuidan
 
 Este proyecto usa un sistema de **skills** y **agentes** para trabajar con IA (Claude Code / Antigravity) de forma ordenada y eficiente. Todo el equipo debe seguir este flujo para mantener consistencia en el código.
 
+| Herramienta | Cómo funciona |
+|-------------|---------------|
+| **Claude Code** | Lee `CLAUDE.md` automáticamente al abrir el proyecto. Pegas el prompt del agente. |
+| **Antigravity** | `CLAUDE.md` se configura como user rule (se inyecta en cada sesión). Pegas el prompt del agente. |
+
 ---
 
 ## Estructura de archivos importantes
 
 ```
 ayni-care/
-├── CLAUDE.md        ← Claude Code lo lee automáticamente al abrir el proyecto
+├── CLAUDE.md        ← Contexto global (Claude Code lo autodetecta, Antigravity lo usa como user rule)
 ├── AGENTS.md        ← Los prompts listos para cada agente
 ├── README.md        ← este archivo
 └── skills/
-    ├── ARCHITECTURE.md   ← visión global del sistema
+    ├── ARCHITECTURE.md   ← visión global del sistema + matriz de permisos RBAC
     ├── BACKEND.md        ← convenciones del servidor
     ├── MOBILE.md         ← convenciones de la app
     ├── DATABASE.md       ← schema de BD y reglas de Prisma
-    └── QA.md             ← patrones de testing
+    ├── SECURITY.md       ← autenticación, autorización RBAC, rate limiting
+    ├── QA.md             ← patrones de testing
+    └── DEVOPS.md         ← branches, CI/CD, deploy
 ```
 
 ---
@@ -35,7 +42,7 @@ Los skills son archivos `.md` que le dan contexto permanente al agente de IA. Co
 
 **Con skills:** el agente conoce exactamente cómo está estructurado el proyecto, qué librerías usamos y cuáles son las convenciones. El código generado encaja directo en el repo.
 
-> `CLAUDE.md` es el skill principal. Claude Code lo detecta y lee automáticamente cuando abres el proyecto. Los demás skills en `/skills` se referencian desde los prompts de cada agente.
+> `CLAUDE.md` es el skill principal. Claude Code lo detecta y lee automáticamente. En Antigravity, se configura como user rule para que se inyecte en cada sesión. Los demás skills en `/skills` se referencian desde los prompts de cada agente.
 
 ---
 
@@ -77,9 +84,10 @@ Ejemplo: *implementar el registro de medicamentos.*
 
 Regla fácil: si puedes escribir la tarea con claridad, ve directo. Si no sabes ni cómo describirla, primero pasa por el CTO.
 
-**3. Abre Claude Code en la raíz del repo**
+**3. Abre Claude Code o Antigravity en la raíz del repo**
 
-Claude Code leerá `CLAUDE.md` automáticamente. Ya tiene el contexto del proyecto.
+- **Claude Code**: lee `CLAUDE.md` automáticamente. Ya tiene el contexto.
+- **Antigravity**: tiene `CLAUDE.md` como user rule. Ya tiene el contexto.
 
 **4. Ve a `AGENTS.md`, copia el prompt del agente que necesitas**
 

@@ -105,6 +105,7 @@ model Activity {
   priority     Priority     @default(normal)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?    // soft delete
   family       Family       @relation(fields: [familyId], references: [id])
   assignedTo   FamilyMember? @relation("AssignedTo", fields: [assignedToId], references: [id])
   logs         ActivityLog[]
@@ -158,6 +159,7 @@ model Medication {
   stock       Int?      // unidades disponibles
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?    // soft delete
   family      Family    @relation(fields: [familyId], references: [id])
   logs        MedLog[]
 }
@@ -190,6 +192,7 @@ model Appointment {
   status      AppointmentStatus @default(scheduled)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?    // soft delete
   family      Family    @relation(fields: [familyId], references: [id])
 }
 
@@ -222,6 +225,7 @@ model Expense {
   receipt     String?        // URL de foto del comprobante
   notes       String?
   createdAt   DateTime       @default(now())
+  deletedAt   DateTime?      // soft delete
   family      Family         @relation(fields: [familyId], references: [id])
   paidBy      FamilyMember   @relation("PaidBy", fields: [paidById], references: [id])
   splits      ExpenseSplit[]
@@ -259,6 +263,7 @@ model Note {
   type      NoteType     @default(general)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+  deletedAt DateTime?    // soft delete
   family    Family       @relation(fields: [familyId], references: [id])
   author    FamilyMember @relation(fields: [authorId], references: [id])
 }
@@ -273,6 +278,40 @@ enum NoteType {
 ```
 
 ## Reglas de la base de datos
+
+### Soft delete
+Los modelos Activity, Medication, Appointment, Expense y Note usan soft delete con `deletedAt DateTime?`.
+
+**Reglas:**
+- NUNCA usar `prisma.model.delete()` en estos modelos. Usar update con `deletedAt: new Date()`
+- SIEMPRE agregar `deletedAt: null` al `where` de queries de lectura
+- Para restaurar: `update({ where: { id }, data: { deletedAt: null } })`
+
+**Patrón de soft delete:**
+```typescript
+// ❌ MAL — borra permanentemente
+await prisma.activity.delete({ where: { id } });
+
+// ✅ BIEN — soft delete
+await prisma.activity.update({
+  where: { id },
+  data: { deletedAt: new Date() },
+});
+
+// ✅ BIEN — query que excluye eliminados
+const activities = await prisma.activity.findMany({
+  where: {
+    familyId,
+    deletedAt: null, // SIEMPRE incluir esto
+  },
+});
+```
+
+**Modelos SIN soft delete** (se borran normalmente):
+- `ActivityLog` y `MedLog` — son registros históricos, nunca se borran
+- `ExpenseSplit` — se eliminan en cascada con el Expense padre
+- `Invitation` — son efímeras, se pueden borrar al expirar
+- `FamilyMember` — se desactivan con `isActive: false`, no se borran
 
 ### Migraciones
 ```bash
@@ -291,6 +330,7 @@ npx prisma migrate status
 - Nunca eliminar columnas sin antes deprecarlas (agrega `@deprecated` al schema y espera un deploy)
 - Nunca hacer queries sin filtrar por `familyId` (datos de una familia no deben ser visibles a otra)
 - Nunca usar `deleteMany` sin un `where` muy específico
+- Nunca usar `prisma.model.delete()` en modelos con soft delete (usar update con deletedAt)
 
 ### Seed de datos de prueba
 ```bash

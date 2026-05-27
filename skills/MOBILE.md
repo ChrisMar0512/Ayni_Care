@@ -188,9 +188,144 @@ return <FlatList data={data} ... />;
 - NO mostrar pantallas en blanco si no hay conexión
 - Mostrar un banner sutil de "Sin conexión — mostrando datos guardados"
 
+## Cliente HTTP — api.ts
+
+```typescript
+// services/api.ts
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const api = axios.create({
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Interceptor de request — agregar token automáticamente
+api.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Interceptor de response — manejar errores globales
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado → limpiar sesión y redirigir a login
+      await SecureStore.deleteItemAsync('access_token');
+      // Nota: el redirect lo maneja el authStore listener en AppNavigator
+    }
+    return Promise.reject(error);
+  },
+);
+
+export default api;
+```
+
+**Regla:** Todo hook de React Query usa `api` para las llamadas. Nunca `fetch()` directo.
+
+## Manejo de errores global
+
+### Error Boundary
+```tsx
+// components/common/ErrorBoundary.tsx
+import React from 'react';
+import { View, Text, Pressable } from 'react-native';
+
+interface Props {
+  children: React.ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export class ErrorBoundary extends React.Component<Props, State> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View className="flex-1 items-center justify-center bg-[#F8FAF8] p-6">
+          <Text className="text-lg font-semibold text-[#1A2B1A] mb-2">
+            Algo salió mal
+          </Text>
+          <Text className="text-base text-[#6B7C6B] text-center mb-4">
+            Ocurrió un error inesperado. Intenta cerrar y abrir la app.
+          </Text>
+          <Pressable
+            className="bg-[#2D6A4F] rounded-xl px-6 h-12 items-center justify-center"
+            onPress={() => this.setState({ hasError: false })}
+          >
+            <Text className="text-white text-base font-medium">Reintentar</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Uso en AppNavigator.tsx:
+// <ErrorBoundary>
+//   <NavigationContainer>...</NavigationContainer>
+// </ErrorBoundary>
+```
+
+### Toast para feedback de mutaciones
+```typescript
+// Usar react-native-toast-message (ya configurado):
+import Toast from 'react-native-toast-message';
+
+// Después de una mutación exitosa:
+Toast.show({
+  type: 'success',
+  text1: 'Medicamento registrado',
+  text2: 'Se notificó al grupo familiar',
+  visibilityTime: 3000,
+});
+
+// Después de un error:
+Toast.show({
+  type: 'error',
+  text1: 'Error al guardar',
+  text2: 'Revisa tu conexión e intenta de nuevo',
+  visibilityTime: 4000,
+});
+```
+
+## React Query — Configuración global
+
+```typescript
+// App.tsx o providers.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60,      // 1 minuto antes de refetch
+      gcTime: 1000 * 60 * 30,    // 30 minutos en caché
+      retry: 2,                   // reintentar 2 veces en error
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      refetchOnWindowFocus: true, // refetch al volver a la app
+    },
+    mutations: {
+      retry: 1,                   // reintentar 1 vez en mutaciones
+    },
+  },
+});
+```
+
 ## Reglas que NUNCA romper en mobile
 - Nunca guardar tokens en AsyncStorage (usar Expo SecureStore)
 - Nunca hacer fetch directo, siempre usar el cliente `api.ts` que ya tiene el header de auth
 - Nunca hardcodear la URL del backend (usar EXPO_PUBLIC_API_URL)
 - Siempre manejar los 3 estados: loading / error / data
 - Nunca mutar el estado de React Query directamente, usar `invalidateQueries` en `onSuccess`
+- Siempre envolver la app en `<ErrorBoundary>` como protección contra crashes

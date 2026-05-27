@@ -123,6 +123,17 @@ req.user = {
 }
 ```
 
+### Authorization middleware (RBAC)
+Después de autenticar, verificar permisos por rol. Ver implementación completa en `skills/SECURITY.md`.
+```typescript
+// Uso en rutas — siempre después de authenticate:
+router.get('/', authenticate, requirePermission('activities:read'), listActivities);
+router.post('/', authenticate, requirePermission('activities:create'), validate(createActivitySchema), createActivity);
+router.patch('/:id/complete', authenticate, requirePermission('activities:complete'), completeActivity);
+router.delete('/:id', authenticate, requirePermission('activities:delete'), deleteActivity);
+```
+Consultar la matriz de permisos en `skills/ARCHITECTURE.md` → sección "Matriz de permisos RBAC".
+
 ## Realtime — Cómo broadcast
 
 ```typescript

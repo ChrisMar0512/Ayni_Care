@@ -56,10 +56,30 @@ ayni-care/
 - Manejo de errores con try/catch en todo controlador.
 - Español como idioma principal de la UI.
 
+## Convenciones de Git
+Formato: `tipo(dominio): descripción breve en español`
+
+```
+Tipos: feat | fix | refactor | docs | test | chore
+Dominios: auth | family | activities | medications | appointments | expenses | notes | mobile | backend | shared | infra
+```
+
+Ejemplos:
+```bash
+feat(medications): agregar endpoint POST /api/medications
+fix(auth): corregir timeout en verificación OTP
+test(activities): agregar tests de autorización por rol
+```
+
+Branches: `main` (producción) → `develop` (integración) → `feature/*` o `fix/*`
+Ver detalles completos en `skills/DEVOPS.md`.
+
 ## Skills de referencia
 Antes de cualquier tarea, leer el skill correspondiente:
 - **Arquitectura general:** `skills/ARCHITECTURE.md`
 - **Tareas de backend:** `skills/BACKEND.md`
 - **Tareas de mobile:** `skills/MOBILE.md`
 - **Cambios en BD:** `skills/DATABASE.md`
+- **Seguridad y permisos:** `skills/SECURITY.md`
 - **Tests y QA:** `skills/QA.md`
+- **DevOps y deploy:** `skills/DEVOPS.md`

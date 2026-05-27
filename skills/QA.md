@@ -39,6 +39,22 @@
 - [ ] Crear nota requiere contenido no vacío
 - [ ] Notas de tipo `handoff` aparecen primero en el feed
 
+### Autorización (RBAC) — ver matriz completa en `skills/ARCHITECTURE.md`
+- [ ] `paid_caregiver` NO puede ver gastos (403)
+- [ ] `paid_caregiver` NO puede crear actividades (403)
+- [ ] `paid_caregiver` NO puede crear medicamentos (403)
+- [ ] `remote_family` NO puede completar actividades (403)
+- [ ] `remote_family` NO puede administrar dosis (403)
+- [ ] `weekend_helper` NO puede invitar miembros (403)
+- [ ] `weekend_helper` NO puede eliminar miembros (403)
+- [ ] Solo `primary_caregiver` puede eliminar actividades/medicamentos/gastos
+- [ ] Solo `primary_caregiver` y `remote_family` pueden editar datos del adulto mayor
+
+### Soft delete
+- [ ] Eliminar actividad/medicamento/cita/gasto/nota usa `deletedAt` (no hard delete)
+- [ ] Registros con `deletedAt` no aparecen en queries de lectura
+- [ ] Los logs (ActivityLog, MedLog) nunca se borran
+
 ## Patrón de test para endpoints (backend)
 
 ```typescript
@@ -137,6 +153,49 @@ describe('ActivityCard', () => {
 - [ ] La app funciona con el tamaño de fuente aumentado (Accessibility settings del OS)
 - [ ] Colores tienen contraste suficiente (WCAG AA mínimo)
 
+## Patrón de test para autorización (RBAC)
+
+```typescript
+// authorization.test.ts
+import request from 'supertest';
+import { app } from '../src/app';
+import { createTestFamily, getAuthToken } from './helpers';
+
+describe('Authorization — Expenses', () => {
+  let primaryToken: string;
+  let paidCaregiverToken: string;
+  let familyId: string;
+
+  beforeAll(async () => {
+    const { family, members } = await createTestFamily({
+      roles: ['primary_caregiver', 'paid_caregiver'],
+    });
+    familyId = family.id;
+    primaryToken = await getAuthToken(members[0].userId);
+    paidCaregiverToken = await getAuthToken(members[1].userId);
+  });
+
+  it('primary_caregiver puede ver gastos', async () => {
+    const res = await request(app)
+      .get('/api/expenses')
+      .set('Authorization', `Bearer ${primaryToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('paid_caregiver NO puede ver gastos (403)', async () => {
+    const res = await request(app)
+      .get('/api/expenses')
+      .set('Authorization', `Bearer ${paidCaregiverToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain('permisos');
+  });
+});
+```
+
 ## Comandos de testing
 
 ```bash
@@ -159,3 +218,5 @@ Un feature está listo cuando:
 3. El caso edge más probable del negocio está cubierto
 4. No hay console.log olvidados
 5. No hay `any` en TypeScript
+6. Tests de autorización RBAC para los roles relevantes pasan
+7. Operaciones de borrado usan soft delete (no hard delete)
