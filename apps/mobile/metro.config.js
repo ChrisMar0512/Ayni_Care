@@ -7,14 +7,24 @@ const workspaceRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// Monorepo: vigilar el root para paquetes compartidos hoisted
+// Monorepo: vigilar paquetes compartidos del workspace
 config.watchFolders = [workspaceRoot];
 
-// Priorizar node_modules local del workspace sobre el root
-// Evita que Metro use react-native@0.85.3 del root en vez de 0.81.5 local
+// Priorizar node_modules local del workspace — react-native 0.81.5, no 0.85.3
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
 ];
+
+// Bloquear react-native del root (0.85.3 hoisted por nativewind/reanimated)
+// para que Metro solo use 0.81.5 del workspace local
+const rootNodeModules = path.resolve(workspaceRoot, "node_modules");
+const existing = config.resolver.blockList;
+const rootRNPattern = new RegExp(
+  `^${rootNodeModules.replace(/[/\\]/g, "[/\\\\]")}/react-native/.*$`
+);
+config.resolver.blockList = existing
+  ? [].concat(existing, rootRNPattern)
+  : rootRNPattern;
 
 module.exports = withNativeWind(config, { input: "./global.css" });
