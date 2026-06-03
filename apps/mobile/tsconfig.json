@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "rootDir": ".",
+    "noEmit": true,
+    "allowJs": true
+  },
+  "include": [
+    "App.tsx",
+    "src/**/*",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
