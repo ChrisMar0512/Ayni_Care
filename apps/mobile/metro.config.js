@@ -1,10 +1,12 @@
+const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 
-// getDefaultConfig ya detecta el monorepo automáticamente y configura:
-// - watchFolders: [root/node_modules, apps/mobile, apps/backend, packages/shared]
-// - nodeModulesPaths: [apps/mobile/node_modules, root/node_modules] (local primero)
-// - unstable_serverRoot: monorepo root
 const config = getDefaultConfig(__dirname);
 
-module.exports = withNativeWind(config, { input: "./global.css" });
+// Rutas absolutas para que withNativeWind las encuentre sin importar
+// desde qué directorio se ejecute `expo start <dir>`
+module.exports = withNativeWind(config, {
+  input: path.resolve(__dirname, "global.css"),
+  configPath: path.resolve(__dirname, "tailwind.config"),
+});
