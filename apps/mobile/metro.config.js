@@ -1,12 +1,13 @@
-const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
-const { withNativeWind } = require("nativewind/metro");
 
+// NativeWind (withNativeWind) está deshabilitado temporalmente porque
+// nativewind@4.2.4 requiere react-native-reanimated@4.x que a su vez
+// necesita react-native 0.83-0.86, incompatible con Expo SDK 54 (RN 0.81.5).
+// Habilitar cuando se migre nativewind a una versión compatible con RN 0.81.
 const config = getDefaultConfig(__dirname);
 
-// Rutas absolutas para que withNativeWind las encuentre sin importar
-// desde qué directorio se ejecute `expo start <dir>`
-module.exports = withNativeWind(config, {
-  input: path.resolve(__dirname, "global.css"),
-  configPath: path.resolve(__dirname, "tailwind.config"),
-});
+// Habilitar resolución de .css sin el transformer de NativeWind
+// (evita que Metro falle al encontrar el import de global.css)
+config.resolver.sourceExts = [...config.resolver.sourceExts, "css"];
+
+module.exports = config;
