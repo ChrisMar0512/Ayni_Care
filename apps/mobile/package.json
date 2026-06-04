@@ -2,7 +2,7 @@
   "name": "@ayni-care/mobile",
   "private": true,
   "version": "0.1.0",
-  "main": "./index.js",
+  "main": "index",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
