@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── FAMILIA ────────────────────────────────────────
+
+model Family {
+  id           String         @id @default(uuid())
+  name         String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  members      FamilyMember[]
+  elderly      ElderlyPerson?
+  activities   Activity[]
+  medications  Medication[]
+  appointments Appointment[]
+  expenses     Expense[]
+  notes        Note[]
+  invitations  Invitation[]
+}
+
+model FamilyMember {
+  id                 String         @id @default(uuid())
+  familyId           String
+  userId             String         @unique // ID de Supabase Auth
+  name               String
+  phone              String?
+  email              String?
+  role               MemberRole
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  family             Family         @relation(fields: [familyId], references: [id])
+  assignedActivities Activity[]     @relation("AssignedTo")
+  activityLogs       ActivityLog[]
+  medLogs            MedLog[]
+  expenses           Expense[]      @relation("PaidBy")
+  expenseSplits      ExpenseSplit[]
+  notes              Note[]
+}
+
+enum MemberRole {
+  primary_caregiver
+  remote_family
+  weekend_helper
+  paid_caregiver
+}
+
+model Invitation {
+  id        String     @id @default(uuid())
+  familyId  String
+  email     String?
+  phone     String?
+  role      MemberRole
+  token     String     @unique @default(uuid())
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime   @default(now())
+  family    Family     @relation(fields: [familyId], references: [id])
+}
+
+// ─── ADULTO MAYOR ────────────────────────────────────
+
+model ElderlyPerson {
+  id         String    @id @default(uuid())
+  familyId   String    @unique
+  name       String
+  birthDate  DateTime?
+  conditions String[] // ["Alzheimer", "Diabetes tipo 2"]
+  allergies  String[]
+  bloodType  String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  family     Family    @relation(fields: [familyId], references: [id])
+}
+
+// ─── ACTIVIDADES (CHECKLIST) ─────────────────────────
+
+model Activity {
+  id           String          @id @default(uuid())
+  familyId     String
+  assignedToId String?
+  title        String
+  description  String?
+  scheduledAt  DateTime?
+  recurrence   Recurrence?
+  status       ActivityStatus  @default(pending)
+  priority     Priority        @default(normal)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime? // soft delete
+  family       Family          @relation(fields: [familyId], references: [id])
+  assignedTo   FamilyMember?   @relation("AssignedTo", fields: [assignedToId], references: [id])
+  logs         ActivityLog[]
+}
+
+model ActivityLog {
+  id              String       @id @default(uuid())
+  activityId      String
+  completedById   String
+  completedAt     DateTime     @default(now())
+  notes           String?
+  activity        Activity     @relation(fields: [activityId], references: [id])
+  completedBy     FamilyMember @relation(fields: [completedById], references: [id])
+}
+
+enum ActivityStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+  skipped
+}
+
+enum Priority {
+  urgent
+  normal
+  low
+}
+
+enum Recurrence {
+  daily
+  weekly
+  monthly
+  custom
+}
+
+// ─── MEDICAMENTOS ────────────────────────────────────
+
+model Medication {
+  id           String     @id @default(uuid())
+  familyId     String
+  name         String
+  dosage       String // "10mg", "1 comprimido"
+  form         String? // "pastilla", "jarabe", "inyección"
+  frequency    String // "cada 8 horas", "una vez al día"
+  times        String[] // ["08:00", "14:00", "20:00"]
+  instructions String?
+  startDate    DateTime
+  endDate      DateTime?
+  isActive     Boolean    @default(true)
+  stock        Int?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime? // soft delete
+  family       Family     @relation(fields: [familyId], references: [id])
+  logs         MedLog[]
+}
+
+model MedLog {
+  id           String       @id @default(uuid())
+  medicationId String
+  givenById    String
+  givenAt      DateTime     @default(now())
+  skipped      Boolean      @default(false)
+  skipReason   String?
+  notes        String?
+  medication   Medication   @relation(fields: [medicationId], references: [id])
+  givenBy      FamilyMember @relation(fields: [givenById], references: [id])
+}
+
+// ─── CITAS ────────────────────────────────────────────
+
+model Appointment {
+  id            String            @id @default(uuid())
+  familyId      String
+  title         String // "Cardiólogo - Dr. García"
+  type          AppointmentType
+  location      String?
+  doctorName    String?
+  scheduledAt   DateTime
+  durationMin   Int?
+  notes         String?
+  reminderSent  Boolean           @default(false)
+  status        AppointmentStatus @default(scheduled)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime? // soft delete
+  family        Family            @relation(fields: [familyId], references: [id])
+}
+
+enum AppointmentType {
+  medical
+  therapy
+  lab
+  pharmacy
+  other
+}
+
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+  rescheduled
+}
+
+// ─── GASTOS COMPARTIDOS ──────────────────────────────
+
+model Expense {
+  id        String          @id @default(uuid())
+  familyId  String
+  paidById  String
+  title     String
+  amount    Decimal         @db.Decimal(10, 2)
+  currency  String          @default("PEN")
+  category  ExpenseCategory
+  date      DateTime
+  receipt   String?
+  notes     String?
+  createdAt DateTime        @default(now())
+  deletedAt DateTime? // soft delete
+  family    Family          @relation(fields: [familyId], references: [id])
+  paidBy    FamilyMember    @relation("PaidBy", fields: [paidById], references: [id])
+  splits    ExpenseSplit[]
+}
+
+model ExpenseSplit {
+  id        String       @id @default(uuid())
+  expenseId String
+  memberId  String
+  amount    Decimal      @db.Decimal(10, 2)
+  isPaid    Boolean      @default(false)
+  paidAt    DateTime?
+  expense   Expense      @relation(fields: [expenseId], references: [id])
+  member    FamilyMember @relation(fields: [memberId], references: [id])
+}
+
+enum ExpenseCategory {
+  medications
+  medical
+  food
+  transport
+  hygiene
+  equipment
+  other
+}
+
+// ─── NOTAS MÉDICAS ────────────────────────────────────
+
+model Note {
+  id        String       @id @default(uuid())
+  familyId  String
+  authorId  String
+  title     String?
+  content   String
+  type      NoteType     @default(general)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime? // soft delete
+  family    Family       @relation(fields: [familyId], references: [id])
+  author    FamilyMember @relation(fields: [authorId], references: [id])
+}
+
+enum NoteType {
+  general
+  medical
+  handoff
+  symptom
+  observation
+}

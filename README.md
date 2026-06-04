@@ -137,3 +137,31 @@ Tests pasan → `git commit` → feature listo.
 
 ---
 
+## Setup inicial del monorepo
+
+La estructura base del monorepo ya está creada. Archivos añadidos:
+
+- `package.json` raíz con `workspaces: ["apps/*","packages/*"]`
+- `tsconfig.json` raíz (config TypeScript strict)
+- `.eslintrc.cjs` raíz (plantilla ESLint + TypeScript)
+- `.gitignore` básico
+
+Comandos recomendados:
+
+```bash
+# Instalar dependencias en la raíz (workspaces)
+npm install
+
+# Inicializar Expo en `apps/mobile` cuando vayas a empezar la app móvil:
+cd apps/mobile
+npx expo init .
+
+# Inicializar backend con TypeScript en `apps/backend`:
+cd apps/backend
+npm init -y
+# agregar express, typescript, ts-node-dev, prisma según lo necesites
+```
+
+Si quieres, puedo ejecutar `npm install` ahora y/o inicializar plantillas adicionales (tsconfig por paquete, ESLint/Prettier, husky, etc.).
+
+
