@@ -1,13 +1,14 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "jsx": "react-native",
+    "strict": true,
     "rootDir": ".",
-    "noEmit": true,
-    "allowJs": true
+    "resolveJsonModule": true,
+    "sourceMap": true
   },
   "include": [
     "App.tsx",
+    "index.js",
     "src/**/*",
     "nativewind-env.d.ts"
   ],
