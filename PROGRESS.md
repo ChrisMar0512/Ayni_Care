@@ -24,7 +24,7 @@
 - **`Expense.amount` y `ExpenseSplit.amount`** usan `Decimal @db.Decimal(10,2)` (correcto para dinero)
 - **`datasource` con `directUrl`** para migraciones directas en Supabase (correcto)
 
-### Backend — Infraestructura base (implementado 2026-06-03)
+### Backend — Infraestructura base
 
 #### Clientes y singletons
 - `src/prisma/client.ts` — singleton de `PrismaClient` (reutilizado en dev y prod)
@@ -42,10 +42,9 @@
 - CORS restrictivo: en producción solo `https://aynicare.com`; en desarrollo `*`
 - Rate limiting general: 100 req / 15 min por IP
 - Rate limiting en `/api/auth/`: 10 req / 15 min por IP
-- `express-rate-limit@8.5.x` agregado a dependencies
 
 #### Servicios
-- `src/services/realtime.service.ts` — `broadcast(familyId, event, payload)`: emite a canal `family:${familyId}` vía Supabase Realtime. Non-blocking (errores logueados, no propagan)
+- `src/services/realtime.service.ts` — `broadcast(familyId, event, payload)`: emite a canal `family:${familyId}` vía Supabase Realtime. Non-blocking
 - `src/services/email.service.ts` — `sendInvitationEmail(...)`: envía invitación con link de join vía Resend
 
 #### Auth — `POST /api/auth/verify-otp` y `POST /api/auth/logout`
@@ -70,15 +69,68 @@
   - `GET /api/family/members` — `authenticate`
   - `DELETE /api/family/members/:id` — `authenticate` + `requirePermission('family:remove')`
 
-### Mobile — Expo SDK 54
+### Mobile — Expo SDK 54 (setup)
 - Actualización completada: expo `~54.0.0`, React `19.1.0`, React Native `0.81.5`
 - Entry point `index.js` con `registerRootComponent` correcto para monorepo
 - `metro.config.js` con `getDefaultConfig(__dirname)` — Expo detecta el monorepo automáticamente
 - `babel.config.js` con `babel-preset-expo` (devDependency explícita)
-- `tsconfig.json` mobile extiende `expo/tsconfig.base` directamente (`moduleResolution: "bundler"`)
-- `tsconfig.json` raíz y backend sin conflictos de TypeScript
-- `package.json` raíz fija `react@19.1.0` y `react-native@0.81.5` como deps directas (resuelve el conflicto de versiones con nativewind)
-- `npm run dev:mobile` usa `expo start apps/mobile` (funciona desde cualquier CWD)
+- `tsconfig.json` mobile extiende `expo/tsconfig.base` + paths para `@ayni-care/shared` → fuente directa (no requiere build del paquete)
+- `package.json` raíz fija `react@19.1.0` y `react-native@0.81.5` como deps directas (resuelve conflicto de versiones con nativewind)
+
+### Mobile — Feature 1: Autenticación (implementado 2026-06-03)
+
+#### Paquetes agregados
+- `axios@^1.17.0` — cliente HTTP
+- `expo-secure-store@~14.0.0` — almacenamiento seguro de tokens (SDK 54 compatible)
+
+#### Cliente HTTP — `src/services/api.ts`
+- Instancia axios con `baseURL: EXPO_PUBLIC_API_URL`, timeout 10 s
+- Interceptor de request: lee `access_token` de SecureStore e inyecta `Authorization: Bearer`
+- Interceptor de response: en 401 borra los 4 ítems de SecureStore (`access_token`, `refresh_token`, `auth_user`, `auth_member`) y llama `registerUnauthorizedCallback` → desacoplado del store para evitar dependencia circular
+- `registerUnauthorizedCallback(cb)`: hook para que AppNavigator registre el `logout()` del store
+
+#### Cliente Supabase — `src/services/supabase.ts`
+- `createClient` con `persistSession: false`, `autoRefreshToken: false` — la sesión la gestiona el backend, Supabase solo envía OTPs
+
+#### Auth Store — `src/stores/authStore.ts`
+- Estado: `user`, `member`, `familyId`, `role`, `isInitialized`
+- `initialize()`: lee `access_token` + `auth_user` + `auth_member` de SecureStore al arrancar; si existen, rehidrata el store sin network call
+- `setAuth(user, member, accessToken, refreshToken)`: persiste en SecureStore y actualiza el estado en simultáneo (`Promise.all`)
+- `logout()`: borra los 4 ítems de SecureStore + resetea el estado
+
+#### Navegación — `src/navigation/`
+- `types.ts`: `AuthStackParamList` (`Login`, `OTP` con `{type, identifier}`) y `AppStackParamList` (`Home`)
+- `AppNavigator.tsx`:
+  - `ErrorBoundary` (class component): captura errores de render, muestra pantalla de error con botón "Reintentar"
+  - Splash mientras `isInitialized === false` (evita flash de login si hay sesión activa)
+  - Monta `AuthNavigator` (Login → OTP) o `AppNavigatorInner` (Home) según `user` en el store
+  - Registra el callback de 401 de `api.ts` en `useEffect`
+
+#### Pantallas de auth — `src/screens/auth/`
+- `LoginScreen.tsx`:
+  - Detecta automáticamente si el input es email o teléfono (regex)
+  - Teléfonos: normaliza a E.164 (`+countryCode...`) antes de llamar a Supabase
+  - Llama `supabase.auth.signInWithOtp()` y navega a `OTPScreen` pasando `type` e `identifier`
+  - Manejo de 3 estados: loading (ActivityIndicator en botón), error (texto rojo inline), idle
+- `OTPScreen.tsx`:
+  - 6 celdas individuales renderizadas sobre un `TextInput` oculto (mejor UX que un campo de texto plano)
+  - Celda activa con borde terracota, celda rellena con borde verde salvia
+  - POST `body` tipado según el schema del backend: `{type, token, email?} | {type, token, phone?}`
+  - En éxito: llama `setAuth()` → el store actualiza → AppNavigator muestra HomeScreen automáticamente (sin `navigation.navigate`)
+  - Botón "Verificar" deshabilitado si `otp.length < 6`
+
+#### Pantalla placeholder — `src/screens/home/HomeScreen.tsx`
+- Muestra nombre del usuario, nombre de la familia y botón "Cerrar sesión"
+- Placeholder hasta implementar `TabNavigator` con las 5 tabs del MVP
+
+#### `App.tsx`
+- `QueryClient` con la config completa del `skills/MOBILE.md` (staleTime, gcTime, retry, retryDelay, refetchOnWindowFocus)
+- Providers: `QueryClientProvider` → `SafeAreaProvider` → `AppNavigator`
+- TypeScript pasa sin errores (`npx tsc --noEmit` ✅)
+
+#### Nota sobre estilos
+- Todos los archivos usan `StyleSheet.create()` — NativeWind sigue deshabilitado (incompatibilidad nativewind@4.2.4 + RN 0.81.5)
+- Paleta aplicada: Terracota `#D4856A`, Verde Salvia `#87A96B`, Fondo `#F8F5F0`, Texto `#2C2C2C`
 
 ### `packages/shared`
 - `ApiResponse<T>` definido con el formato correcto: `{ success, data, error? }`
@@ -107,16 +159,15 @@
 | 8 | **`Expense` sin `updatedAt`** | Inconsistencia con el resto de modelos |
 | 9 | **Tests RBAC** | Cubrir los 4 roles en al menos 2 dominios (ver `skills/QA.md`) |
 
-### Mobile — No crítico (Expo SDK 54 funciona, pero UI sin implementar)
+### Mobile — Pendientes
 
 | # | Problema | Detalle |
 |---|----------|---------|
 | 10 | **`assets/` no existe** | `app.json` referencia `./assets/icon.png`, `splash.png`, `adaptive-icon.png` — expo-doctor reporta error |
 | 11 | **NativeWind deshabilitado** | `withNativeWind` comentado en `metro.config.js` por incompatibilidad con nativewind@4.2.4 + RN 0.81.5 |
-| 12 | **`App.tsx` es placeholder** | Solo muestra "Ayni Care" con `StyleSheet`. Sin navegación, auth, ni pantallas |
-| 13 | **`src/` completamente vacío** | Carpetas `.gitkeep`: `screens/`, `components/`, `hooks/`, `stores/`, `navigation/`, `services/` |
-| 14 | **Sin `ErrorBoundary`** | `skills/MOBILE.md` requiere envolver la app en `<ErrorBoundary>` |
-| 15 | **Sin tests de mobile** | Zero tests en React Native Testing Library |
+| 12 | **TabNavigator sin implementar** | `HomeScreen.tsx` es placeholder. Faltan las 5 tabs (Inicio, Actividades, Medicamentos, Agenda, Familia) |
+| 13 | **Features 2-7 mobile** | Cero pantallas más allá del flujo de auth |
+| 14 | **Sin tests de mobile** | Zero tests en React Native Testing Library |
 
 ---
 
@@ -137,14 +188,19 @@
 - [x] `src/services/email.service.ts`
 - [ ] Tests de autorización: token sin bearer → 401, token expirado → 401, rol sin permiso → 403
 
-**Mobile:**
-- [ ] Resolver NativeWind: downgrade a `nativewind@4.1.x` o forzar `react-native-reanimated@3.x`
-- [ ] Crear `apps/mobile/assets/` con placeholders de Expo
-- [ ] `src/services/api.ts` — cliente axios con interceptores según `skills/MOBILE.md`
-- [ ] `src/stores/authStore.ts` — Zustand store con `user`, `familyId`, `role`
-- [ ] `src/navigation/AppNavigator.tsx` — switch auth/app envuelto en `<ErrorBoundary>`
-- [ ] `src/screens/auth/LoginScreen.tsx` — campo teléfono/email + botón OTP
-- [ ] `src/screens/auth/OTPScreen.tsx` — campo 6 dígitos + verificar
+**Mobile:** ✅ Flujo completo implementado
+- [x] `src/services/api.ts` — axios con interceptores (token + 401 handler)
+- [x] `src/services/supabase.ts` — cliente para enviar OTPs
+- [x] `src/stores/authStore.ts` — Zustand + SecureStore (initialize, setAuth, logout)
+- [x] `src/navigation/types.ts` — tipos tipados de los stacks
+- [x] `src/navigation/AppNavigator.tsx` — ErrorBoundary + splash + switch auth/app
+- [x] `src/screens/auth/LoginScreen.tsx` — email o teléfono → signInWithOtp
+- [x] `src/screens/auth/OTPScreen.tsx` — 6 dígitos → verify-otp → setAuth
+- [x] `src/screens/home/HomeScreen.tsx` — placeholder con logout
+- [x] `App.tsx` — QueryClient + SafeAreaProvider + AppNavigator
+- [ ] Crear `apps/mobile/assets/` con placeholders de Expo (expo-doctor)
+- [ ] Resolver NativeWind o adoptar solución alternativa de estilos
+- [ ] Tests
 
 ---
 
@@ -160,6 +216,7 @@
 - [ ] Tests: crear, completar, doble-completar (400), sin auth (401), rol sin permiso (403)
 
 **Mobile:**
+- [ ] `src/navigation/TabNavigator.tsx` — 5 tabs (Inicio, Actividades, Medicamentos, Agenda, Familia)
 - [ ] `src/hooks/useActivities.ts` — React Query hooks
 - [ ] `src/screens/activities/ActivitiesScreen.tsx`
 - [ ] `src/components/activities/ActivityCard.tsx`
@@ -229,17 +286,18 @@
 
 ```
 ESTADO HOY (2026-06-03)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Infraestructura monorepo        ████████████ 100%
-Schema de BD (Prisma)           ████████████ 100%
-Backend — Infraestructura base  ████████████ 100%
-Backend — Feature 1 (Auth+Fam)  ████████████ 100%
-Backend — Features 2-7          ░░░░░░░░░░░░   0%
-Mobile UI (pantallas)           ░░░░░░░░░░░░   0%
-Mobile SDK 54 (setup)           ████████████ 100%
-Tests                           ░░░░░░░░░░░░   0%
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                  █████░░░░░░░  ~35%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Infraestructura monorepo         ████████████ 100%
+Schema de BD (Prisma)            ████████████ 100%
+Backend — Infraestructura base   ████████████ 100%
+Backend — Feature 1 (Auth+Fam)   ████████████ 100%
+Backend — Features 2-7           ░░░░░░░░░░░░   0%
+Mobile — SDK 54 setup            ████████████ 100%
+Mobile — Feature 1 (Auth UI)     ██████████░░  85%  ← nuevo
+Mobile — Features 2-7 UI         ░░░░░░░░░░░░   0%
+Tests                            ░░░░░░░░░░░░   0%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MVP completado                   ██████░░░░░░  ~45%
 ```
 
-**Próximo sprint recomendado:** Feature 1 mobile (LoginScreen + OTPScreen + authStore + navegación) + Feature 2 backend (actividades). Con auth funcionando end-to-end, se puede testear el flujo completo desde la app.
+**Próximo sprint recomendado:** Feature 2 backend (actividades) + TabNavigator mobile. Con auth funcionando end-to-end y el TabNavigator en su lugar, se puede iterar rápido sobre las features restantes usando el mismo patrón de store + hooks + pantalla.

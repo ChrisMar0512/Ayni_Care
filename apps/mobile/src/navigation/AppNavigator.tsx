@@ -1,0 +1,144 @@
+import React, { useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useAuthStore } from '../stores/authStore';
+import { registerUnauthorizedCallback } from '../services/api';
+import { LoginScreen } from '../screens/auth/LoginScreen';
+import { OTPScreen } from '../screens/auth/OTPScreen';
+import { HomeScreen } from '../screens/home/HomeScreen';
+import type { AuthStackParamList, AppStackParamList } from './types';
+
+// ─── Error Boundary ───────────────────────────────────────────────────────────
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Algo salió mal</Text>
+          <Text style={styles.errorMessage}>
+            Ocurrió un error inesperado. Intenta cerrar y abrir la app.
+          </Text>
+          <Pressable
+            style={styles.errorButton}
+            onPress={() => this.setState({ hasError: false })}
+          >
+            <Text style={styles.errorButtonText}>Reintentar</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─── Stacks ───────────────────────────────────────────────────────────────────
+
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const AppStack = createNativeStackNavigator<AppStackParamList>();
+
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="OTP" component={OTPScreen} />
+    </AuthStack.Navigator>
+  );
+}
+
+function AppNavigatorInner() {
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Home" component={HomeScreen} />
+    </AppStack.Navigator>
+  );
+}
+
+// ─── Root Navigator ───────────────────────────────────────────────────────────
+
+export function AppNavigator() {
+  const { user, isInitialized, initialize, logout } = useAuthStore();
+
+  useEffect(() => {
+    initialize();
+    registerUnauthorizedCallback(logout);
+  }, [initialize, logout]);
+
+  if (!isInitialized) {
+    return (
+      <View style={styles.splashContainer}>
+        <Text style={styles.splashText}>Ayni Care</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <NavigationContainer>
+        {user ? <AppNavigatorInner /> : <AuthNavigator />}
+      </NavigationContainer>
+    </ErrorBoundary>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F5F0',
+  },
+  splashText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#D4856A',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F5F0',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2C2C2C',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#6B7C6B',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  errorButton: {
+    backgroundColor: '#D4856A',
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
