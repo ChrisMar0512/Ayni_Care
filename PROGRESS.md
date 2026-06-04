@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Auditoría QA · 2026-06-03
+> Última actualización: 2026-06-03
 
 ---
 
@@ -24,10 +24,51 @@
 - **`Expense.amount` y `ExpenseSplit.amount`** usan `Decimal @db.Decimal(10,2)` (correcto para dinero)
 - **`datasource` con `directUrl`** para migraciones directas en Supabase (correcto)
 
-### Backend — `src/index.ts`
-- Express con `dotenv/config`, `cors()`, y `express.json()` configurados
-- Endpoint `/health` con formato correcto: `{ success: true, data: { status: 'ok' }, error: undefined }`
-- Exporta `app` (necesario para tests con Supertest)
+### Backend — Infraestructura base (implementado 2026-06-03)
+
+#### Clientes y singletons
+- `src/prisma/client.ts` — singleton de `PrismaClient` (reutilizado en dev y prod)
+- `src/lib/supabase.ts` — `supabaseAdmin` (SERVICE_ROLE_KEY, bypasea RLS) + `supabase` (ANON_KEY para auth/realtime)
+
+#### Middleware
+- `src/middleware/auth.middleware.ts` — **`authenticate`**: verifica JWT con Supabase Admin SDK, busca `FamilyMember`, inyecta `req.user` con `{id, familyId, role, memberId}`. Retorna 401 si token inválido o usuario sin familia, 403 si cuenta inactiva
+- `src/middleware/auth.middleware.ts` — **`authenticateNewUser`**: verifica JWT pero no requiere `FamilyMember` (para crear/unirse a familia). Rechaza con 409 si el usuario ya pertenece a una familia
+- `src/middleware/authorize.middleware.ts` — **`requirePermission(...perms)`**: RBAC completo con los 4 roles, matriz de 18 permisos según `skills/SECURITY.md`
+- `src/middleware/validate.middleware.ts` — **`validate(schema)`**: wrapper Zod que parsea `req.body` y lo carga en `req.validatedBody`; retorna 400 con el primer error descriptivo
+- `src/middleware/error.middleware.ts` — handler global: maneja Prisma P2025 → 404, P2002 → 409, cualquier otro → 500 con mensaje oculto en producción
+- `src/types/express.d.ts` — augmentación del tipo `Request` con `req.user` y `req.validatedBody`
+
+#### Seguridad en `src/index.ts`
+- CORS restrictivo: en producción solo `https://aynicare.com`; en desarrollo `*`
+- Rate limiting general: 100 req / 15 min por IP
+- Rate limiting en `/api/auth/`: 10 req / 15 min por IP
+- `express-rate-limit@8.5.x` agregado a dependencies
+
+#### Servicios
+- `src/services/realtime.service.ts` — `broadcast(familyId, event, payload)`: emite a canal `family:${familyId}` vía Supabase Realtime. Non-blocking (errores logueados, no propagan)
+- `src/services/email.service.ts` — `sendInvitationEmail(...)`: envía invitación con link de join vía Resend
+
+#### Auth — `POST /api/auth/verify-otp` y `POST /api/auth/logout`
+- `src/schemas/auth.schema.ts` — Zod schema con `type`, `token`, `email?`, `phone?`
+- `src/controllers/auth.controller.ts`:
+  - `verifyOtp`: proxy a `supabase.auth.verifyOtp()`, retorna `{accessToken, refreshToken, expiresAt, user, member}`; `member` es null si el usuario aún no pertenece a ninguna familia
+  - `logout`: llama `supabaseAdmin.auth.admin.signOut(userId, 'global')` — invalida todas las sesiones sin borrar el usuario
+- `src/routes/auth.routes.ts`: `POST /api/auth/verify-otp` (sin auth, con validate) + `POST /api/auth/logout` (con authenticate)
+
+#### Familia — 5 endpoints
+- `src/schemas/family.schema.ts` — schemas para `createFamily`, `inviteMember`, `joinFamily`
+- `src/controllers/family.controller.ts`:
+  - `createFamily`: crea `Family` + `FamilyMember` como `primary_caregiver` + opcional `ElderlyPerson` en una sola transacción Prisma
+  - `inviteMember`: crea `Invitation` (expira en 7 días), envía email con Resend (non-blocking si falla)
+  - `joinFamily`: valida token, verifica no usado ni expirado, crea `FamilyMember` + marca `usedAt`, emite `family:member_joined`
+  - `listMembers`: retorna miembros `isActive = true` de la familia del usuario
+  - `removeMember`: verifica que el target es de la misma familia, no puede removerse a sí mismo, setea `isActive = false`, emite `family:member_removed`
+- `src/routes/family.routes.ts`:
+  - `POST /api/family` — `authenticateNewUser` + validate
+  - `POST /api/family/join` — `authenticateNewUser` + validate
+  - `POST /api/family/invite` — `authenticate` + `requirePermission('family:invite')` + validate
+  - `GET /api/family/members` — `authenticate`
+  - `DELETE /api/family/members/:id` — `authenticate` + `requirePermission('family:remove')`
 
 ### Mobile — Expo SDK 54
 - Actualización completada: expo `~54.0.0`, React `19.1.0`, React Native `0.81.5`
@@ -47,91 +88,71 @@
 
 ## ❌ Lo que falta / No cumple los estándares
 
-### Backend — Crítico (bloquea MVP)
+### Backend — Features 2-7 (sin implementar)
 
-| # | Problema | Archivo | Impacto |
-|---|----------|---------|---------|
-| 1 | **No existe ninguna ruta ni controlador** | `src/routes/`, `src/controllers/` | Sin API, la app no puede funcionar |
-| 2 | **No existe `authenticate` middleware** | `src/middleware/auth.middleware.ts` | Sin auth, cualquiera puede hacer queries |
-| 3 | **No existe `requirePermission` middleware** | `src/middleware/authorize.middleware.ts` | Sin RBAC, todos los roles ven todo |
-| 4 | **No existe `validate` middleware** | `src/middleware/validate.middleware.ts` | Sin validación Zod, datos inválidos llegan a la BD |
-| 5 | **No existe cliente Prisma** | `src/prisma/client.ts` o similar | Ningún controlador puede hacer queries |
-| 6 | **CORS sin restricción en producción** | `src/index.ts:8` | `cors()` sin opciones = acepta cualquier origen. Debe ser configurado como en `skills/SECURITY.md` |
-| 7 | **Sin rate limiting** | `src/index.ts` | Endpoint `/auth` vulnerable a fuerza bruta |
-| 8 | **Sin schemas Zod** | `src/schemas/` | La validación de inputs no existe todavía |
+| # | Feature | Rutas pendientes |
+|---|---------|-----------------|
+| 1 | **Actividades** | `GET/POST /api/activities`, `PATCH /api/activities/:id`, `PATCH /api/activities/:id/complete`, `DELETE /api/activities/:id` |
+| 2 | **Medicamentos** | `GET/POST /api/medications`, `PATCH /api/medications/:id`, `PATCH /api/medications/:id/administer`, `DELETE /api/medications/:id` |
+| 3 | **Citas** | `GET/POST /api/appointments`, `PATCH /api/appointments/:id`, `DELETE /api/appointments/:id` + job de recordatorio |
+| 4 | **Gastos** | `GET/POST /api/expenses`, `PATCH /api/expenses/:id/splits/:splitId/pay`, `DELETE /api/expenses/:id` |
+| 5 | **Notas** | `GET/POST /api/notes`, `DELETE /api/notes/:id` |
+| 6 | **Tests** | Ningún test de integración implementado |
 
-### Backend — No crítico (MVP funcional pero incompleto)
+### Backend — Detalles pendientes
 
 | # | Problema | Detalle |
 |---|----------|---------|
-| 9 | **Sin `error.middleware.ts`** | Los errores no se capturan globalmente; cada `try/catch` necesita manejar su propio formato |
-| 10 | **Sin `realtime.service.ts`** | Las escrituras no emiten eventos. Viola la regla "toda escritura emite evento realtime" |
-| 11 | **Sin `email.service.ts`** | Sin recordatorios de citas, sin notificaciones de invitaciones |
-| 12 | **Sin `prisma/seed.ts`** | Sin datos de prueba, difícil de desarrollar localmente |
-| 13 | **`Expense` sin `updatedAt`** | El resto de modelos tiene `updatedAt`. Inconsistencia. |
-| 14 | **Sin tests** | Ningún test de integración existe. Ver `skills/QA.md` para el patrón. |
+| 7 | **`prisma/seed.ts`** | Sin datos de prueba locales |
+| 8 | **`Expense` sin `updatedAt`** | Inconsistencia con el resto de modelos |
+| 9 | **Tests RBAC** | Cubrir los 4 roles en al menos 2 dominios (ver `skills/QA.md`) |
 
 ### Mobile — No crítico (Expo SDK 54 funciona, pero UI sin implementar)
 
 | # | Problema | Detalle |
 |---|----------|---------|
-| 15 | **`assets/` no existe** | `app.json` referencia `./assets/icon.png`, `splash.png`, `adaptive-icon.png` — expo-doctor reporta error |
-| 16 | **NativeWind deshabilitado** | `withNativeWind` comentado en `metro.config.js` por incompatibilidad con nativewind@4.2.4 + RN 0.81.5. Ninguna pantalla puede usar `className`. |
-| 17 | **`global.css` y `tailwind.config.js` presentes pero sin efecto** | Sin `withNativeWind`, los archivos de NativeWind no tienen función. Pueden confundir. |
-| 18 | **`App.tsx` es placeholder** | Solo muestra "Ayni Care" con `StyleSheet`. Sin navegación, auth, ni pantallas. |
-| 19 | **`src/` completamente vacío** | Carpetas `.gitkeep`: `screens/`, `components/`, `hooks/`, `stores/`, `navigation/`, `services/` — nada implementado |
-| 20 | **Sin `ErrorBoundary`** | `skills/MOBILE.md` requiere envolver la app en `<ErrorBoundary>` |
-| 21 | **Sin tests de mobile** | Zero tests en React Native Testing Library |
-
-### Configuración — Menor
-
-| # | Problema | Detalle |
-|---|----------|---------|
-| 22 | **`nativewind-env.d.ts` incluida en tsconfig** | Genera tipos de NativeWind pero NativeWind está deshabilitado |
-| 23 | **`mobile/package.json` devDeps desordenadas** | `babel-preset-expo` insertado en medio, no al final del bloque devDependencies |
+| 10 | **`assets/` no existe** | `app.json` referencia `./assets/icon.png`, `splash.png`, `adaptive-icon.png` — expo-doctor reporta error |
+| 11 | **NativeWind deshabilitado** | `withNativeWind` comentado en `metro.config.js` por incompatibilidad con nativewind@4.2.4 + RN 0.81.5 |
+| 12 | **`App.tsx` es placeholder** | Solo muestra "Ayni Care" con `StyleSheet`. Sin navegación, auth, ni pantallas |
+| 13 | **`src/` completamente vacío** | Carpetas `.gitkeep`: `screens/`, `components/`, `hooks/`, `stores/`, `navigation/`, `services/` |
+| 14 | **Sin `ErrorBoundary`** | `skills/MOBILE.md` requiere envolver la app en `<ErrorBoundary>` |
+| 15 | **Sin tests de mobile** | Zero tests en React Native Testing Library |
 
 ---
 
 ## 🗺️ Próximos pasos por feature (orden de prioridad MVP)
 
-### Feature 1 — Auth + Familia (PRIORIDAD MÁXIMA)
-> Bloqueante para todo lo demás. Sin auth no hay app.
-
-**Backend:**
-- [ ] Crear `src/prisma/client.ts` (instancia singleton de PrismaClient)
-- [ ] Crear `src/middleware/auth.middleware.ts` — verificar JWT con Supabase Admin SDK, inyectar `req.user`
-- [ ] Crear `src/middleware/authorize.middleware.ts` — `requirePermission()` según `skills/SECURITY.md`
-- [ ] Crear `src/middleware/validate.middleware.ts` — wrapper de Zod
-- [ ] Crear `src/middleware/error.middleware.ts` — manejador global de errores
-- [ ] Configurar CORS restrictivo en `src/index.ts`
-- [ ] Agregar rate limiting (`express-rate-limit`) — 100 req/15min general, 10 req/15min en `/auth`
-- [ ] Crear `src/routes/auth.routes.ts` + `src/controllers/auth.controller.ts`
-  - `POST /api/auth/verify-otp` — intercambiar OTP por sesión
-  - `POST /api/auth/logout`
-- [ ] Crear `src/routes/family.routes.ts` + `src/controllers/family.controller.ts`
-  - `POST /api/family` — crear familia
-  - `POST /api/family/invite` — enviar invitación (email/SMS)
-  - `POST /api/family/join` — aceptar invitación con token
-  - `GET /api/family/members` — listar miembros
-  - `DELETE /api/family/members/:id` — eliminar miembro
-- [ ] Tests de autorización: token sin bearer → 401, token de familia B → 403
+### Feature 1 — Auth + Familia
+**Backend:** ✅ Completo
+- [x] `src/prisma/client.ts`
+- [x] `src/middleware/auth.middleware.ts` — `authenticate` + `authenticateNewUser`
+- [x] `src/middleware/authorize.middleware.ts` — `requirePermission()`
+- [x] `src/middleware/validate.middleware.ts`
+- [x] `src/middleware/error.middleware.ts`
+- [x] CORS restrictivo + rate limiting en `src/index.ts`
+- [x] `POST /api/auth/verify-otp` + `POST /api/auth/logout`
+- [x] `POST /api/family`, `POST /api/family/invite`, `POST /api/family/join`
+- [x] `GET /api/family/members`, `DELETE /api/family/members/:id`
+- [x] `src/services/realtime.service.ts`
+- [x] `src/services/email.service.ts`
+- [ ] Tests de autorización: token sin bearer → 401, token expirado → 401, rol sin permiso → 403
 
 **Mobile:**
-- [ ] Resolver NativeWind: hacer downgrade de nativewind a la última versión `4.1.x` (usa reanimated@3.x compatible con RN 0.81.5) o instalar `react-native-reanimated@3.x` explícitamente en mobile para bloquear la resolución de 4.x
-- [ ] Crear `apps/mobile/assets/` con `icon.png`, `splash.png`, `adaptive-icon.png` (placeholders válidos de Expo)
-- [ ] Crear `src/services/api.ts` — cliente axios con interceptores según `skills/MOBILE.md`
-- [ ] Crear `src/stores/authStore.ts` — Zustand store con `user`, `familyId`, `role`
-- [ ] Crear `src/navigation/AppNavigator.tsx` — envuelto en `<ErrorBoundary>`, switch auth/app
-- [ ] Crear `src/screens/auth/LoginScreen.tsx` — campo teléfono/email + botón enviar OTP
-- [ ] Crear `src/screens/auth/OTPScreen.tsx` — campo de 6 dígitos + verificar
+- [ ] Resolver NativeWind: downgrade a `nativewind@4.1.x` o forzar `react-native-reanimated@3.x`
+- [ ] Crear `apps/mobile/assets/` con placeholders de Expo
+- [ ] `src/services/api.ts` — cliente axios con interceptores según `skills/MOBILE.md`
+- [ ] `src/stores/authStore.ts` — Zustand store con `user`, `familyId`, `role`
+- [ ] `src/navigation/AppNavigator.tsx` — switch auth/app envuelto en `<ErrorBoundary>`
+- [ ] `src/screens/auth/LoginScreen.tsx` — campo teléfono/email + botón OTP
+- [ ] `src/screens/auth/OTPScreen.tsx` — campo 6 dígitos + verificar
 
 ---
 
 ### Feature 2 — Checklist de Actividades
 **Backend:**
-- [ ] `src/schemas/activity.schema.ts` — Zod schema de crear/actualizar
+- [ ] `src/schemas/activity.schema.ts`
 - [ ] `src/routes/activities.routes.ts` + `src/controllers/activities.controller.ts`
-  - `GET /api/activities` — filtrar por `familyId` + `deletedAt IS NULL`
+  - `GET /api/activities` — filtrar por `familyId` + `deletedAt: null`
   - `POST /api/activities` — crear, broadcast `activity:created`
   - `PATCH /api/activities/:id` — actualizar, broadcast `activity:updated`
   - `PATCH /api/activities/:id/complete` — crea `ActivityLog`, broadcast `activity:completed`
@@ -140,8 +161,8 @@
 
 **Mobile:**
 - [ ] `src/hooks/useActivities.ts` — React Query hooks
-- [ ] `src/screens/activities/ActivitiesScreen.tsx` — lista con 3 estados
-- [ ] `src/components/activities/ActivityCard.tsx` — con `Pressable` ≥ 48px
+- [ ] `src/screens/activities/ActivitiesScreen.tsx`
+- [ ] `src/components/activities/ActivityCard.tsx`
 
 ---
 
@@ -149,10 +170,8 @@
 **Backend:**
 - [ ] `src/schemas/medication.schema.ts`
 - [ ] Rutas CRUD + `PATCH /api/medications/:id/administer` (crea `MedLog`)
-- [ ] Test: stock negativo bloqueado por Zod, `paid_caregiver` no puede crear (403)
 
 **Mobile:**
-- [ ] `src/hooks/useMedications.ts`
 - [ ] `src/screens/medications/MedicationsScreen.tsx`
 - [ ] `src/screens/medications/AddMedicationScreen.tsx`
 
@@ -161,7 +180,7 @@
 ### Feature 4 — Citas
 **Backend:**
 - [ ] Rutas CRUD de `Appointment`
-- [ ] Job de recordatorio (cron o Supabase Edge Function): buscar citas próximas donde `reminderSent = false`, enviar email con Resend, marcar `reminderSent = true`
+- [ ] Job de recordatorio: buscar citas próximas donde `reminderSent = false`, enviar email, marcar `reminderSent = true`
 
 **Mobile:**
 - [ ] `src/screens/appointments/AppointmentsScreen.tsx`
@@ -172,16 +191,16 @@
 ### Feature 5 — Responsabilidades / Turnos
 > Cubierto parcialmente por `Activity.assignedToId`. No requiere modelo nuevo.
 
-- [ ] UI para ver quién tiene qué asignado (`FamilyScreen`)
 - [ ] Filtro en `GET /api/activities?assignedToId=X`
+- [ ] UI para ver asignaciones por miembro
 
 ---
 
 ### Feature 6 — Gastos Compartidos
 **Backend:**
-- [ ] Validación: suma de `splits` debe igualar `amount` del gasto (Zod + lógica en controlador)
-- [ ] `PATCH /api/expenses/:expenseId/splits/:splitId/pay` — marcar split como pagado
-- [ ] Agregar `updatedAt` a modelo `Expense` en schema (inconsistencia detectada)
+- [ ] Validación: suma de `splits` debe igualar `amount` del gasto
+- [ ] `PATCH /api/expenses/:expenseId/splits/:splitId/pay`
+- [ ] Agregar `updatedAt` a modelo `Expense`
 
 **Mobile:**
 - [ ] `src/screens/expenses/ExpensesScreen.tsx`
@@ -191,7 +210,6 @@
 ### Feature 7 — Notas Médicas
 **Backend:**
 - [ ] Rutas CRUD de `Note`
-- [ ] Ordenar por `type = 'handoff'` primero, luego `createdAt DESC`
 
 **Mobile:**
 - [ ] `src/screens/notes/NotesScreen.tsx`
@@ -199,8 +217,8 @@
 ---
 
 ### Transversal — Antes del primer deploy
-- [ ] `src/services/realtime.service.ts` — broadcast a canal `family:${familyId}`
-- [ ] `src/services/email.service.ts` — wrapper de Resend
+- [x] `src/services/realtime.service.ts`
+- [x] `src/services/email.service.ts`
 - [ ] `prisma/seed.ts` — familia de prueba con adulto mayor y 2 miembros
 - [ ] Tests de RBAC para los 4 roles en al menos 2 dominios
 - [ ] Checklist de seguridad pre-deploy de `skills/SECURITY.md`
@@ -214,12 +232,14 @@ ESTADO HOY (2026-06-03)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Infraestructura monorepo        ████████████ 100%
 Schema de BD (Prisma)           ████████████ 100%
-Backend API (rutas/controladores)  ░░░░░░░░░░░░   0%
+Backend — Infraestructura base  ████████████ 100%
+Backend — Feature 1 (Auth+Fam)  ████████████ 100%
+Backend — Features 2-7          ░░░░░░░░░░░░   0%
 Mobile UI (pantallas)           ░░░░░░░░░░░░   0%
 Mobile SDK 54 (setup)           ████████████ 100%
 Tests                           ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                  ████░░░░░░░░  ~25%
+MVP completado                  █████░░░░░░░  ~35%
 ```
 
-**Próximo sprint recomendado:** Feature 1 completo (Auth + Familia) en backend y mobile. Es el único bloqueante real — sin auth no se puede testear nada más. Tiempo estimado: 2-3 sesiones de trabajo.
+**Próximo sprint recomendado:** Feature 1 mobile (LoginScreen + OTPScreen + authStore + navegación) + Feature 2 backend (actividades). Con auth funcionando end-to-end, se puede testear el flujo completo desde la app.
