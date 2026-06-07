@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 import { registerUnauthorizedCallback } from '../services/api';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { OTPScreen } from '../screens/auth/OTPScreen';
-import { HomeScreen } from '../screens/home/HomeScreen';
+import { TabNavigator } from './TabNavigator';
 import type { AuthStackParamList, AppStackParamList } from './types';
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ function AuthNavigator() {
 function AppNavigatorInner() {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
-      <AppStack.Screen name="Home" component={HomeScreen} />
+      <AppStack.Screen name="MainTabs" component={TabNavigator} />
     </AppStack.Navigator>
   );
 }

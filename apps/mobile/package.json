@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@ayni-care/shared": "*",
+    "@expo/vector-icons": "^15.1.1",
+    "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "@supabase/supabase-js": "^2.46.2",

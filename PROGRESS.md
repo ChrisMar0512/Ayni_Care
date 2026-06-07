@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-07
+> Última actualización: 2026-06-07 (Feature 2 mobile completada)
 
 ---
 
@@ -99,11 +99,11 @@
 - `logout()`: borra los 4 ítems de SecureStore + resetea el estado
 
 #### Navegación — `src/navigation/`
-- `types.ts`: `AuthStackParamList` (`Login`, `OTP` con `{type, identifier}`) y `AppStackParamList` (`Home`)
+- `types.ts`: `AuthStackParamList` (`Login`, `OTP`), `AppStackParamList` (`MainTabs`), `TabParamList` (5 tabs)
 - `AppNavigator.tsx`:
   - `ErrorBoundary` (class component): captura errores de render, muestra pantalla de error con botón "Reintentar"
   - Splash mientras `isInitialized === false` (evita flash de login si hay sesión activa)
-  - Monta `AuthNavigator` (Login → OTP) o `AppNavigatorInner` (Home) según `user` en el store
+  - Monta `AuthNavigator` (Login → OTP) o `AppNavigatorInner` (TabNavigator) según `user` en el store
   - Registra el callback de 401 de `api.ts` en `useEffect`
 
 #### Pantallas de auth — `src/screens/auth/`
@@ -119,9 +119,9 @@
   - En éxito: llama `setAuth()` → el store actualiza → AppNavigator muestra HomeScreen automáticamente (sin `navigation.navigate`)
   - Botón "Verificar" deshabilitado si `otp.length < 6`
 
-#### Pantalla placeholder — `src/screens/home/HomeScreen.tsx`
+#### Pantalla Inicio — `src/screens/home/HomeScreen.tsx`
 - Muestra nombre del usuario, nombre de la familia y botón "Cerrar sesión"
-- Placeholder hasta implementar `TabNavigator` con las 5 tabs del MVP
+- Montada como tab "Inicio" dentro de `TabNavigator`
 
 #### `App.tsx`
 - `QueryClient` con la config completa del `skills/MOBILE.md` (staleTime, gcTime, retry, retryDelay, refetchOnWindowFocus)
@@ -142,6 +142,47 @@
   - `deleteActivity`: soft delete con `deletedAt: new Date()` (nunca `prisma.activity.delete`); broadcast `activity:deleted`
 - `src/routes/activities.routes.ts` — RBAC correcto por endpoint: `read`, `create`, `complete`, `delete`
 - `src/index.ts` — `app.use('/api/activities', activitiesRoutes)` registrado
+
+### Mobile — Feature 2: Checklist de Actividades (implementado 2026-06-07)
+
+#### Paquetes agregados
+- `@react-navigation/bottom-tabs@^6.6.1` — navegación por tabs
+- `@expo/vector-icons` — iconos Ionicons para tab bar y componentes
+
+#### Navegación por tabs — `src/navigation/TabNavigator.tsx`
+- 5 tabs: **Inicio**, **Actividades**, **Medicamentos**, **Agenda**, **Familia**
+- Iconos `Ionicons` con variante outline (inactivo) / filled (activo)
+- Tint color terracota `#D4856A` en activo; gris `#9CA3AF` en inactivo
+- Tab bar con fondo blanco, altura 60 px, padding vertical 8 px
+- `types.ts` actualizado: `TabParamList` con 5 rutas, `AppStackParamList` renombrado `Home → MainTabs`
+- Placeholders para Medicamentos (`MedicationsPlaceholder`), Agenda (`AppointmentsPlaceholder`) y Familia (`FamilyPlaceholder`) — pantallas de "Próximamente" hasta Feature 3-4-7
+
+#### Tipos — `src/types/activity.ts`
+- `Activity` con todos los campos del backend: `id`, `title`, `description`, `scheduledAt`, `status`, `priority`, `assignedTo`, `lastLog`
+- `ActivityStatus`: `'pending' | 'completed' | 'skipped'`
+- `CreateActivityInput` para el hook de creación
+
+#### React Query hooks — `src/hooks/useActivities.ts`
+- `useActivities(date?)`: `GET /api/activities?date=YYYY-MM-DD`, `staleTime` 1 min
+- `useCreateActivity()`: `POST /api/activities`, invalida `['activities']` en `onSuccess`
+- `useCompleteActivity()`: `PATCH /api/activities/:id/complete`, invalida `['activities']`
+- `useDeleteActivity()`: `DELETE /api/activities/:id`, invalida `['activities']`
+
+#### Componente — `src/components/activities/ActivityCard.tsx`
+- Botón de completar: `Pressable` de 48×48 px (círculo), cumple mínimo táctil
+- Estado pendiente: borde gris claro + check vacío; completado: fondo verde salvia + check blanco
+- Metadata inline: hora formateada en locale `es-MX` + nombre del asignado (con `Ionicons`)
+- Título tachado y opacidad reducida cuando la actividad está completada
+- Spinner (ActivityIndicator) en el botón durante la mutación del ítem en curso
+- `accessibilityLabel` en el botón para lectores de pantalla
+
+#### Pantalla — `src/screens/activities/ActivitiesScreen.tsx`
+- **3 estados obligatorios:** loading (ActivityIndicator + texto), error (icono + mensaje + botón Reintentar), data
+- **Agrupación por estado:** `SectionList` con secciones "Pendientes (N)" y "Completadas (N)"
+- **Empty state:** icono + "Sin actividades hoy" cuando no hay datos
+- Fecha seleccionada formateada en español (`toLocaleDateString('es-MX', { weekday:'long', ... })`)
+- `SafeAreaView` como contenedor raíz para respetar notch/home indicator
+- Identifica el ítem en mutación comparando `completeActivity.variables?.id` para mostrar el spinner solo en la card correcta
 
 ### `packages/shared`
 - `ApiResponse<T>` definido con el formato correcto: `{ success, data, error? }`
@@ -175,9 +216,8 @@
 |---|----------|---------|
 | 10 | **`assets/` no existe** | `app.json` referencia `./assets/icon.png`, `splash.png`, `adaptive-icon.png` — expo-doctor reporta error |
 | 11 | **NativeWind deshabilitado** | `withNativeWind` comentado en `metro.config.js` por incompatibilidad con nativewind@4.2.4 + RN 0.81.5 |
-| 12 | **TabNavigator sin implementar** | `HomeScreen.tsx` es placeholder. Faltan las 5 tabs (Inicio, Actividades, Medicamentos, Agenda, Familia) |
-| 13 | **Features 2-7 mobile** | Cero pantallas más allá del flujo de auth |
-| 14 | **Sin tests de mobile** | Zero tests en React Native Testing Library |
+| 12 | **Features 3-7 mobile** | Pantallas de Medicamentos, Agenda, Gastos, Familia y Notas pendientes (actualmente placeholders) |
+| 13 | **Sin tests de mobile** | Zero tests en React Native Testing Library |
 
 ---
 
@@ -202,11 +242,12 @@
 - [x] `src/services/api.ts` — axios con interceptores (token + 401 handler)
 - [x] `src/services/supabase.ts` — cliente para enviar OTPs
 - [x] `src/stores/authStore.ts` — Zustand + SecureStore (initialize, setAuth, logout)
-- [x] `src/navigation/types.ts` — tipos tipados de los stacks
-- [x] `src/navigation/AppNavigator.tsx` — ErrorBoundary + splash + switch auth/app
+- [x] `src/navigation/types.ts` — tipos tipados: `AuthStackParamList`, `AppStackParamList`, `TabParamList`
+- [x] `src/navigation/AppNavigator.tsx` — ErrorBoundary + splash + switch auth/tabs
+- [x] `src/navigation/TabNavigator.tsx` — 5 tabs con Ionicons y paleta Ayni Care
 - [x] `src/screens/auth/LoginScreen.tsx` — email o teléfono → signInWithOtp
 - [x] `src/screens/auth/OTPScreen.tsx` — 6 dígitos → verify-otp → setAuth
-- [x] `src/screens/home/HomeScreen.tsx` — placeholder con logout
+- [x] `src/screens/home/HomeScreen.tsx` — tab Inicio con logout
 - [x] `App.tsx` — QueryClient + SafeAreaProvider + AppNavigator
 - [ ] Crear `apps/mobile/assets/` con placeholders de Expo (expo-doctor)
 - [ ] Resolver NativeWind o adoptar solución alternativa de estilos
@@ -226,11 +267,13 @@
 - [x] `src/routes/activities.routes.ts` — RBAC con `requirePermission` por endpoint
 - [ ] Tests: crear, completar, doble-completar (400), sin auth (401), rol sin permiso (403)
 
-**Mobile:**
-- [ ] `src/navigation/TabNavigator.tsx` — 5 tabs (Inicio, Actividades, Medicamentos, Agenda, Familia)
-- [ ] `src/hooks/useActivities.ts` — React Query hooks
-- [ ] `src/screens/activities/ActivitiesScreen.tsx`
-- [ ] `src/components/activities/ActivityCard.tsx`
+**Mobile:** ✅ Completo (2026-06-07)
+- [x] `src/navigation/TabNavigator.tsx` — 5 tabs con Ionicons, tint terracota, placeholders para features pendientes
+- [x] `src/navigation/AppNavigator.tsx` — actualizado para montar `TabNavigator` vía `MainTabs`
+- [x] `src/types/activity.ts` — tipos `Activity`, `ActivityStatus`, `CreateActivityInput`
+- [x] `src/hooks/useActivities.ts` — `useActivities`, `useCreateActivity`, `useCompleteActivity`, `useDeleteActivity`
+- [x] `src/screens/activities/ActivitiesScreen.tsx` — 3 estados, agrupación por estado, empty state, `SafeAreaView`
+- [x] `src/components/activities/ActivityCard.tsx` — botón 48×48 px, spinner por ítem, tachado al completar
 
 ---
 
@@ -302,14 +345,15 @@ Infraestructura monorepo         ████████████ 100%
 Schema de BD (Prisma)            ████████████ 100%
 Backend — Infraestructura base   ████████████ 100%
 Backend — Feature 1 (Auth+Fam)   ████████████ 100%
-Backend — Feature 2 (Actividades)████████████ 100%  ← nuevo
+Backend — Feature 2 (Actividades)████████████ 100%
 Backend — Features 3-7           ░░░░░░░░░░░░   0%
 Mobile — SDK 54 setup            ████████████ 100%
 Mobile — Feature 1 (Auth UI)     ██████████░░  85%
-Mobile — Features 2-7 UI         ░░░░░░░░░░░░   0%
+Mobile — Feature 2 (Actividades) ████████████ 100%  ← nuevo
+Mobile — Features 3-7 UI         ░░░░░░░░░░░░   0%
 Tests                            ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                   ███████░░░░░  ~50%
+MVP completado                   ████████░░░░  ~58%
 ```
 
-**Próximo sprint recomendado:** Feature 2 mobile (TabNavigator + ActivitiesScreen + useActivities hook) o Feature 3 backend (medicamentos). Con el backend de actividades listo, la mobile puede integrarse de inmediato siguiendo el patrón de store + React Query + pantalla establecido en Feature 1.
+**Próximo sprint recomendado:** Feature 3 backend (medicamentos: CRUD + `PATCH /administer` + `MedLog`) y luego su pantalla mobile. El patrón store → React Query hook → Screen + Card está establecido y puede replicarse directamente.

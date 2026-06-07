@@ -7,5 +7,13 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
-  Home: undefined;
+  MainTabs: undefined;
+};
+
+export type TabParamList = {
+  Inicio: undefined;
+  Actividades: undefined;
+  Medicamentos: undefined;
+  Agenda: undefined;
+  Familia: undefined;
 };
