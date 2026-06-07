@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/error.middleware';
 import authRoutes from './routes/auth.routes';
 import familyRoutes from './routes/family.routes';
+import activitiesRoutes from './routes/activities.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -50,6 +51,7 @@ app.get('/health', (_req, res) => {
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/family', familyRoutes);
+app.use('/api/activities', activitiesRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────
 app.use(errorHandler);

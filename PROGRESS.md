@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-03
+> Última actualización: 2026-06-07
 
 ---
 
@@ -132,6 +132,17 @@
 - Todos los archivos usan `StyleSheet.create()` — NativeWind sigue deshabilitado (incompatibilidad nativewind@4.2.4 + RN 0.81.5)
 - Paleta aplicada: Terracota `#D4856A`, Verde Salvia `#87A96B`, Fondo `#F8F5F0`, Texto `#2C2C2C`
 
+#### Actividades — `GET /api/activities`, `POST /api/activities`, `PATCH /api/activities/:id`, `PATCH /api/activities/:id/complete`, `DELETE /api/activities/:id`
+- `src/schemas/activity.schema.ts` — `createActivitySchema`, `updateActivitySchema` (con `.refine` para rechazar body vacío), `completeActivitySchema`
+- `src/controllers/activities.controller.ts`:
+  - `listActivities`: filtra por `familyId + deletedAt: null`; acepta `?assignedToId=UUID` y `?date=YYYY-MM-DD` (convierte a rango UTC); incluye `assignedTo` y último log por actividad; ordena por `priority desc, scheduledAt asc`
+  - `createActivity`: valida que `assignedToId` pertenezca a la misma familia antes de crear; broadcast `activity:created`
+  - `updateActivity`: verifica ownership (`familyId + deletedAt: null`); re-valida `assignedToId` si se cambia; broadcast `activity:updated`
+  - `completeActivity`: usa `prisma.$transaction` para crear `ActivityLog` + setear `status: completed` atómicamente; broadcast `activity:completed` con `{activity, log}`
+  - `deleteActivity`: soft delete con `deletedAt: new Date()` (nunca `prisma.activity.delete`); broadcast `activity:deleted`
+- `src/routes/activities.routes.ts` — RBAC correcto por endpoint: `read`, `create`, `complete`, `delete`
+- `src/index.ts` — `app.use('/api/activities', activitiesRoutes)` registrado
+
 ### `packages/shared`
 - `ApiResponse<T>` definido con el formato correcto: `{ success, data, error? }`
 - `MemberRole` type exportado y disponible para backend y mobile
@@ -140,16 +151,15 @@
 
 ## ❌ Lo que falta / No cumple los estándares
 
-### Backend — Features 2-7 (sin implementar)
+### Backend — Features 3-7 (sin implementar)
 
 | # | Feature | Rutas pendientes |
 |---|---------|-----------------|
-| 1 | **Actividades** | `GET/POST /api/activities`, `PATCH /api/activities/:id`, `PATCH /api/activities/:id/complete`, `DELETE /api/activities/:id` |
-| 2 | **Medicamentos** | `GET/POST /api/medications`, `PATCH /api/medications/:id`, `PATCH /api/medications/:id/administer`, `DELETE /api/medications/:id` |
-| 3 | **Citas** | `GET/POST /api/appointments`, `PATCH /api/appointments/:id`, `DELETE /api/appointments/:id` + job de recordatorio |
-| 4 | **Gastos** | `GET/POST /api/expenses`, `PATCH /api/expenses/:id/splits/:splitId/pay`, `DELETE /api/expenses/:id` |
-| 5 | **Notas** | `GET/POST /api/notes`, `DELETE /api/notes/:id` |
-| 6 | **Tests** | Ningún test de integración implementado |
+| 1 | **Medicamentos** | `GET/POST /api/medications`, `PATCH /api/medications/:id`, `PATCH /api/medications/:id/administer`, `DELETE /api/medications/:id` |
+| 2 | **Citas** | `GET/POST /api/appointments`, `PATCH /api/appointments/:id`, `DELETE /api/appointments/:id` + job de recordatorio |
+| 3 | **Gastos** | `GET/POST /api/expenses`, `PATCH /api/expenses/:id/splits/:splitId/pay`, `DELETE /api/expenses/:id` |
+| 4 | **Notas** | `GET/POST /api/notes`, `DELETE /api/notes/:id` |
+| 5 | **Tests** | Ningún test de integración implementado |
 
 ### Backend — Detalles pendientes
 
@@ -205,14 +215,15 @@
 ---
 
 ### Feature 2 — Checklist de Actividades
-**Backend:**
-- [ ] `src/schemas/activity.schema.ts`
-- [ ] `src/routes/activities.routes.ts` + `src/controllers/activities.controller.ts`
-  - `GET /api/activities` — filtrar por `familyId` + `deletedAt: null`
-  - `POST /api/activities` — crear, broadcast `activity:created`
-  - `PATCH /api/activities/:id` — actualizar, broadcast `activity:updated`
-  - `PATCH /api/activities/:id/complete` — crea `ActivityLog`, broadcast `activity:completed`
-  - `DELETE /api/activities/:id` — soft delete (`deletedAt = now()`)
+**Backend:** ✅ Completo (2026-06-07)
+- [x] `src/schemas/activity.schema.ts` — `createActivitySchema`, `updateActivitySchema`, `completeActivitySchema`
+- [x] `src/controllers/activities.controller.ts`
+  - [x] `GET /api/activities` — filtrar por `familyId` + `deletedAt: null`; `?assignedToId` + `?date` soportados
+  - [x] `POST /api/activities` — crear con validación de assignedToId por familia, broadcast `activity:created`
+  - [x] `PATCH /api/activities/:id` — actualizar, broadcast `activity:updated`
+  - [x] `PATCH /api/activities/:id/complete` — transacción `ActivityLog` + `status: completed`, broadcast `activity:completed`
+  - [x] `DELETE /api/activities/:id` — soft delete (`deletedAt = now()`), broadcast `activity:deleted`
+- [x] `src/routes/activities.routes.ts` — RBAC con `requirePermission` por endpoint
 - [ ] Tests: crear, completar, doble-completar (400), sin auth (401), rol sin permiso (403)
 
 **Mobile:**
@@ -285,19 +296,20 @@
 ## Resumen ejecutivo
 
 ```
-ESTADO HOY (2026-06-03)
+ESTADO HOY (2026-06-07)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Infraestructura monorepo         ████████████ 100%
 Schema de BD (Prisma)            ████████████ 100%
 Backend — Infraestructura base   ████████████ 100%
 Backend — Feature 1 (Auth+Fam)   ████████████ 100%
-Backend — Features 2-7           ░░░░░░░░░░░░   0%
+Backend — Feature 2 (Actividades)████████████ 100%  ← nuevo
+Backend — Features 3-7           ░░░░░░░░░░░░   0%
 Mobile — SDK 54 setup            ████████████ 100%
-Mobile — Feature 1 (Auth UI)     ██████████░░  85%  ← nuevo
+Mobile — Feature 1 (Auth UI)     ██████████░░  85%
 Mobile — Features 2-7 UI         ░░░░░░░░░░░░   0%
 Tests                            ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                   ██████░░░░░░  ~45%
+MVP completado                   ███████░░░░░  ~50%
 ```
 
-**Próximo sprint recomendado:** Feature 2 backend (actividades) + TabNavigator mobile. Con auth funcionando end-to-end y el TabNavigator en su lugar, se puede iterar rápido sobre las features restantes usando el mismo patrón de store + hooks + pantalla.
+**Próximo sprint recomendado:** Feature 2 mobile (TabNavigator + ActivitiesScreen + useActivities hook) o Feature 3 backend (medicamentos). Con el backend de actividades listo, la mobile puede integrarse de inmediato siguiendo el patrón de store + React Query + pantalla establecido en Feature 1.
