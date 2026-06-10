@@ -1,13 +1,23 @@
-const { getDefaultConfig } = require("expo/metro-config");
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
-// NativeWind (withNativeWind) está deshabilitado temporalmente porque
-// nativewind@4.2.4 requiere react-native-reanimated@4.x que a su vez
-// necesita react-native 0.83-0.86, incompatible con Expo SDK 54 (RN 0.81.5).
-// Habilitar cuando se migre nativewind a una versión compatible con RN 0.81.
-const config = getDefaultConfig(__dirname);
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
 
-// Habilitar resolución de .css sin el transformer de NativeWind
-// (evita que Metro falle al encontrar el import de global.css)
-config.resolver.sourceExts = [...config.resolver.sourceExts, "css"];
+const config = getDefaultConfig(projectRoot);
+
+// Expose monorepo root so Metro can find packages in the root node_modules
+config.watchFolders = [monorepoRoot];
+
+// Resolve modules from both the app and the monorepo root node_modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+
+// NativeWind (withNativeWind) está deshabilitado temporalmente:
+// nativewind@4.2.4 requiere react-native-reanimated@4.x → necesita RN 0.83-0.86,
+// incompatible con Expo SDK 54 (RN 0.81.5). Habilitar al migrar a versión compatible.
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'css'];
 
 module.exports = config;
