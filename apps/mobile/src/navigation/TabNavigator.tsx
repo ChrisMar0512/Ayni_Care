@@ -8,11 +8,16 @@ import { MedicationsScreen } from '../screens/medications/MedicationsScreen';
 import { AddMedicationScreen } from '../screens/medications/AddMedicationScreen';
 import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
 import { AddAppointmentScreen } from '../screens/appointments/AddAppointmentScreen';
-import { FamilyPlaceholder } from '../screens/family/FamilyPlaceholder';
+import { FamiliaScreen } from '../screens/family/FamiliaScreen';
+import { ExpensesScreen } from '../screens/expenses/ExpensesScreen';
+import { AddExpenseScreen } from '../screens/expenses/AddExpenseScreen';
+import { NotesScreen } from '../screens/notes/NotesScreen';
+import { AddNoteScreen } from '../screens/notes/AddNoteScreen';
 import type {
   TabParamList,
   MedicationsStackParamList,
   AppointmentsStackParamList,
+  FamiliaStackParamList,
 } from './types';
 
 // ─── Nested Stacks ────────────────────────────────────────────────────────────
@@ -36,6 +41,20 @@ function AppointmentsNavigator() {
       <AppointmentsStack.Screen name="AppointmentsList" component={AppointmentsScreen} />
       <AppointmentsStack.Screen name="AddAppointment" component={AddAppointmentScreen} />
     </AppointmentsStack.Navigator>
+  );
+}
+
+const FamiliaStack = createNativeStackNavigator<FamiliaStackParamList>();
+
+function FamiliaNavigator() {
+  return (
+    <FamiliaStack.Navigator screenOptions={{ headerShown: false }}>
+      <FamiliaStack.Screen name="FamiliaHub" component={FamiliaScreen} />
+      <FamiliaStack.Screen name="Gastos" component={ExpensesScreen} />
+      <FamiliaStack.Screen name="AddGasto" component={AddExpenseScreen} />
+      <FamiliaStack.Screen name="Notas" component={NotesScreen} />
+      <FamiliaStack.Screen name="AddNota" component={AddNoteScreen} />
+    </FamiliaStack.Navigator>
   );
 }
 
@@ -87,7 +106,7 @@ export function TabNavigator() {
       <Tab.Screen name="Actividades" component={ActivitiesScreen} />
       <Tab.Screen name="Medicamentos" component={MedicationsNavigator} />
       <Tab.Screen name="Agenda" component={AppointmentsNavigator} />
-      <Tab.Screen name="Familia" component={FamilyPlaceholder} />
+      <Tab.Screen name="Familia" component={FamiliaNavigator} />
     </Tab.Navigator>
   );
 }

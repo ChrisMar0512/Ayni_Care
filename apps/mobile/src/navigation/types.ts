@@ -27,3 +27,11 @@ export type AppointmentsStackParamList = {
   AppointmentsList: undefined;
   AddAppointment: undefined;
 };
+
+export type FamiliaStackParamList = {
+  FamiliaHub: undefined;
+  Gastos: undefined;
+  AddGasto: undefined;
+  Notas: undefined;
+  AddNota: undefined;
+};

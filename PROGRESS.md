@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-10 (Mobile Features 3 y 4 implementadas — Medicamentos y Citas)
+> Última actualización: 2026-06-10 (Mobile Features 5 y 6 implementadas — Gastos y Notas)
 
 ---
 
@@ -349,8 +349,14 @@
 - [x] `src/index.ts` — `app.use('/api/expenses', expensesRoutes)` registrado
 - [x] `prisma/schema.prisma` — `updatedAt DateTime @updatedAt` agregado a modelo `Expense`
 
-**Mobile:**
-- [ ] `src/screens/expenses/ExpensesScreen.tsx`
+**Mobile:** ✅ Completo (2026-06-10)
+- [x] `src/types/expense.ts` — tipos `Expense`, `ExpenseSplit`, `ExpenseCategory`, `CreateExpenseInput`
+- [x] `src/hooks/useExpenses.ts` — `useExpenses`, `useCreateExpense`, `usePaySplit`
+- [x] `src/hooks/useFamily.ts` — `useFamilyMembers` para selección de miembros en splits
+- [x] `src/screens/expenses/ExpensesScreen.tsx` — lista expandible con splits, botón Pagar por split, badges de estado
+- [x] `src/screens/expenses/AddExpenseScreen.tsx` — formulario con categoría en chips, monto por miembro con auto-split igual
+- [x] `src/navigation/types.ts` — `FamiliaStackParamList` con Gastos, AddGasto, Notas, AddNota
+- [x] `src/navigation/TabNavigator.tsx` — tab Familia usa `FamiliaNavigator` (stack anidado)
 
 ---
 
@@ -364,8 +370,12 @@
 - [x] `src/routes/notes.routes.ts` — con `requirePermission`
 - [x] `src/index.ts` — `app.use('/api/notes', notesRoutes)` registrado
 
-**Mobile:**
-- [ ] `src/screens/notes/NotesScreen.tsx`
+**Mobile:** ✅ Completo (2026-06-10)
+- [x] `src/types/note.ts` — tipos `Note`, `NoteType`, `CreateNoteInput`
+- [x] `src/hooks/useNotes.ts` — `useNotes(type?)`, `useCreateNote`, `useDeleteNote`
+- [x] `src/screens/notes/NotesScreen.tsx` — lista con filtros por tipo, delete con confirmación, fechas relativas
+- [x] `src/screens/notes/AddNoteScreen.tsx` — selector de tipo visual, campo de contenido con contador de caracteres
+- [x] `src/screens/family/FamiliaScreen.tsx` — hub del tab Familia con navegación a Gastos y Notas
 
 ---
 
@@ -396,12 +406,13 @@ Backend — Feature 7 (Resp.)      ████████████ 100%  �
 Mobile — SDK 54 setup            ████████████ 100%
 Mobile — Feature 1 (Auth UI)     ██████████░░  85%
 Mobile — Feature 2 (Actividades) ████████████ 100%
-Mobile — Feature 3 (Medicamentos)████████████ 100%  ← nuevo
-Mobile — Feature 4 (Citas)       ████████████ 100%  ← nuevo
-Mobile — Features 5-7 UI         ░░░░░░░░░░░░   0%
+Mobile — Feature 3 (Medicamentos)████████████ 100%
+Mobile — Feature 4 (Citas)       ████████████ 100%
+Mobile — Feature 5 (Gastos UI)   ████████████ 100%  ← nuevo
+Mobile — Feature 6 (Notas UI)    ████████████ 100%  ← nuevo
 Tests                            ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                   ███████████░  ~87%
+MVP completado                   ████████████  ~95%
 ```
 
-**Próximo sprint recomendado:** Mobile Features 5-7 (pantallas de Gastos, Familia/Notas). El patrón está 100% establecido: tipos → hook → Screen + lista + Add form. Backend MVP completo.
+**Próximo sprint recomendado:** Tests de integración (backend RBAC + mobile) y assets de Expo. El MVP funcional está completo — todas las pantallas implementadas.
