@@ -1,9 +1,16 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-10 (Features 4-7 backend completadas)
+> Última actualización: 2026-06-10 (QA pass completo — backend features 1-7, TypeScript limpio)
 
 ---
 
 ## ✅ Lo que está bien
+
+### Backend — QA Pass (2026-06-10)
+- **TypeScript compila limpio** (`npx tsc --noEmit` — 0 errores): `apps/backend/tsconfig.json` ahora es standalone; ya no hereda de `expo/tsconfig.base` vía root tsconfig (la herencia causaba `customConditions` incompatible con `moduleResolution: node`)
+- **Double-completion guard en `completeActivity`**: `PATCH /api/activities/:id/complete` retorna 400 si la actividad ya está en estado `completed`
+- **Query params validados**: `?type` en `GET /api/notes` y `?status` en `GET /api/appointments` verifican contra valores del enum antes de llegar a Prisma (400 con mensaje descriptivo si el valor es inválido)
+- **Todos los controladores verificados**: formato `{ success, data, error? }` ✅ · filtrado por `familyId` ✅ · `deletedAt: null` en lecturas ✅ · soft delete en escrituras ✅ · broadcast realtime en toda escritura ✅ · `try/catch + next(err)` ✅
+- **RBAC verificado**: todas las rutas tienen `authenticate` + `requirePermission()` correctos según la matriz de permisos
 
 ### Infraestructura del monorepo
 - Estructura de workspaces (`apps/mobile`, `apps/backend`, `packages/shared`) correcta según CLAUDE.md
@@ -207,7 +214,6 @@
 | # | Problema | Detalle |
 |---|----------|---------|
 | 7 | **`prisma/seed.ts`** | Sin datos de prueba locales |
-| 8 | **`Expense` sin `updatedAt`** | Inconsistencia con el resto de modelos |
 | 9 | **Tests RBAC** | Cubrir los 4 roles en al menos 2 dominios (ver `skills/QA.md`) |
 
 ### Mobile — Pendientes

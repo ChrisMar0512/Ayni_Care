@@ -4,11 +4,22 @@ import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
 import { CreateAppointmentInput, UpdateAppointmentInput } from '../schemas/appointment.schema';
 
+const VALID_APPOINTMENT_STATUSES: AppointmentStatus[] = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
+
 // GET /api/appointments
 export const listAppointments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { familyId } = req.user;
     const { status, from, to } = req.query;
+
+    if (typeof status === 'string' && !VALID_APPOINTMENT_STATUSES.includes(status as AppointmentStatus)) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: `Estado inválido. Valores permitidos: ${VALID_APPOINTMENT_STATUSES.join(', ')}`,
+      });
+      return;
+    }
 
     const where: Prisma.AppointmentWhereInput = {
       familyId,

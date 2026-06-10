@@ -4,11 +4,22 @@ import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
 import { CreateNoteInput } from '../schemas/note.schema';
 
+const VALID_NOTE_TYPES: NoteType[] = ['general', 'medical', 'handoff', 'symptom', 'observation'];
+
 // GET /api/notes
 export const listNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { familyId } = req.user;
     const { type } = req.query;
+
+    if (typeof type === 'string' && !VALID_NOTE_TYPES.includes(type as NoteType)) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: `Tipo inválido. Valores permitidos: ${VALID_NOTE_TYPES.join(', ')}`,
+      });
+      return;
+    }
 
     const notes = await prisma.note.findMany({
       where: {

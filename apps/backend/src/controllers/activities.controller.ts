@@ -166,6 +166,11 @@ export const completeActivity = async (req: Request, res: Response, next: NextFu
       return;
     }
 
+    if (existing.status === 'completed') {
+      res.status(400).json({ success: false, data: null, error: 'La actividad ya fue completada' });
+      return;
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       const log = await tx.activityLog.create({
         data: {
