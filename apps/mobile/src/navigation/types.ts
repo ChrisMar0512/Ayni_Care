@@ -17,3 +17,13 @@ export type TabParamList = {
   Agenda: undefined;
   Familia: undefined;
 };
+
+export type MedicationsStackParamList = {
+  MedicationsList: undefined;
+  AddMedication: undefined;
+};
+
+export type AppointmentsStackParamList = {
+  AppointmentsList: undefined;
+  AddAppointment: undefined;
+};

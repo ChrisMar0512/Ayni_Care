@@ -1,12 +1,45 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ActivitiesScreen } from '../screens/activities/ActivitiesScreen';
-import { MedicationsPlaceholder } from '../screens/medications/MedicationsPlaceholder';
-import { AppointmentsPlaceholder } from '../screens/appointments/AppointmentsPlaceholder';
+import { MedicationsScreen } from '../screens/medications/MedicationsScreen';
+import { AddMedicationScreen } from '../screens/medications/AddMedicationScreen';
+import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
+import { AddAppointmentScreen } from '../screens/appointments/AddAppointmentScreen';
 import { FamilyPlaceholder } from '../screens/family/FamilyPlaceholder';
-import type { TabParamList } from './types';
+import type {
+  TabParamList,
+  MedicationsStackParamList,
+  AppointmentsStackParamList,
+} from './types';
+
+// ─── Nested Stacks ────────────────────────────────────────────────────────────
+
+const MedicationsStack = createNativeStackNavigator<MedicationsStackParamList>();
+
+function MedicationsNavigator() {
+  return (
+    <MedicationsStack.Navigator screenOptions={{ headerShown: false }}>
+      <MedicationsStack.Screen name="MedicationsList" component={MedicationsScreen} />
+      <MedicationsStack.Screen name="AddMedication" component={AddMedicationScreen} />
+    </MedicationsStack.Navigator>
+  );
+}
+
+const AppointmentsStack = createNativeStackNavigator<AppointmentsStackParamList>();
+
+function AppointmentsNavigator() {
+  return (
+    <AppointmentsStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppointmentsStack.Screen name="AppointmentsList" component={AppointmentsScreen} />
+      <AppointmentsStack.Screen name="AddAppointment" component={AddAppointmentScreen} />
+    </AppointmentsStack.Navigator>
+  );
+}
+
+// ─── Tab Navigator ────────────────────────────────────────────────────────────
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -52,8 +85,8 @@ export function TabNavigator() {
     >
       <Tab.Screen name="Inicio" component={HomeScreen} />
       <Tab.Screen name="Actividades" component={ActivitiesScreen} />
-      <Tab.Screen name="Medicamentos" component={MedicationsPlaceholder} />
-      <Tab.Screen name="Agenda" component={AppointmentsPlaceholder} />
+      <Tab.Screen name="Medicamentos" component={MedicationsNavigator} />
+      <Tab.Screen name="Agenda" component={AppointmentsNavigator} />
       <Tab.Screen name="Familia" component={FamilyPlaceholder} />
     </Tab.Navigator>
   );

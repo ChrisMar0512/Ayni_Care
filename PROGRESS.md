@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-10 (QA pass completo — backend features 1-7, TypeScript limpio)
+> Última actualización: 2026-06-10 (Mobile Features 3 y 4 implementadas — Medicamentos y Citas)
 
 ---
 
@@ -295,9 +295,13 @@
 - [x] `src/routes/medications.routes.ts` — RBAC con `requirePermission` por endpoint
 - [x] `src/index.ts` — `app.use('/api/medications', medicationsRoutes)` registrado
 
-**Mobile:**
-- [ ] `src/screens/medications/MedicationsScreen.tsx`
-- [ ] `src/screens/medications/AddMedicationScreen.tsx`
+**Mobile:** ✅ Completo (2026-06-10)
+- [x] `src/types/medication.ts` — tipos `Medication`, `MedLog`, `CreateMedicationInput`
+- [x] `src/hooks/useMedications.ts` — `useMedications`, `useCreateMedication`, `useAdministerMedication`, `useDeleteMedication`
+- [x] `src/screens/medications/MedicationsScreen.tsx` — lista con dosis del día, botón "Administrar", empty state
+- [x] `src/screens/medications/AddMedicationScreen.tsx` — formulario completo con horarios dinámicos
+- [x] `src/navigation/TabNavigator.tsx` — tab Medicamentos usa `MedicationsNavigator` (stack anidado)
+- [x] `src/navigation/types.ts` — `MedicationsStackParamList` agregado
 
 ---
 
@@ -313,9 +317,13 @@
 - [x] `src/index.ts` — `app.use('/api/appointments', appointmentsRoutes)` registrado
 - [ ] Job de recordatorio: buscar citas próximas donde `reminderSent = false`, enviar email, marcar `reminderSent = true`
 
-**Mobile:**
-- [ ] `src/screens/appointments/AppointmentsScreen.tsx`
-- [ ] `src/screens/appointments/AddAppointmentScreen.tsx`
+**Mobile:** ✅ Completo (2026-06-10)
+- [x] `src/types/appointment.ts` — tipos `Appointment`, `AppointmentType`, `AppointmentStatus`, `CreateAppointmentInput`
+- [x] `src/hooks/useAppointments.ts` — `useAppointments`, `useCreateAppointment`, `useDeleteAppointment`
+- [x] `src/screens/appointments/AppointmentsScreen.tsx` — lista ordenada con secciones próximas/pasadas, status badges
+- [x] `src/screens/appointments/AddAppointmentScreen.tsx` — formulario con selector de tipo, fecha+hora
+- [x] `src/navigation/TabNavigator.tsx` — tab Agenda usa `AppointmentsNavigator` (stack anidado)
+- [x] `src/navigation/types.ts` — `AppointmentsStackParamList` agregado
 
 ---
 
@@ -388,10 +396,12 @@ Backend — Feature 7 (Resp.)      ████████████ 100%  �
 Mobile — SDK 54 setup            ████████████ 100%
 Mobile — Feature 1 (Auth UI)     ██████████░░  85%
 Mobile — Feature 2 (Actividades) ████████████ 100%
-Mobile — Features 3-7 UI         ░░░░░░░░░░░░   0%
+Mobile — Feature 3 (Medicamentos)████████████ 100%  ← nuevo
+Mobile — Feature 4 (Citas)       ████████████ 100%  ← nuevo
+Mobile — Features 5-7 UI         ░░░░░░░░░░░░   0%
 Tests                            ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                   ██████████░░  ~80%
+MVP completado                   ███████████░  ~87%
 ```
 
-**Próximo sprint recomendado:** Mobile Features 3-7 (pantallas de Medicamentos, Citas, Gastos, Notas). El patrón store → React Query hook → Screen + Card está establecido y puede replicarse directamente. Backend MVP completo.
+**Próximo sprint recomendado:** Mobile Features 5-7 (pantallas de Gastos, Familia/Notas). El patrón está 100% establecido: tipos → hook → Screen + lista + Add form. Backend MVP completo.
