@@ -385,6 +385,7 @@
 - [ ] `prisma/seed.ts` — familia de prueba con adulto mayor y 2 miembros
 - [ ] Tests de RBAC para los 4 roles en al menos 2 dominios
 - [ ] Checklist de seguridad pre-deploy de `skills/SECURITY.md`
+- [ ] **⚠️ REMOVER botón dev en `apps/mobile/src/screens/auth/LoginScreen.tsx`** — "Entrar sin iniciar sesión (solo desarrollo)", protegido con `__DEV__` pero debe eliminarse antes del deploy a producción
 
 ---
 
