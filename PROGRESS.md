@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-07 (Feature 2 mobile completada)
+> Última actualización: 2026-06-10 (Feature 3 backend medicamentos completada)
 
 ---
 
@@ -278,9 +278,16 @@
 ---
 
 ### Feature 3 — Medicamentos
-**Backend:**
-- [ ] `src/schemas/medication.schema.ts`
-- [ ] Rutas CRUD + `PATCH /api/medications/:id/administer` (crea `MedLog`)
+**Backend:** ✅ Completo (2026-06-10)
+- [x] `src/schemas/medication.schema.ts` — `createMedicationSchema`, `updateMedicationSchema`, `administerMedicationSchema`
+- [x] `src/controllers/medications.controller.ts`
+  - [x] `GET /api/medications` — filtrar por `familyId + deletedAt: null + isActive: true`; incluye logs del día con `givenBy`
+  - [x] `POST /api/medications` — crear medicamento, broadcast `medication:created`
+  - [x] `PATCH /api/medications/:id` — actualizar, broadcast `medication:updated`
+  - [x] `PATCH /api/medications/:id/administer` — transacción `MedLog` + decremento condicional de stock, broadcast `medication:administered`
+  - [x] `DELETE /api/medications/:id` — soft delete (`deletedAt = now()`), broadcast `medication:deleted`
+- [x] `src/routes/medications.routes.ts` — RBAC con `requirePermission` por endpoint
+- [x] `src/index.ts` — `app.use('/api/medications', medicationsRoutes)` registrado
 
 **Mobile:**
 - [ ] `src/screens/medications/MedicationsScreen.tsx`
@@ -346,14 +353,15 @@ Schema de BD (Prisma)            ████████████ 100%
 Backend — Infraestructura base   ████████████ 100%
 Backend — Feature 1 (Auth+Fam)   ████████████ 100%
 Backend — Feature 2 (Actividades)████████████ 100%
-Backend — Features 3-7           ░░░░░░░░░░░░   0%
+Backend — Feature 3 (Medicamentos)████████████ 100%  ← nuevo
+Backend — Features 4-7           ░░░░░░░░░░░░   0%
 Mobile — SDK 54 setup            ████████████ 100%
 Mobile — Feature 1 (Auth UI)     ██████████░░  85%
 Mobile — Feature 2 (Actividades) ████████████ 100%  ← nuevo
 Mobile — Features 3-7 UI         ░░░░░░░░░░░░   0%
 Tests                            ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                   ████████░░░░  ~58%
+MVP completado                   █████████░░░  ~63%
 ```
 
-**Próximo sprint recomendado:** Feature 3 backend (medicamentos: CRUD + `PATCH /administer` + `MedLog`) y luego su pantalla mobile. El patrón store → React Query hook → Screen + Card está establecido y puede replicarse directamente.
+**Próximo sprint recomendado:** Feature 3 mobile (pantalla de medicamentos: `MedicationsScreen`, `AddMedicationScreen`, hook `useMedications`) y luego Feature 4 backend (citas). El patrón store → React Query hook → Screen + Card está establecido y puede replicarse directamente.

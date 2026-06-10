@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/error.middleware';
 import authRoutes from './routes/auth.routes';
 import familyRoutes from './routes/family.routes';
 import activitiesRoutes from './routes/activities.routes';
+import medicationsRoutes from './routes/medications.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -52,6 +53,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/activities', activitiesRoutes);
+app.use('/api/medications', medicationsRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────
 app.use(errorHandler);
