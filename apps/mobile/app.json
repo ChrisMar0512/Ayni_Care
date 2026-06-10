@@ -3,6 +3,7 @@
     "name": "Ayni Care",
     "slug": "ayni-care",
     "version": "1.0.0",
+    "entryPoint": "./index.js",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
