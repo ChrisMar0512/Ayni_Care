@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../services/storage';
 import { MemberRole } from '@ayni-care/shared';
 
 interface AuthUser {
@@ -38,9 +38,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     try {
       const [token, userRaw, memberRaw] = await Promise.all([
-        SecureStore.getItemAsync('access_token'),
-        SecureStore.getItemAsync('auth_user'),
-        SecureStore.getItemAsync('auth_member'),
+        storage.getItem('access_token'),
+        storage.getItem('auth_user'),
+        storage.getItem('auth_member'),
       ]);
 
       if (token && userRaw) {
@@ -63,10 +63,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setAuth: async (user, member, accessToken, refreshToken) => {
     await Promise.all([
-      SecureStore.setItemAsync('access_token', accessToken),
-      SecureStore.setItemAsync('refresh_token', refreshToken),
-      SecureStore.setItemAsync('auth_user', JSON.stringify(user)),
-      SecureStore.setItemAsync('auth_member', member ? JSON.stringify(member) : ''),
+      storage.setItem('access_token', accessToken),
+      storage.setItem('refresh_token', refreshToken),
+      storage.setItem('auth_user', JSON.stringify(user)),
+      storage.setItem('auth_member', member ? JSON.stringify(member) : ''),
     ]);
     set({
       user,
@@ -78,10 +78,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     await Promise.all([
-      SecureStore.deleteItemAsync('access_token'),
-      SecureStore.deleteItemAsync('refresh_token'),
-      SecureStore.deleteItemAsync('auth_user'),
-      SecureStore.deleteItemAsync('auth_member'),
+      storage.deleteItem('access_token'),
+      storage.deleteItem('refresh_token'),
+      storage.deleteItem('auth_user'),
+      storage.deleteItem('auth_member'),
     ]);
     set({ user: null, member: null, familyId: null, role: null });
   },
