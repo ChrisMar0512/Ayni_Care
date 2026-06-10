@@ -1,5 +1,5 @@
 # Ayni Care — Estado del Proyecto
-> Última actualización: 2026-06-10 (Feature 3 backend medicamentos completada)
+> Última actualización: 2026-06-10 (Features 4-7 backend completadas)
 
 ---
 
@@ -296,8 +296,15 @@
 ---
 
 ### Feature 4 — Citas
-**Backend:**
-- [ ] Rutas CRUD de `Appointment`
+**Backend:** ✅ Completo (2026-06-10)
+- [x] `src/schemas/appointment.schema.ts` — `createAppointmentSchema`, `updateAppointmentSchema`
+- [x] `src/controllers/appointments.controller.ts`
+  - [x] `GET /api/appointments` — filtrar por `familyId + deletedAt: null`; `?status`, `?from`, `?to` soportados; ordena por `scheduledAt asc`
+  - [x] `POST /api/appointments` — crear cita, broadcast `appointment:created`
+  - [x] `PATCH /api/appointments/:id` — actualizar, broadcast `appointment:updated`
+  - [x] `DELETE /api/appointments/:id` — soft delete, broadcast `appointment:deleted`
+- [x] `src/routes/appointments.routes.ts` — RBAC con `requirePermission` por endpoint
+- [x] `src/index.ts` — `app.use('/api/appointments', appointmentsRoutes)` registrado
 - [ ] Job de recordatorio: buscar citas próximas donde `reminderSent = false`, enviar email, marcar `reminderSent = true`
 
 **Mobile:**
@@ -307,18 +314,26 @@
 ---
 
 ### Feature 5 — Responsabilidades / Turnos
-> Cubierto parcialmente por `Activity.assignedToId`. No requiere modelo nuevo.
+> Cubierto por `Activity.assignedToId`. No requiere modelo nuevo.
 
-- [ ] Filtro en `GET /api/activities?assignedToId=X`
+**Backend:** ✅ Completo
+- [x] Filtro `?assignedToId=X` en `GET /api/activities` — ya implementado en Feature 2
+
 - [ ] UI para ver asignaciones por miembro
 
 ---
 
 ### Feature 6 — Gastos Compartidos
-**Backend:**
-- [ ] Validación: suma de `splits` debe igualar `amount` del gasto
-- [ ] `PATCH /api/expenses/:expenseId/splits/:splitId/pay`
-- [ ] Agregar `updatedAt` a modelo `Expense`
+**Backend:** ✅ Completo (2026-06-10)
+- [x] `src/schemas/expense.schema.ts` — `createExpenseSchema` con validación de suma de splits = amount total
+- [x] `src/controllers/expenses.controller.ts`
+  - [x] `GET /api/expenses` — filtrar por `familyId + deletedAt: null`; incluye `paidBy` + splits con miembros; ordena por `date desc`
+  - [x] `POST /api/expenses` — validar que todos los miembros de splits pertenecen a la familia; transacción Prisma: crea `Expense` + `ExpenseSplit[]`; broadcast `expense:created`
+  - [x] `PATCH /api/expenses/:expenseId/splits/:splitId/pay` — verifica pertenencia de gasto y split a la familia; marca `isPaid = true` + `paidAt = now()`; broadcast `expense:updated`
+  - [x] `DELETE /api/expenses/:id` — soft delete, broadcast `expense:deleted`
+- [x] `src/routes/expenses.routes.ts` — RBAC con `requirePermission` por endpoint
+- [x] `src/index.ts` — `app.use('/api/expenses', expensesRoutes)` registrado
+- [x] `prisma/schema.prisma` — `updatedAt DateTime @updatedAt` agregado a modelo `Expense`
 
 **Mobile:**
 - [ ] `src/screens/expenses/ExpensesScreen.tsx`
@@ -326,8 +341,14 @@
 ---
 
 ### Feature 7 — Notas Médicas
-**Backend:**
-- [ ] Rutas CRUD de `Note`
+**Backend:** ✅ Completo (2026-06-10)
+- [x] `src/schemas/note.schema.ts` — `createNoteSchema`
+- [x] `src/controllers/notes.controller.ts`
+  - [x] `GET /api/notes` — filtrar por `familyId + deletedAt: null`; `?type` soportado; incluye `author`; ordena por `createdAt desc`
+  - [x] `POST /api/notes` — crear nota con `authorId = req.user.memberId`; broadcast `note:created`
+  - [x] `DELETE /api/notes/:id` — soft delete; solo autor o `primary_caregiver` puede eliminar; broadcast `note:deleted`
+- [x] `src/routes/notes.routes.ts` — con `requirePermission`
+- [x] `src/index.ts` — `app.use('/api/notes', notesRoutes)` registrado
 
 **Mobile:**
 - [ ] `src/screens/notes/NotesScreen.tsx`
@@ -346,22 +367,25 @@
 ## Resumen ejecutivo
 
 ```
-ESTADO HOY (2026-06-07)
+ESTADO HOY (2026-06-10)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Infraestructura monorepo         ████████████ 100%
 Schema de BD (Prisma)            ████████████ 100%
 Backend — Infraestructura base   ████████████ 100%
 Backend — Feature 1 (Auth+Fam)   ████████████ 100%
 Backend — Feature 2 (Actividades)████████████ 100%
-Backend — Feature 3 (Medicamentos)████████████ 100%  ← nuevo
-Backend — Features 4-7           ░░░░░░░░░░░░   0%
+Backend — Feature 3 (Medicamentos)████████████ 100%
+Backend — Feature 4 (Citas)      ████████████ 100%  ← nuevo
+Backend — Feature 5 (Gastos)     ████████████ 100%  ← nuevo
+Backend — Feature 6 (Notas)      ████████████ 100%  ← nuevo
+Backend — Feature 7 (Resp.)      ████████████ 100%  ← nuevo
 Mobile — SDK 54 setup            ████████████ 100%
 Mobile — Feature 1 (Auth UI)     ██████████░░  85%
-Mobile — Feature 2 (Actividades) ████████████ 100%  ← nuevo
+Mobile — Feature 2 (Actividades) ████████████ 100%
 Mobile — Features 3-7 UI         ░░░░░░░░░░░░   0%
 Tests                            ░░░░░░░░░░░░   0%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MVP completado                   █████████░░░  ~63%
+MVP completado                   ██████████░░  ~80%
 ```
 
-**Próximo sprint recomendado:** Feature 3 mobile (pantalla de medicamentos: `MedicationsScreen`, `AddMedicationScreen`, hook `useMedications`) y luego Feature 4 backend (citas). El patrón store → React Query hook → Screen + Card está establecido y puede replicarse directamente.
+**Próximo sprint recomendado:** Mobile Features 3-7 (pantallas de Medicamentos, Citas, Gastos, Notas). El patrón store → React Query hook → Screen + Card está establecido y puede replicarse directamente. Backend MVP completo.

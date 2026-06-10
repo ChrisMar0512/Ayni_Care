@@ -8,6 +8,9 @@ import authRoutes from './routes/auth.routes';
 import familyRoutes from './routes/family.routes';
 import activitiesRoutes from './routes/activities.routes';
 import medicationsRoutes from './routes/medications.routes';
+import appointmentsRoutes from './routes/appointments.routes';
+import expensesRoutes from './routes/expenses.routes';
+import notesRoutes from './routes/notes.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -54,6 +57,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/activities', activitiesRoutes);
 app.use('/api/medications', medicationsRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/expenses', expensesRoutes);
+app.use('/api/notes', notesRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────
 app.use(errorHandler);
