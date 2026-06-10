@@ -65,72 +65,7 @@ Son roles especializados que le asignas al agente de IA para cada tarea. Cada ag
 
 ---
 
-## Cómo implementar un feature en Antigravity — flujo completo
 
-Los agentes se usan **uno por uno, en secuencia**. Nunca los 4 juntos en la misma sesión.
-
-```
-[opcional] CTO → Backend → Mobile → QA
-```
-
-El Mobile necesita que el Backend ya exista para conectarse a él.  
-El QA necesita que ambos estén listos para poder probarlos.
-
-### Paso a paso
-
-**1. Crea un branch para el feature**
-
-```bash
-git checkout antigravity          # asegúrate de estar en antigravity
-git checkout -b feature/nombre-del-feature
-```
-
-**2. Decide qué quieres construir**
-
-Ejemplo: *implementar el registro de medicamentos.*
-
-**3. ¿Arranco con el CTO o directo al Backend?**
-
-- Si la tarea es concreta y sabes cómo hacerla → **ve directo al Backend**
-- Si no sabes cuál es la mejor forma técnica de resolverlo → **primero el CTO**
-
-Regla fácil: si puedes escribir la tarea con claridad, ve directo al Backend. Si no sabes cómo describirla, primero pasa por el CTO.
-
-**4. Abre Antigravity en la raíz del repo**
-
-Antigravity detecta automáticamente `.agent/rules/ayni-care.md` y lo inyecta como contexto. No necesitas hacer nada extra.
-
-**5. Copia el prompt del agente desde `AGENTS.md`**
-
-Solo cambia la sección `Tarea de esta sesión`. Sé específico: describe el endpoint, pantalla o componente exacto que quieres construir.
-
-**6. Avanza sesión por sesión, haciendo commit entre cada una**
-
-```bash
-# Cuando el Backend termina y funciona:
-git add -A
-git commit -m "feat(medications): implementar CRUD de medicamentos"
-# → Abre nueva sesión para Mobile
-
-# Cuando el Mobile termina:
-git add -A
-git commit -m "feat(medications): agregar MedicationsScreen y AddMedicationScreen"
-# → Abre nueva sesión para QA
-
-# Cuando los tests pasan:
-git add -A
-git commit -m "test(medications): agregar tests del controlador y casos edge"
-```
-
-**7. Merge al branch `antigravity` cuando el feature esté completo**
-
-```bash
-git checkout antigravity
-git merge feature/nombre-del-feature
-git branch -d feature/nombre-del-feature
-```
-
----
 
 ## Ejemplo real — Registro de Medicamentos
 
@@ -202,30 +137,31 @@ Tests pasan → `git commit` → feature listo.
 
 ---
 
-## Setup inicial
+## Setup inicial del monorepo
+
+La estructura base del monorepo ya está creada. Archivos añadidos:
+
+- `package.json` raíz con `workspaces: ["apps/*","packages/*"]`
+- `tsconfig.json` raíz (config TypeScript strict)
+- `.eslintrc.cjs` raíz (plantilla ESLint + TypeScript)
+- `.gitignore` básico
+
+Comandos recomendados:
 
 ```bash
-# Clonar el repo
-git clone https://github.com/tu-usuario/ayni-care.git
-cd ayni-care
-
-# Instalar dependencias
+# Instalar dependencias en la raíz (workspaces)
 npm install
 
-# Copiar variables de entorno
-cp apps/backend/.env.example apps/backend/.env
-cp apps/mobile/.env.example apps/mobile/.env
-# → Llenar con tus credenciales de Supabase y Resend
-
-# Correr la BD
-cd apps/backend
-npx prisma migrate dev
-npx prisma db seed
-
-# Levantar backend
-npm run dev
-
-# Levantar mobile (en otra terminal)
+# Inicializar Expo en `apps/mobile` cuando vayas a empezar la app móvil:
 cd apps/mobile
-npx expo start
+npx expo init .
+
+# Inicializar backend con TypeScript en `apps/backend`:
+cd apps/backend
+npm init -y
+# agregar express, typescript, ts-node-dev, prisma según lo necesites
 ```
+
+Si quieres, puedo ejecutar `npm install` ahora y/o inicializar plantillas adicionales (tsconfig por paquete, ESLint/Prettier, husky, etc.).
+
+
