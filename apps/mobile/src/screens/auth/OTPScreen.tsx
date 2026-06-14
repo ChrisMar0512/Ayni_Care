@@ -73,7 +73,8 @@ export function OTPScreen({ route, navigation }: Props) {
 
       const { user, member, accessToken, refreshToken } = response.data;
       await setAuth(user, member, accessToken, refreshToken);
-    } catch {
+    } catch (err) {
+      console.error('[Verify OTP Error]', err);
       setError('No se pudo verificar el código. Intenta de nuevo.');
     } finally {
       setIsLoading(false);

@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/backend/src/index.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "apps/backend/src/index.ts"
+    },
+    {
+      "src": "/health",
+      "dest": "apps/backend/src/index.ts"
+    }
+  ]
+}

@@ -41,6 +41,11 @@ const authLimiter = rateLimit({
   message: { success: false, data: null, error: 'Demasiados intentos. Espera 15 minutos.' },
 });
 
+app.use((req, res, next) => {
+  console.log(`[req] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use('/api/', generalLimiter);
 app.use('/api/auth/', authLimiter);
 

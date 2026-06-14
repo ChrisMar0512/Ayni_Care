@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 
 let unauthorizedCallback: (() => void) | null = null;
 
@@ -13,8 +13,10 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+console.log('[API] Inicializando con EXPO_PUBLIC_API_URL:', process.env.EXPO_PUBLIC_API_URL);
+
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('access_token');
+  const token = await storage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,10 +27,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await SecureStore.deleteItemAsync('access_token');
-      await SecureStore.deleteItemAsync('refresh_token');
-      await SecureStore.deleteItemAsync('auth_user');
-      await SecureStore.deleteItemAsync('auth_member');
+      await storage.deleteItem('access_token');
+      await storage.deleteItem('refresh_token');
+      await storage.deleteItem('auth_user');
+      await storage.deleteItem('auth_member');
       unauthorizedCallback?.();
     }
     return Promise.reject(error);
