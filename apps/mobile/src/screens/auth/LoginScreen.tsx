@@ -128,15 +128,32 @@ export function LoginScreen({ navigation }: Props) {
 
           {/* TODO: REMOVER ANTES DE PRODUCCIÓN — botón temporal para testing sin auth */}
           {__DEV__ && (
-            <Pressable
-              style={styles.devButton}
-              onPress={() => setAuth(DEV_MOCK_USER, DEV_MOCK_MEMBER, 'dev-token', 'dev-refresh')}
-              accessibilityLabel="Entrar sin iniciar sesión (solo desarrollo)"
-            >
-              <Text style={styles.devButtonText}>
-                Entrar sin iniciar sesión (solo desarrollo)
-              </Text>
-            </Pressable>
+            <>
+              <Pressable
+                style={styles.devButton}
+                onPress={() => setAuth(DEV_MOCK_USER, DEV_MOCK_MEMBER, 'dev-token', 'dev-refresh')}
+                accessibilityLabel="Entrar sin iniciar sesión (solo desarrollo)"
+              >
+                <Text style={styles.devButtonText}>
+                  Entrar sin iniciar sesión (solo desarrollo)
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.devButton, { borderColor: '#87A96B', marginTop: 10 }]}
+                onPress={() => {
+                  const randomNum = Math.floor(Math.random() * 1000000);
+                  const mockUserId = `dev-new-user-${randomNum}`;
+                  const mockUser = { id: mockUserId, email: `new-user-${randomNum}@aynicare.local` };
+                  setAuth(mockUser, null, `dev-token-new:${mockUserId}`, 'dev-refresh');
+                }}
+                accessibilityLabel="Entrar como nuevo usuario (solo desarrollo)"
+              >
+                <Text style={[styles.devButtonText, { color: '#87A96B' }]}>
+                  Entrar como nuevo usuario (solo desarrollo)
+                </Text>
+              </Pressable>
+            </>
           )}
         </View>
       </View>

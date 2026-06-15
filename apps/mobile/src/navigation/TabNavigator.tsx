@@ -4,23 +4,38 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ActivitiesScreen } from '../screens/activities/ActivitiesScreen';
+import { AddActivityScreen } from '../screens/activities/AddActivityScreen';
 import { MedicationsScreen } from '../screens/medications/MedicationsScreen';
 import { AddMedicationScreen } from '../screens/medications/AddMedicationScreen';
 import { AppointmentsScreen } from '../screens/appointments/AppointmentsScreen';
 import { AddAppointmentScreen } from '../screens/appointments/AddAppointmentScreen';
 import { FamiliaScreen } from '../screens/family/FamiliaScreen';
+import { FamilyMembersScreen } from '../screens/family/FamilyMembersScreen';
+import { InviteMemberScreen } from '../screens/family/InviteMemberScreen';
 import { ExpensesScreen } from '../screens/expenses/ExpensesScreen';
 import { AddExpenseScreen } from '../screens/expenses/AddExpenseScreen';
 import { NotesScreen } from '../screens/notes/NotesScreen';
 import { AddNoteScreen } from '../screens/notes/AddNoteScreen';
 import type {
   TabParamList,
+  ActivitiesStackParamList,
   MedicationsStackParamList,
   AppointmentsStackParamList,
   FamiliaStackParamList,
 } from './types';
 
 // ─── Nested Stacks ────────────────────────────────────────────────────────────
+
+const ActivitiesStack = createNativeStackNavigator<ActivitiesStackParamList>();
+
+function ActivitiesNavigator() {
+  return (
+    <ActivitiesStack.Navigator screenOptions={{ headerShown: false }}>
+      <ActivitiesStack.Screen name="ActivitiesList" component={ActivitiesScreen} />
+      <ActivitiesStack.Screen name="AddActivity" component={AddActivityScreen} />
+    </ActivitiesStack.Navigator>
+  );
+}
 
 const MedicationsStack = createNativeStackNavigator<MedicationsStackParamList>();
 
@@ -54,6 +69,8 @@ function FamiliaNavigator() {
       <FamiliaStack.Screen name="AddGasto" component={AddExpenseScreen} />
       <FamiliaStack.Screen name="Notas" component={NotesScreen} />
       <FamiliaStack.Screen name="AddNota" component={AddNoteScreen} />
+      <FamiliaStack.Screen name="Miembros" component={FamilyMembersScreen} />
+      <FamiliaStack.Screen name="InvitarMiembro" component={InviteMemberScreen} />
     </FamiliaStack.Navigator>
   );
 }
@@ -103,7 +120,7 @@ export function TabNavigator() {
       })}
     >
       <Tab.Screen name="Inicio" component={HomeScreen} />
-      <Tab.Screen name="Actividades" component={ActivitiesScreen} />
+      <Tab.Screen name="Actividades" component={ActivitiesNavigator} />
       <Tab.Screen name="Medicamentos" component={MedicationsNavigator} />
       <Tab.Screen name="Agenda" component={AppointmentsNavigator} />
       <Tab.Screen name="Familia" component={FamiliaNavigator} />

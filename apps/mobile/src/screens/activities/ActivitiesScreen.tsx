@@ -10,9 +10,14 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useActivities, useCompleteActivity } from '../../hooks/useActivities';
 import { ActivityCard } from '../../components/activities/ActivityCard';
 import type { Activity } from '../../types/activity';
+import type { ActivitiesStackParamList } from '../../navigation/types';
+
+type NavProp = NativeStackNavigationProp<ActivitiesStackParamList, 'ActivitiesList'>;
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
@@ -27,6 +32,7 @@ function formatDate(iso: string): string {
 }
 
 export function ActivitiesScreen() {
+  const navigation = useNavigation<NavProp>();
   const [selectedDate] = useState(todayISO);
   const { data, isLoading, error, refetch } = useActivities(selectedDate);
   const completeActivity = useCompleteActivity();
@@ -71,8 +77,18 @@ export function ActivitiesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Actividades</Text>
-        <Text style={styles.headerDate}>{formatDate(selectedDate)}</Text>
+        <View>
+          <Text style={styles.headerTitle}>Actividades</Text>
+          <Text style={styles.headerDate}>{formatDate(selectedDate)}</Text>
+        </View>
+        <Pressable
+          style={styles.addButton}
+          onPress={() => navigation.navigate('AddActivity')}
+          accessibilityLabel="Crear actividad"
+          hitSlop={8}
+        >
+          <Ionicons name="add" size={26} color="#D4856A" />
+        </Pressable>
       </View>
 
       {sections.length === 0 ? (
@@ -120,6 +136,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 12,
@@ -134,6 +153,12 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 2,
     textTransform: 'capitalize',
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     paddingHorizontal: 20,

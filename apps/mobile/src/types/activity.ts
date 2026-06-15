@@ -1,4 +1,5 @@
 export type ActivityStatus = 'pending' | 'completed' | 'skipped';
+export type ActivityPriority = 'low' | 'normal' | 'urgent';
 
 export interface Activity {
   id: string;
@@ -7,7 +8,7 @@ export interface Activity {
   description: string | null;
   scheduledAt: string | null;
   status: ActivityStatus;
-  priority: number;
+  priority: ActivityPriority;
   assignedTo: {
     id: string;
     name: string;
@@ -27,5 +28,5 @@ export interface CreateActivityInput {
   description?: string;
   scheduledAt?: string;
   assignedToId?: string;
-  priority?: number;
+  priority?: ActivityPriority;
 }

@@ -8,6 +8,30 @@ import {
   CompleteActivityInput,
 } from '../schemas/activity.schema';
 
+function mapAppointmentToActivity(appt: any): any {
+  return {
+    id: appt.id,
+    familyId: appt.familyId,
+    title: `📅 Cita: ${appt.title}`,
+    description: [
+      appt.doctorName ? `Médico: ${appt.doctorName}` : null,
+      appt.location ? `Lugar: ${appt.location}` : null,
+      appt.notes ? `Notas: ${appt.notes}` : null
+    ].filter(Boolean).join(' | ') || 'Cita programada',
+    scheduledAt: appt.scheduledAt,
+    status: appt.status === 'completed' ? 'completed' : 'pending',
+    priority: appt.type === 'medical' ? 'urgent' : 'normal',
+    assignedTo: null,
+    isAppointment: true,
+    logs: appt.status === 'completed' ? [{
+      id: appt.id,
+      completedAt: appt.updatedAt,
+      notes: null,
+      completedBy: null
+    }] : []
+  };
+}
+
 // GET /api/activities — lista actividades de la familia (no eliminadas)
 // Query params: ?assignedToId=UUID  ?date=YYYY-MM-DD
 export const listActivities = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -24,15 +48,18 @@ export const listActivities = async (req: Request, res: Response, next: NextFunc
       where.assignedToId = assignedToId;
     }
 
+    let start: Date | undefined;
+    let end: Date | undefined;
+
     if (typeof date === 'string') {
       const day = new Date(date);
       if (isNaN(day.getTime())) {
         res.status(400).json({ success: false, data: null, error: 'Formato de fecha inválido. Usa YYYY-MM-DD' });
         return;
       }
-      const start = new Date(day);
+      start = new Date(day);
       start.setUTCHours(0, 0, 0, 0);
-      const end = new Date(day);
+      end = new Date(day);
       end.setUTCHours(23, 59, 59, 999);
       where.scheduledAt = { gte: start, lte: end };
     }
@@ -55,7 +82,35 @@ export const listActivities = async (req: Request, res: Response, next: NextFunc
       orderBy: [{ priority: 'desc' }, { scheduledAt: 'asc' }, { createdAt: 'asc' }],
     });
 
-    res.json({ success: true, data: activities });
+    let mappedAppointments: any[] = [];
+    if (typeof date === 'string' && start && end) {
+      // Buscar citas agendadas para el mismo día
+      const appointments = await prisma.appointment.findMany({
+        where: {
+          familyId,
+          deletedAt: null,
+          scheduledAt: { gte: start, lte: end }
+        },
+        orderBy: { scheduledAt: 'asc' }
+      });
+      mappedAppointments = appointments.map(mapAppointmentToActivity);
+    }
+
+    const allItems = [...activities, ...mappedAppointments].sort((a, b) => {
+      // Ordenar por urgencia de prioridad primero
+      const priorityMap: Record<string, number> = { urgent: 3, normal: 2, low: 1 };
+      const aPriority = priorityMap[a.priority] || 2;
+      const bPriority = priorityMap[b.priority] || 2;
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority;
+      }
+      // Ordenar por hora programada
+      const aTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+      const bTime = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    res.json({ success: true, data: allItems });
   } catch (err) {
     next(err);
   }
@@ -149,7 +204,7 @@ export const updateActivity = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-// PATCH /api/activities/:id/complete — marca una actividad como completada y crea un ActivityLog
+// PATCH /api/activities/:id/complete — marca una actividad o cita como completada
 export const completeActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { familyId, memberId } = req.user;
@@ -162,7 +217,31 @@ export const completeActivity = async (req: Request, res: Response, next: NextFu
     });
 
     if (!existing) {
-      res.status(404).json({ success: false, data: null, error: 'Actividad no encontrada' });
+      // Intentar buscar como Cita (Appointment)
+      const appointment = await prisma.appointment.findFirst({
+        where: { id, familyId, deletedAt: null },
+      });
+
+      if (!appointment) {
+        res.status(404).json({ success: false, data: null, error: 'Actividad o cita no encontrada' });
+        return;
+      }
+
+      if (appointment.status === 'completed') {
+        res.status(400).json({ success: false, data: null, error: 'La cita ya fue completada' });
+        return;
+      }
+
+      const updatedAppt = await prisma.appointment.update({
+        where: { id },
+        data: { status: 'completed' }
+      });
+
+      const mapped = mapAppointmentToActivity(updatedAppt);
+      const result = { activity: mapped, log: null };
+
+      await broadcast(familyId, 'activity:completed', result);
+      res.json({ success: true, data: result });
       return;
     }
 
@@ -224,7 +303,24 @@ export const deleteActivity = async (req: Request, res: Response, next: NextFunc
     });
 
     if (!existing) {
-      res.status(404).json({ success: false, data: null, error: 'Actividad no encontrada' });
+      // Intentar buscar como Cita (Appointment)
+      const appointment = await prisma.appointment.findFirst({
+        where: { id, familyId, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!appointment) {
+        res.status(404).json({ success: false, data: null, error: 'Actividad o cita no encontrada' });
+        return;
+      }
+
+      await prisma.appointment.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+
+      await broadcast(familyId, 'activity:deleted', { id });
+      res.json({ success: true, data: null });
       return;
     }
 

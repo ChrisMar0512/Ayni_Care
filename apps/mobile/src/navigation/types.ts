@@ -40,4 +40,11 @@ export type FamiliaStackParamList = {
   AddGasto: undefined;
   Notas: undefined;
   AddNota: undefined;
+  Miembros: undefined;
+  InvitarMiembro: undefined;
+};
+
+export type ActivitiesStackParamList = {
+  ActivitiesList: undefined;
+  AddActivity: undefined;
 };

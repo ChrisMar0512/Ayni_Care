@@ -40,8 +40,24 @@ function parseDateTimeToISO(ddmmyyyy: string, hhmm: string): string | null {
   const [hours, minutes] = timeParts;
   if (!hours || !minutes) return null;
 
-  const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00.000Z`;
-  const date = new Date(iso);
+  const numYear = Number(year);
+  const numMonth = Number(month) - 1; // 0-indexed
+  const numDay = Number(day);
+  const numHours = Number(hours);
+  const numMinutes = Number(minutes);
+
+  if (
+    isNaN(numYear) || isNaN(numMonth) || isNaN(numDay) ||
+    isNaN(numHours) || isNaN(numMinutes) ||
+    numMonth < 0 || numMonth > 11 ||
+    numDay < 1 || numDay > 31 ||
+    numHours < 0 || numHours > 23 ||
+    numMinutes < 0 || numMinutes > 59
+  ) {
+    return null;
+  }
+
+  const date = new Date(numYear, numMonth, numDay, numHours, numMinutes, 0, 0);
   if (isNaN(date.getTime())) return null;
   return date.toISOString();
 }

@@ -80,11 +80,14 @@ export function FamiliaScreen() {
           onPress={() => navigation.navigate('Notas')}
         />
 
-        <View style={styles.comingSoon}>
-          <Ionicons name="people-outline" size={40} color="#D1D5DB" />
-          <Text style={styles.comingSoonTitle}>Gestión de miembros</Text>
-          <Text style={styles.comingSoonSub}>Invitar miembros y asignar roles — próximamente</Text>
-        </View>
+        <SectionCard
+          icon="people-outline"
+          title="Gestión de miembros"
+          description="Invita a miembros de la familia y administra sus roles y accesos"
+          color="#3B82F6"
+          bgColor="#EFF6FF"
+          onPress={() => navigation.navigate('Miembros')}
+        />
       </ScrollView>
     </SafeAreaView>
   );
