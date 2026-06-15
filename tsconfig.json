@@ -8,5 +8,6 @@
     "declaration": true,
     "sourceMap": true
   },
-  "extends": "expo/tsconfig.base"
+  "extends": "expo/tsconfig.base",
+  "exclude": ["apps/backend/**/*", "node_modules"]
 }
