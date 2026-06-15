@@ -25,6 +25,7 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   setAuth: (user: AuthUser, member: AuthMember | null, accessToken: string, refreshToken: string) => Promise<void>;
+  setMember: (member: AuthMember) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -73,6 +74,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       member,
       familyId: member?.familyId ?? null,
       role: member?.role ?? null,
+    });
+  },
+
+  setMember: async (member) => {
+    await storage.setItem('auth_member', JSON.stringify(member));
+    set({
+      member,
+      familyId: member.familyId,
+      role: member.role,
     });
   },
 

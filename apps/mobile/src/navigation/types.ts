@@ -10,6 +10,12 @@ export type AppStackParamList = {
   MainTabs: undefined;
 };
 
+export type OnboardingStackParamList = {
+  OnboardingHub: undefined;
+  CreateFamily: undefined;
+  JoinFamily: undefined;
+};
+
 export type TabParamList = {
   Inicio: undefined;
   Actividades: undefined;

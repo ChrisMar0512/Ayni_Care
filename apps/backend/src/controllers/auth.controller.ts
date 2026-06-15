@@ -68,54 +68,7 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
       },
     });
 
-    if (!member) {
-      console.log('[auth] El usuario no pertenece a ninguna familia. Creando una familia y miembro de prueba...');
-      member = await prisma.$transaction(async (tx) => {
-        const family = await tx.family.create({
-          data: { name: 'Familia Demo' },
-        });
 
-        const newMember = await tx.familyMember.create({
-          data: {
-            familyId: family.id,
-            userId: supabaseUser.id,
-            name: supabaseUser.email?.split('@')[0] ?? 'Cuidador',
-            email: supabaseUser.email,
-            phone: supabaseUser.phone,
-            role: 'primary_caregiver',
-          },
-          select: {
-            id: true,
-            familyId: true,
-            role: true,
-            name: true,
-            family: { select: { name: true } },
-          },
-        });
-
-        // Crear adulto mayor de prueba
-        await tx.elderlyPerson.create({
-          data: {
-            familyId: family.id,
-            name: 'Abuelo/a Demo',
-            conditions: ['Hipertensión'],
-          },
-        });
-
-        // Crear una actividad de prueba para empezar
-        await tx.activity.create({
-          data: {
-            familyId: family.id,
-            assignedToId: newMember.id,
-            title: 'Tomar la presión',
-            description: 'Verificar presión arterial en la mañana',
-            priority: 'normal',
-          },
-        });
-
-        return newMember;
-      });
-    }
 
     res.json({
       success: true,

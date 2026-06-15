@@ -6,8 +6,11 @@ import { useAuthStore } from '../stores/authStore';
 import { registerUnauthorizedCallback } from '../services/api';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { OTPScreen } from '../screens/auth/OTPScreen';
+import { OnboardingScreen } from '../screens/auth/OnboardingScreen';
+import { CreateFamilyScreen } from '../screens/auth/CreateFamilyScreen';
+import { JoinFamilyScreen } from '../screens/auth/JoinFamilyScreen';
 import { TabNavigator } from './TabNavigator';
-import type { AuthStackParamList, AppStackParamList } from './types';
+import type { AuthStackParamList, AppStackParamList, OnboardingStackParamList } from './types';
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
 
@@ -50,6 +53,7 @@ export class ErrorBoundary extends React.Component<
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
+const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
 
 function AuthNavigator() {
   return (
@@ -57,6 +61,16 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="OTP" component={OTPScreen} />
     </AuthStack.Navigator>
+  );
+}
+
+function OnboardingNavigator() {
+  return (
+    <OnboardingStack.Navigator screenOptions={{ headerShown: false }}>
+      <OnboardingStack.Screen name="OnboardingHub" component={OnboardingScreen} />
+      <OnboardingStack.Screen name="CreateFamily" component={CreateFamilyScreen} />
+      <OnboardingStack.Screen name="JoinFamily" component={JoinFamilyScreen} />
+    </OnboardingStack.Navigator>
   );
 }
 
@@ -71,7 +85,7 @@ function AppNavigatorInner() {
 // ─── Root Navigator ───────────────────────────────────────────────────────────
 
 export function AppNavigator() {
-  const { user, isInitialized, initialize, logout } = useAuthStore();
+  const { user, member, isInitialized, initialize, logout } = useAuthStore();
 
   useEffect(() => {
     initialize();
@@ -89,7 +103,15 @@ export function AppNavigator() {
   return (
     <ErrorBoundary>
       <NavigationContainer>
-        {user ? <AppNavigatorInner /> : <AuthNavigator />}
+        {user ? (
+          member ? (
+            <AppNavigatorInner />
+          ) : (
+            <OnboardingNavigator />
+          )
+        ) : (
+          <AuthNavigator />
+        )}
       </NavigationContainer>
     </ErrorBoundary>
   );
