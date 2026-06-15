@@ -166,6 +166,7 @@ export const listMembers = async (req: Request, res: Response, next: NextFunctio
       where: { familyId, isActive: true },
       select: {
         id: true,
+        userId: true,
         name: true,
         phone: true,
         email: true,

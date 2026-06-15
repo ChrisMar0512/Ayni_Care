@@ -8,6 +8,7 @@ import {
   FlatList,
   SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -36,12 +37,30 @@ const ROLE_COLORS: Record<MemberRole, { bg: string; text: string; icon: string }
 export function FamilyMembersScreen() {
   const navigation = useNavigation<NavProp>();
   const currentMember = useAuthStore((s) => s.member);
+  const currentUser = useAuthStore((s) => s.user);
   const { data: members, isLoading, error, refetch } = useFamilyMembers();
   const removeMember = useRemoveMember();
 
   const isPrimaryCaregiver = currentMember?.role === 'primary_caregiver';
 
   function handleRemoveMember(id: string, name: string) {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `¿Estás seguro de que deseas eliminar a ${name} de la familia? Ya no tendrá acceso a la información del paciente.`
+      );
+      if (confirmed) {
+        removeMember.mutate(id, {
+          onSuccess: () => {
+            alert(`${name} ha sido eliminado de la familia.`);
+          },
+          onError: () => {
+            alert('No se pudo eliminar al miembro. Intenta de nuevo.');
+          },
+        });
+      }
+      return;
+    }
+
     Alert.alert(
       'Eliminar miembro',
       `¿Estás seguro de que deseas eliminar a ${name} de la familia? Ya no tendrá acceso a la información del paciente.`,
@@ -115,7 +134,7 @@ export function FamilyMembersScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
           const style = ROLE_COLORS[item.role] || { bg: '#F3F4F6', text: '#4B5563', icon: 'person-outline' };
-          const isCurrentUser = item.id === currentMember?.id;
+          const isCurrentUser = item.id === currentMember?.id || (item.userId !== undefined && item.userId === currentUser?.id);
           const canDelete = isPrimaryCaregiver && !isCurrentUser;
 
           return (

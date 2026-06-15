@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -107,6 +108,14 @@ export function NotesScreen() {
   const deleteNote = useDeleteNote();
 
   function handleDelete(id: string) {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('¿Seguro que quieres eliminar esta nota?');
+      if (confirmed) {
+        deleteNote.mutate(id);
+      }
+      return;
+    }
+
     Alert.alert('Eliminar nota', '¿Seguro que quieres eliminar esta nota?', [
       { text: 'Cancelar', style: 'cancel' },
       {

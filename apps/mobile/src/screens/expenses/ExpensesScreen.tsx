@@ -8,6 +8,7 @@ import {
   Pressable,
   SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -60,6 +61,14 @@ function SplitRow({
   const paySplit = usePaySplit();
 
   function handlePay() {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`¿Marcar el pago de ${split.member.name} como pagado?`);
+      if (confirmed) {
+        paySplit.mutate({ expenseId, splitId: split.id });
+      }
+      return;
+    }
+
     Alert.alert(
       'Confirmar pago',
       `¿Marcar el pago de ${split.member.name} como pagado?`,
