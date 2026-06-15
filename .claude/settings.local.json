@@ -31,7 +31,8 @@
       "Bash(npx tsc *)",
       "Bash(git -C /Users/tiago/Documents/ayni-care status)",
       "Bash(git -C /Users/tiago/Documents/ayni-care diff --stat)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }
