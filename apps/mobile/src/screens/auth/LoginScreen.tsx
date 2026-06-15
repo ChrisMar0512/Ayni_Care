@@ -27,21 +27,40 @@ function normalizePhone(value: string) {
   return digits.startsWith('0') ? `+${digits.slice(1)}` : `+${digits}`;
 }
 
-// TODO: REMOVER ANTES DE PRODUCCIÓN — botón temporal para testing sin auth
-const DEV_MOCK_USER = { id: 'dev-user-id', email: 'dev@aynicare.local' };
-const DEV_MOCK_MEMBER = {
-  id: 'dev-member-id',
-  familyId: 'dev-family-id',
-  role: 'primary_caregiver' as const,
-  name: 'Usuario Dev',
-  family: { name: 'Familia de prueba' },
-};
-
 export function LoginScreen({ navigation }: Props) {
   const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDevLoading, setIsDevLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  // TODO: REMOVER ANTES DE PRODUCCIÓN — login real con usuario de prueba, sin OTP
+  async function handleDevLogin() {
+    setIsDevLoading(true);
+    setError(null);
+    try {
+      const supabase = getSupabase();
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: 'test@aynicare.com',
+        password: 'test1234',
+      });
+      if (signInError || !data.session) {
+        setError(signInError?.message ?? 'Login de desarrollo fallido');
+        return;
+      }
+      // member = null: el backend resuelve familyId del JWT; el store no lo necesita para las llamadas API
+      await setAuth(
+        { id: data.user.id, email: data.user.email ?? undefined },
+        null,
+        data.session.access_token,
+        data.session.refresh_token,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error en login de desarrollo');
+    } finally {
+      setIsDevLoading(false);
+    }
+  }
 
   const inputType: InputType = isEmail(identifier.trim()) ? 'email' : 'phone';
 
@@ -129,13 +148,18 @@ export function LoginScreen({ navigation }: Props) {
           {/* TODO: REMOVER ANTES DE PRODUCCIÓN — botón temporal para testing sin auth */}
           {__DEV__ && (
             <Pressable
-              style={styles.devButton}
-              onPress={() => setAuth(DEV_MOCK_USER, DEV_MOCK_MEMBER, 'dev-token', 'dev-refresh')}
+              style={[styles.devButton, isDevLoading && styles.buttonDisabled]}
+              onPress={handleDevLogin}
+              disabled={isDevLoading}
               accessibilityLabel="Entrar sin iniciar sesión (solo desarrollo)"
             >
-              <Text style={styles.devButtonText}>
-                Entrar sin iniciar sesión (solo desarrollo)
-              </Text>
+              {isDevLoading ? (
+                <ActivityIndicator color="#F4B860" size="small" />
+              ) : (
+                <Text style={styles.devButtonText}>
+                  Entrar sin iniciar sesión (solo desarrollo)
+                </Text>
+              )}
             </Pressable>
           )}
         </View>
