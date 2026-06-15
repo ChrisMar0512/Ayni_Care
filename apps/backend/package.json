@@ -25,6 +25,9 @@
     "resend": "^4.0.0",
     "zod": "^3.24.1"
   },
+  "ts-node": {
+    "files": true
+  },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
