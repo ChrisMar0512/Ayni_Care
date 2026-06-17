@@ -11,31 +11,47 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
     let error;
 
     if (type === 'email' && email) {
-      // Intentar primero como magiclink (usuario existente)
-      console.log('[auth] Intentando verificar OTP como magiclink...');
-      const resMagic = await supabase.auth.verifyOtp({
-        type: 'magiclink',
+      // 1. Intentar como 'email' (OTP numérico de 6 dígitos estándar)
+      console.log('[auth] Intentando verificar OTP como email...');
+      const resEmail = await supabase.auth.verifyOtp({
+        type: 'email',
         token,
         email,
       });
 
-      if (resMagic.error) {
-        console.log('[auth] Falló magiclink:', resMagic.error.message);
-        console.log('[auth] Intentando verificar OTP como signup...');
-        // Si falla, intentar como signup (usuario nuevo)
-        const resSignup = await supabase.auth.verifyOtp({
-          type: 'signup',
+      if (resEmail.error) {
+        console.log('[auth] Falló email OTP:', resEmail.error.message);
+        
+        // 2. Intentar como 'magiclink' (usuario existente por magiclink)
+        console.log('[auth] Intentando verificar OTP como magiclink...');
+        const resMagic = await supabase.auth.verifyOtp({
+          type: 'magiclink',
           token,
           email,
         });
-        sessionData = resSignup.data;
-        error = resSignup.error;
-        if (resSignup.error) {
-          console.log('[auth] Falló signup:', resSignup.error.message);
+
+        if (resMagic.error) {
+          console.log('[auth] Falló magiclink:', resMagic.error.message);
+          
+          // 3. Intentar como 'signup' (usuario nuevo verificando email)
+          console.log('[auth] Intentando verificar OTP como signup...');
+          const resSignup = await supabase.auth.verifyOtp({
+            type: 'signup',
+            token,
+            email,
+          });
+          sessionData = resSignup.data;
+          error = resSignup.error;
+          if (resSignup.error) {
+            console.log('[auth] Falló signup:', resSignup.error.message);
+          }
+        } else {
+          sessionData = resMagic.data;
+          error = resMagic.error;
         }
       } else {
-        sessionData = resMagic.data;
-        error = resMagic.error;
+        sessionData = resEmail.data;
+        error = resEmail.error;
       }
     } else {
       // Para SMS (type === 'sms'), pasamos 'sms'
