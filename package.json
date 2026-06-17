@@ -17,6 +17,6 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "echo \"Linter no configurado aún\"",
     "test": "echo \"Sin tests aún\"",
-    "postinstall": "npm run db:generate --workspace=apps/backend"
+    "postinstall": "npm run db:generate --workspace=apps/backend || echo 'Prisma skipped'"
   }
 }
