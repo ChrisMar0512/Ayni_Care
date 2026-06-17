@@ -164,4 +164,6 @@ npm init -y
 
 Si quieres, puedo ejecutar `npm install` ahora y/o inicializar plantillas adicionales (tsconfig por paquete, ESLint/Prettier, husky, etc.).
 
+<!-- Deploy trigger to wake up Vercel -->
+
 
