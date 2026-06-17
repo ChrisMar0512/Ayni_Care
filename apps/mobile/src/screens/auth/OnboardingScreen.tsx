@@ -11,14 +11,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
+import { useAuthStore } from '../../stores/authStore';
 
 type NavProp = NativeStackNavigationProp<OnboardingStackParamList, 'OnboardingHub'>;
 
 export function OnboardingScreen() {
   const navigation = useNavigation<NavProp>();
+  const logout = useAuthStore((s) => s.logout);
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        <Pressable
+          style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+          onPress={logout}
+          hitSlop={8}
+          accessibilityLabel="Volver al inicio de sesión"
+        >
+          <Ionicons name="chevron-back" size={24} color="#2C2C2C" />
+          <Text style={styles.backText}>Volver</Text>
+        </Pressable>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.appName}>Ayni Care</Text>
@@ -72,6 +85,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F5F0',
+  },
+  topBar: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F5F0',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    minHeight: 48,
+    minWidth: 80,
+  },
+  backButtonPressed: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C2C2C',
+    marginLeft: 4,
   },
   scrollContent: {
     paddingHorizontal: 24,
