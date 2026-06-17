@@ -16,6 +16,7 @@
     "dev:mobile": "expo start apps/mobile",
     "build": "npm run build --workspaces --if-present",
     "lint": "echo \"Linter no configurado aún\"",
-    "test": "echo \"Sin tests aún\""
+    "test": "echo \"Sin tests aún\"",
+    "postinstall": "npm run db:generate --workspace=apps/backend"
   }
 }
