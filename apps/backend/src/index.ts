@@ -18,7 +18,7 @@ const PORT = process.env.PORT ?? 3000;
 // ── CORS ──────────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://aynicare.com']
+    ? ['https://aynicare.com', 'https://ayni-care.vercel.app', /\.vercel\.app$/]
     : '*',
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
