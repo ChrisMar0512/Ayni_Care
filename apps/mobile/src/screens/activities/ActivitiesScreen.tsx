@@ -12,9 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useActivities, useCompleteActivity } from '../../hooks/useActivities';
-import { ActivityCard } from '../../components/activities/ActivityCard';
-import type { Activity } from '../../types/activity';
+import { useCompleteActivity } from '../../hooks/useActivities';
+import { useDashboard, DashboardItem } from '../../hooks/useDashboard';
+import { useAdministerMedication } from '../../hooks/useMedications';
+import { DashboardItemCard } from '../../components/dashboard/DashboardItemCard';
 import type { ActivitiesStackParamList } from '../../navigation/types';
 
 type NavProp = NativeStackNavigationProp<ActivitiesStackParamList, 'ActivitiesList'>;
@@ -34,21 +35,27 @@ function formatDate(iso: string): string {
 export function ActivitiesScreen() {
   const navigation = useNavigation<NavProp>();
   const [selectedDate] = useState(todayISO);
-  const { data, isLoading, error, refetch } = useActivities(selectedDate);
+  
+  const { data, isLoading, error, refetch } = useDashboard(selectedDate);
   const completeActivity = useCompleteActivity();
+  const administerMedication = useAdministerMedication();
 
   const pendientes = (data ?? []).filter((a) => a.status === 'pending');
   const completadas = (data ?? []).filter((a) => a.status !== 'pending');
 
-  function handleComplete(id: string) {
+  function handleCompleteActivity(id: string) {
     completeActivity.mutate({ id });
+  }
+
+  function handleCompleteMedication(id: string, timeSlot: string) {
+    administerMedication.mutate({ id, skipped: false, notes: `Administrado a la hora programada (${timeSlot})` });
   }
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#D4856A" />
-        <Text style={styles.loadingText}>Cargando actividades...</Text>
+        <Text style={styles.loadingText}>Cargando dashboard...</Text>
       </SafeAreaView>
     );
   }
@@ -57,7 +64,7 @@ export function ActivitiesScreen() {
     return (
       <SafeAreaView style={styles.centered}>
         <Ionicons name="cloud-offline-outline" size={48} color="#D4856A" />
-        <Text style={styles.errorTitle}>No se pudieron cargar las actividades</Text>
+        <Text style={styles.errorTitle}>No se pudo cargar el dashboard</Text>
         <Text style={styles.errorSub}>Revisa tu conexión e intenta de nuevo</Text>
         <Pressable style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryText}>Reintentar</Text>
@@ -66,7 +73,7 @@ export function ActivitiesScreen() {
     );
   }
 
-  const sections: { title: string; data: Activity[] }[] = [];
+  const sections: { title: string; data: DashboardItem[] }[] = [];
   if (pendientes.length > 0) {
     sections.push({ title: `Pendientes (${pendientes.length})`, data: pendientes });
   }
@@ -78,7 +85,7 @@ export function ActivitiesScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Actividades</Text>
+          <Text style={styles.headerTitle}>Dashboard Diario</Text>
           <Text style={styles.headerDate}>{formatDate(selectedDate)}</Text>
         </View>
         <Pressable
@@ -94,8 +101,8 @@ export function ActivitiesScreen() {
       {sections.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="checkmark-done-circle-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Sin actividades hoy</Text>
-          <Text style={styles.emptySub}>No hay tareas programadas para este día</Text>
+          <Text style={styles.emptyTitle}>Sin pendientes hoy</Text>
+          <Text style={styles.emptySub}>No hay actividades, citas ni medicamentos para este día</Text>
         </View>
       ) : (
         <SectionList
@@ -106,12 +113,14 @@ export function ActivitiesScreen() {
             <Text style={styles.sectionHeader}>{section.title}</Text>
           )}
           renderItem={({ item }) => (
-            <ActivityCard
-              activity={item}
-              onComplete={handleComplete}
-              isCompleting={
-                completeActivity.isPending &&
-                completeActivity.variables?.id === item.id
+            <DashboardItemCard
+              item={item}
+              onCompleteActivity={handleCompleteActivity}
+              onCompleteMedication={handleCompleteMedication}
+              isActionPending={
+                item.type === 'medication'
+                  ? administerMedication.isPending && administerMedication.variables?.id === item.originalId
+                  : completeActivity.isPending && completeActivity.variables?.id === item.originalId
               }
             />
           )}

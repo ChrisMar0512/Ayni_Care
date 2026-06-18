@@ -23,6 +23,7 @@ export function useCreateAppointment() {
       api.post<ApiResponse<Appointment>>('/api/appointments', input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -33,6 +34,7 @@ export function useDeleteAppointment() {
     mutationFn: (id: string) => api.delete(`/api/appointments/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

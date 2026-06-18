@@ -42,6 +42,7 @@ model FamilyMember {
   expenses           Expense[]      @relation("PaidBy")
   expenseSplits      ExpenseSplit[]
   notes              Note[]
+  pushTokens         PushToken[]
 }
 
 enum MemberRole {
@@ -92,6 +93,7 @@ model Activity {
   recurrence   Recurrence?
   status       ActivityStatus  @default(pending)
   priority     Priority        @default(normal)
+  reminderSent Boolean         @default(false)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   deletedAt    DateTime? // soft delete
@@ -265,3 +267,14 @@ enum NoteType {
   symptom
   observation
 }
+
+// ─── NOTIFICACIONES ───────────────────────────────────
+
+model PushToken {
+  id        String       @id @default(uuid())
+  userId    String       // FK a FamilyMember.userId
+  token     String       @unique // ExponentPushToken[xxx]
+  createdAt DateTime     @default(now())
+  member    FamilyMember @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+

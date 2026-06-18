@@ -10,6 +10,7 @@ import { OnboardingScreen } from '../screens/auth/OnboardingScreen';
 import { CreateFamilyScreen } from '../screens/auth/CreateFamilyScreen';
 import { JoinFamilyScreen } from '../screens/auth/JoinFamilyScreen';
 import { TabNavigator } from './TabNavigator';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import type { AuthStackParamList, AppStackParamList, OnboardingStackParamList } from './types';
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
@@ -86,6 +87,8 @@ function AppNavigatorInner() {
 
 export function AppNavigator() {
   const { user, member, isInitialized, initialize, logout } = useAuthStore();
+
+  usePushNotifications(!!user && !!member);
 
   useEffect(() => {
     initialize();

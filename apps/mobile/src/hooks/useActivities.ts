@@ -24,6 +24,7 @@ export function useCreateActivity() {
       api.post<ApiResponse<Activity>>('/api/activities', input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -35,6 +36,7 @@ export function useCompleteActivity() {
       api.patch<ApiResponse<Activity>>(`/api/activities/${id}/complete`, { note }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -46,6 +48,7 @@ export function useDeleteActivity() {
       api.delete(`/api/activities/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

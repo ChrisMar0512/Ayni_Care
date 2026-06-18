@@ -11,6 +11,9 @@ import medicationsRoutes from './routes/medications.routes';
 import appointmentsRoutes from './routes/appointments.routes';
 import expensesRoutes from './routes/expenses.routes';
 import notesRoutes from './routes/notes.routes';
+import notificationsRoutes from './routes/notifications.routes';
+import jobsRoutes from './routes/jobs.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -61,10 +64,13 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/activities', activitiesRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/medications', medicationsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/expenses', expensesRoutes);
 app.use('/api/notes', notesRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/jobs', jobsRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────
 app.use(errorHandler);

@@ -23,6 +23,7 @@ export function useCreateMedication() {
       api.post<ApiResponse<Medication>>('/api/medications', input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -44,6 +45,7 @@ export function useAdministerMedication() {
       api.patch(`/api/medications/${id}/administer`, { skipped, skipReason, notes }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -54,6 +56,7 @@ export function useDeleteMedication() {
     mutationFn: (id: string) => api.delete(`/api/medications/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

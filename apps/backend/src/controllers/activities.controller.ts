@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
+import { sendPushNotifications } from '../services/notification.service';
 import {
   CreateActivityInput,
   UpdateActivityInput,
@@ -150,6 +151,40 @@ export const createActivity = async (req: Request, res: Response, next: NextFunc
     });
 
     await broadcast(familyId, 'activity:created', activity);
+
+    // Enviar notificaciones push a los demás familiares
+    try {
+      const otherMembers = await prisma.familyMember.findMany({
+        where: {
+          familyId,
+          userId: { not: req.user.id },
+          isActive: true,
+        },
+        select: {
+          pushTokens: {
+            select: {
+              token: true,
+            },
+          },
+        },
+      });
+      const otherTokens = otherMembers.flatMap(m => m.pushTokens.map(t => t.token));
+      if (otherTokens.length > 0) {
+        const creatorName = await prisma.familyMember.findUnique({
+          where: { userId: req.user.id },
+          select: { name: true },
+        }).then(m => m?.name || 'Un familiar');
+
+        await sendPushNotifications({
+          tokens: otherTokens,
+          title: `🆕 Nueva actividad: ${activity.title}`,
+          body: `${creatorName} agregó la actividad "${activity.title}".`,
+          data: { type: 'activity', id: activity.id },
+        });
+      }
+    } catch (pushErr) {
+      console.error('[activities.controller] Error al enviar notificaciones de creación:', pushErr);
+    }
 
     res.status(201).json({ success: true, data: activity });
   } catch (err) {
