@@ -21,6 +21,110 @@ const parseTimeToMinutes = (timeStr: string): number => {
   return (hh || 0) * 60 + (mm || 0);
 };
 
+const shouldMedicationRunOnDate = (frequency: string, startDate: Date, targetDateStr: string): boolean => {
+  const freq = frequency.toLowerCase().trim();
+  
+  // Convert targetDate (YYYY-MM-DD) to UTC midnight
+  const targetDate = new Date(`${targetDateStr}T00:00:00.000Z`);
+  
+  // Normalize start date to UTC midnight
+  const startD = new Date(startDate);
+  startD.setUTCHours(0, 0, 0, 0);
+
+  // If target date is before the medication's start date, it shouldn't show
+  if (targetDate.getTime() < startD.getTime()) {
+    return false;
+  }
+
+  // Calculate difference in calendar days
+  const timeDiff = targetDate.getTime() - startD.getTime();
+  const dayDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+
+  // 1. Daily / Every day
+  if (
+    freq.includes('diario') ||
+    freq.includes('diaria') ||
+    freq.includes('todos') ||
+    freq.includes('cada día') ||
+    freq.includes('cada dia') ||
+    freq.includes('cada 8 horas') ||
+    freq.includes('cada 12 horas') ||
+    freq.includes('cada 6 horas') ||
+    freq.includes('cada 4 horas') ||
+    freq.includes('vez al día') ||
+    freq.includes('vez al dia')
+  ) {
+    return true;
+  }
+
+  // 2. Interdiario / Dia de por medio / Every other day (every 2 days)
+  if (
+    freq.includes('interdiario') ||
+    freq.includes('dia de por medio') ||
+    freq.includes('día de por medio') ||
+    freq.includes('dia por medio') ||
+    freq.includes('día por medio') ||
+    freq.includes('dia si dia no') ||
+    freq.includes('día sí día no')
+  ) {
+    return dayDiff % 2 === 0;
+  }
+
+  // 3. Every X days (e.g. "cada 3 días")
+  const everyXDaysMatch = freq.match(/cada\s+(\d+)\s+días/) || freq.match(/cada\s+(\d+)\s+dias/);
+  if (everyXDaysMatch) {
+    const days = parseInt(everyXDaysMatch[1], 10);
+    if (days > 0) {
+      return dayDiff % days === 0;
+    }
+  }
+
+  // 4. Specific days of the week (e.g., "lunes, miércoles, viernes")
+  const weekdayNames: Record<string, number> = {
+    lunes: 1,
+    martes: 2,
+    miercoles: 3,
+    miércoles: 3,
+    jueves: 4,
+    viernes: 5,
+    sabado: 6,
+    sábado: 6,
+    domingo: 0,
+    lun: 1,
+    mar: 2,
+    mie: 3,
+    mié: 3,
+    jue: 4,
+    vie: 5,
+    sab: 6,
+    sáb: 6,
+    dom: 0,
+  };
+
+  const targetDayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+
+  let hasWeekdayMatch = false;
+  let specifiesWeekdays = false;
+
+  for (const [dayName, dayNum] of Object.entries(weekdayNames)) {
+    // Check if the weekday name exists as a separate word or part of comma-separated list
+    // Simple check is usually enough here
+    if (freq.includes(dayName)) {
+      specifiesWeekdays = true;
+      if (targetDayOfWeek === dayNum) {
+        hasWeekdayMatch = true;
+      }
+    }
+  }
+
+  if (specifiesWeekdays) {
+    return hasWeekdayMatch;
+  }
+
+  // Fallback: Default to true (always show) if the custom text doesn't match known patterns
+  return true;
+};
+
 /**
  * GET /api/dashboard/daily?date=YYYY-MM-DD
  * Devuelve el checklist unificado de Actividades, Tomas de Medicamentos y Citas de la Agenda para una fecha.
@@ -168,6 +272,11 @@ export const getDailyDashboard = async (
     // Tomas de Medicamentos
     const medicationItems: any[] = [];
     for (const med of medications) {
+      // Validar si el medicamento corresponde al día consultado
+      if (!shouldMedicationRunOnDate(med.frequency, med.startDate, dateStr)) {
+        continue;
+      }
+
       // Inicializar slots de este medicamento como pendientes
       const slots = med.times.map(t => ({
         time: t,

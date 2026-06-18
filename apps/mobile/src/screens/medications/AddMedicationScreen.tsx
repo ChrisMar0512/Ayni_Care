@@ -229,6 +229,32 @@ export function AddMedicationScreen() {
               placeholder="Ej. Cada 8 horas, Diario"
               placeholderTextColor="#9CA3AF"
             />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+              {['Diario', 'Interdiario', 'Cada 8 horas', 'Cada 12 horas', 'Lunes, Miércoles, Viernes'].map((s) => (
+                <Pressable
+                  key={s}
+                  style={{
+                    backgroundColor: frequency === s ? '#D4856A' : '#fff',
+                    borderColor: '#E5E7EB',
+                    borderWidth: 1,
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 8,
+                  }}
+                  onPress={() => setFrequency(s)}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: frequency === s ? '#fff' : '#374151',
+                      fontWeight: '500',
+                    }}
+                  >
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </Field>
 
           <View style={styles.fieldContainer}>
