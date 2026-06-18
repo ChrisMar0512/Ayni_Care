@@ -168,41 +168,55 @@ export const getDailyDashboard = async (
     // Tomas de Medicamentos
     const medicationItems: any[] = [];
     for (const med of medications) {
-      for (const slotTimeStr of med.times) {
-        const slotMinutes = parseTimeToMinutes(slotTimeStr);
-        let matchedLog: any = null;
+      // Inicializar slots de este medicamento como pendientes
+      const slots = med.times.map(t => ({
+        time: t,
+        status: 'pending',
+        completedBy: null as any,
+        completedAt: null as Date | null,
+        notes: null as string | null
+      }));
+
+      // Mapear cada toma (log) de hoy al slot más cercano
+      for (const log of med.logs) {
+        const logLocalTimeStr = getLocalTimeStr(log.givenAt);
+        const logMinutes = parseTimeToMinutes(logLocalTimeStr);
+        
+        let closestSlotIdx = -1;
         let minDiff = Infinity;
 
-        // Buscar el log más cercano a este slot
-        for (const log of med.logs) {
-          const logLocalTimeStr = getLocalTimeStr(log.givenAt);
-          const logMinutes = parseTimeToMinutes(logLocalTimeStr);
+        for (let i = 0; i < slots.length; i++) {
+          const slotMinutes = parseTimeToMinutes(slots[i].time);
           const diff = Math.abs(logMinutes - slotMinutes);
           if (diff < minDiff) {
             minDiff = diff;
-            matchedLog = log;
+            closestSlotIdx = i;
           }
         }
 
-        // Tolerancia de 3 horas (180 minutos)
-        const isMatched = minDiff <= 180;
-        let status = 'pending';
-        if (isMatched && matchedLog) {
-          status = matchedLog.skipped ? 'skipped' : 'completed';
+        if (closestSlotIdx !== -1) {
+          const slot = slots[closestSlotIdx];
+          slot.status = log.skipped ? 'skipped' : 'completed';
+          slot.completedBy = log.givenBy as any;
+          slot.completedAt = log.givenAt as any;
+          slot.notes = log.notes;
         }
+      }
 
+      // Añadir cada slot mapeado al listado de items del dashboard
+      for (const slot of slots) {
         medicationItems.push({
-          id: `med-${med.id}-${slotTimeStr}`,
+          id: `med-${med.id}-${slot.time}`,
           type: 'medication',
           title: `💊 Dar ${med.name}`,
-          time: slotTimeStr,
-          status,
+          time: slot.time,
+          status: slot.status,
           subtitle: `Dosis: ${med.dosage}${med.form ? ` (${med.form})` : ''} | Frecuencia: ${med.frequency}`,
           originalId: med.id,
           priority: 'normal',
-          completedBy: isMatched && matchedLog ? matchedLog.givenBy : null,
-          completedAt: isMatched && matchedLog ? matchedLog.givenAt : null,
-          notes: isMatched && matchedLog ? matchedLog.notes : null,
+          completedBy: slot.completedBy,
+          completedAt: slot.completedAt,
+          notes: slot.notes,
         });
       }
     }
