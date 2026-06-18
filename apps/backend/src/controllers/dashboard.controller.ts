@@ -34,12 +34,10 @@ export const getDailyDashboard = async (
     const { familyId } = req.user;
     const { date } = req.query;
 
-    let start: Date;
-    let end: Date;
+    let dateStr: string;
 
     if (typeof date === 'string') {
-      const day = new Date(date);
-      if (isNaN(day.getTime())) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         res.status(400).json({
           success: false,
           data: null,
@@ -47,17 +45,18 @@ export const getDailyDashboard = async (
         });
         return;
       }
-      start = new Date(day);
-      start.setUTCHours(0, 0, 0, 0);
-      end = new Date(day);
-      end.setUTCHours(23, 59, 59, 999);
+      dateStr = date;
     } else {
-      const day = new Date();
-      start = new Date(day);
-      start.setUTCHours(0, 0, 0, 0);
-      end = new Date(day);
-      end.setUTCHours(23, 59, 59, 999);
+      // Obtener fecha actual en la zona horaria de Perú (UTC-5)
+      const nowPeru = new Date(Date.now() - 5 * 60 * 60 * 1000);
+      dateStr = nowPeru.toISOString().split('T')[0];
     }
+
+    // Calcular límites UTC para el día local en Perú (UTC-5)
+    // 00:00:00 de hoy en Perú = 05:00:00 UTC de hoy
+    // 23:59:59.999 de hoy en Perú = 04:59:59.999 UTC de mañana
+    const start = new Date(`${dateStr}T05:00:00.000Z`);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
 
     // 1. Obtener Actividades del día
     const activities = await prisma.activity.findMany({

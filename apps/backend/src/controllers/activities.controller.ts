@@ -53,15 +53,13 @@ export const listActivities = async (req: Request, res: Response, next: NextFunc
     let end: Date | undefined;
 
     if (typeof date === 'string') {
-      const day = new Date(date);
-      if (isNaN(day.getTime())) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         res.status(400).json({ success: false, data: null, error: 'Formato de fecha inválido. Usa YYYY-MM-DD' });
         return;
       }
-      start = new Date(day);
-      start.setUTCHours(0, 0, 0, 0);
-      end = new Date(day);
-      end.setUTCHours(23, 59, 59, 999);
+      // Calcular límites UTC para el día local (UTC-5)
+      start = new Date(`${date}T05:00:00.000Z`);
+      end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
       where.scheduledAt = { gte: start, lte: end };
     }
 
