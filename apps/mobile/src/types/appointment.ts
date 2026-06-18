@@ -26,3 +26,14 @@ export interface CreateAppointmentInput {
   durationMin?: number;
   notes?: string;
 }
+
+export interface UpdateAppointmentInput {
+  title?: string;
+  type?: AppointmentType;
+  scheduledAt?: string;
+  location?: string | null;
+  doctorName?: string | null;
+  durationMin?: number | null;
+  notes?: string | null;
+  status?: AppointmentStatus;
+}

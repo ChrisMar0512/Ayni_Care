@@ -7,13 +7,14 @@ import {
   ActivityIndicator,
   Pressable,
   SafeAreaView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMedications, useAdministerMedication, useDeleteMedication } from '../../hooks/useMedications';
 import { useAuthStore } from '../../stores/authStore';
-import { Alert } from 'react-native';
 import type { Medication } from '../../types/medication';
 import type { MedicationsStackParamList } from '../../navigation/types';
 
@@ -29,12 +30,14 @@ function MedicationCard({
   isAdministering,
   isPrimaryCaregiver,
   onDelete,
+  onEdit,
 }: {
   medication: Medication;
   onAdminister: (id: string) => void;
   isAdministering: boolean;
   isPrimaryCaregiver: boolean;
   onDelete: (id: string, name: string) => void;
+  onEdit: (medication: Medication) => void;
 }) {
   const dosesGiven = todayAdministeredCount(medication);
   const totalTimes = medication.times.length;
@@ -49,17 +52,26 @@ function MedicationCard({
 
         <View style={styles.cardContent}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <Text style={styles.medName} numberOfLines={1}>
+            <Text style={[styles.medName, { flex: 1, marginRight: 8 }]} numberOfLines={1}>
               {medication.name}
             </Text>
             {isPrimaryCaregiver && (
-              <Pressable
-                onPress={() => onDelete(medication.id, medication.name)}
-                accessibilityLabel="Eliminar medicamento"
-                hitSlop={8}
-              >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                <Pressable
+                  onPress={() => onEdit(medication)}
+                  accessibilityLabel="Editar medicamento"
+                  hitSlop={8}
+                >
+                  <Ionicons name="pencil-outline" size={20} color="#D4856A" />
+                </Pressable>
+                <Pressable
+                  onPress={() => onDelete(medication.id, medication.name)}
+                  accessibilityLabel="Eliminar medicamento"
+                  hitSlop={8}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                </Pressable>
+              </View>
             )}
           </View>
           <Text style={styles.medDosage}>
@@ -133,21 +145,32 @@ export function MedicationsScreen() {
     administerMedication.mutate({ id });
   }
 
+  function handleEdit(medication: Medication) {
+    navigation.navigate('AddMedication', { medication });
+  }
+
   function handleDelete(id: string, name: string) {
-    Alert.alert(
-      'Eliminar medicamento',
-      `¿Estás seguro de que deseas eliminar "${name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            deleteMedication.mutate(id);
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`¿Estás seguro de que deseas eliminar "${name}"?`);
+      if (confirmed) {
+        deleteMedication.mutate(id);
+      }
+    } else {
+      Alert.alert(
+        'Eliminar medicamento',
+        `¿Estás seguro de que deseas eliminar "${name}"?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: () => {
+              deleteMedication.mutate(id);
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   }
 
   if (isLoading) {
@@ -212,6 +235,7 @@ export function MedicationsScreen() {
               onAdminister={handleAdminister}
               isPrimaryCaregiver={isPrimaryCaregiver}
               onDelete={handleDelete}
+              onEdit={handleEdit}
               isAdministering={
                 administerMedication.isPending &&
                 administerMedication.variables?.id === item.id

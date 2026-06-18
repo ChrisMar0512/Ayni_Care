@@ -13,13 +13,32 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCreateAppointment } from '../../hooks/useAppointments';
+import { useCreateAppointment, useUpdateAppointment } from '../../hooks/useAppointments';
 import type { AppointmentType } from '../../types/appointment';
 import type { AppointmentsStackParamList } from '../../navigation/types';
 
 type NavProp = NativeStackNavigationProp<AppointmentsStackParamList, 'AddAppointment'>;
+type RoutePropType = RouteProp<AppointmentsStackParamList, 'AddAppointment'>;
+
+function formatLocalToDDMMYYYY(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return todayDDMMYYYY();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatLocalToHHMM(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '09:00';
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
 
 const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
   { value: 'medical', label: 'Médica' },
@@ -72,16 +91,22 @@ function todayDDMMYYYY(): string {
 
 export function AddAppointmentScreen() {
   const navigation = useNavigation<NavProp>();
-  const createAppointment = useCreateAppointment();
+  const route = useRoute<RoutePropType>();
+  const appointment = route.params?.appointment;
+  const isEditing = !!appointment;
 
-  const [title, setTitle] = useState('');
-  const [type, setType] = useState<AppointmentType>('medical');
-  const [date, setDate] = useState(todayDDMMYYYY());
-  const [time, setTime] = useState('09:00');
-  const [location, setLocation] = useState('');
-  const [doctorName, setDoctorName] = useState('');
-  const [durationMin, setDurationMin] = useState('');
-  const [notes, setNotes] = useState('');
+  const createAppointment = useCreateAppointment();
+  const updateAppointment = useUpdateAppointment();
+  const isPending = createAppointment.isPending || updateAppointment.isPending;
+
+  const [title, setTitle] = useState(appointment?.title ?? '');
+  const [type, setType] = useState<AppointmentType>(appointment?.type ?? 'medical');
+  const [date, setDate] = useState(appointment ? formatLocalToDDMMYYYY(appointment.scheduledAt) : todayDDMMYYYY());
+  const [time, setTime] = useState(appointment ? formatLocalToHHMM(appointment.scheduledAt) : '09:00');
+  const [location, setLocation] = useState(appointment?.location ?? '');
+  const [doctorName, setDoctorName] = useState(appointment?.doctorName ?? '');
+  const [durationMin, setDurationMin] = useState(appointment?.durationMin ? String(appointment.durationMin) : '');
+  const [notes, setNotes] = useState(appointment?.notes ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function validate(): boolean {
@@ -105,26 +130,50 @@ export function AddAppointmentScreen() {
     if (!validate()) return;
 
     const scheduledAt = parseDateTimeToISO(date, time)!;
+    const payload = {
+      title: title.trim(),
+      type,
+      scheduledAt,
+      location: location.trim() || null,
+      doctorName: doctorName.trim() || null,
+      durationMin: durationMin ? Number(durationMin) : null,
+      notes: notes.trim() || null,
+    };
 
-    createAppointment.mutate(
-      {
-        title: title.trim(),
-        type,
-        scheduledAt,
-        location: location.trim() || undefined,
-        doctorName: doctorName.trim() || undefined,
-        durationMin: durationMin ? Number(durationMin) : undefined,
-        notes: notes.trim() || undefined,
-      },
-      {
-        onSuccess: () => {
-          navigation.goBack();
+    if (isEditing && appointment) {
+      updateAppointment.mutate(
+        {
+          id: appointment.id,
+          input: payload,
         },
-        onError: () => {
-          Alert.alert('Error', 'No se pudo guardar la cita. Intenta de nuevo.');
+        {
+          onSuccess: () => {
+            navigation.goBack();
+          },
+          onError: () => {
+            Alert.alert('Error', 'No se pudo actualizar la cita. Intenta de nuevo.');
+          },
+        }
+      );
+    } else {
+      createAppointment.mutate(
+        {
+          ...payload,
+          location: location.trim() || undefined,
+          doctorName: doctorName.trim() || undefined,
+          durationMin: durationMin ? Number(durationMin) : undefined,
+          notes: notes.trim() || undefined,
         },
-      },
-    );
+        {
+          onSuccess: () => {
+            navigation.goBack();
+          },
+          onError: () => {
+            Alert.alert('Error', 'No se pudo agendar la cita. Intenta de nuevo.');
+          },
+        }
+      );
+    }
   }
 
   return (
@@ -142,7 +191,9 @@ export function AddAppointmentScreen() {
           >
             <Ionicons name="chevron-back" size={24} color="#2C2C2C" />
           </Pressable>
-          <Text style={styles.headerTitle}>Agendar cita</Text>
+          <Text style={styles.headerTitle}>
+            {isEditing ? 'Editar cita' : 'Agendar cita'}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -271,17 +322,19 @@ export function AddAppointmentScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.submitButton,
-              createAppointment.isPending && styles.submitButtonDisabled,
+              isPending && styles.submitButtonDisabled,
               pressed && styles.submitButtonPressed,
             ]}
             onPress={handleSubmit}
-            disabled={createAppointment.isPending}
+            disabled={isPending}
             accessibilityLabel="Guardar cita"
           >
-            {createAppointment.isPending ? (
+            {isPending ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Guardar cita</Text>
+              <Text style={styles.submitButtonText}>
+                {isEditing ? 'Guardar cambios' : 'Guardar cita'}
+              </Text>
             )}
           </Pressable>
         </ScrollView>

@@ -13,14 +13,25 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCreateMedication } from '../../hooks/useMedications';
+import { useCreateMedication, useUpdateMedication } from '../../hooks/useMedications';
 import type { MedicationsStackParamList } from '../../navigation/types';
 
 type NavProp = NativeStackNavigationProp<MedicationsStackParamList, 'AddMedication'>;
+type RoutePropType = RouteProp<MedicationsStackParamList, 'AddMedication'>;
 
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function formatISOToDDMMYYYY(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return todayDDMMYYYY();
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+}
 
 function parseDateToISO(ddmmyyyy: string): string | null {
   const parts = ddmmyyyy.trim().split('/');
@@ -43,16 +54,26 @@ function todayDDMMYYYY(): string {
 
 export function AddMedicationScreen() {
   const navigation = useNavigation<NavProp>();
-  const createMedication = useCreateMedication();
+  const route = useRoute<RoutePropType>();
+  const medication = route.params?.medication;
+  const isEditing = !!medication;
 
-  const [name, setName] = useState('');
-  const [dosage, setDosage] = useState('');
-  const [form, setForm] = useState('');
-  const [frequency, setFrequency] = useState('');
-  const [times, setTimes] = useState<string[]>(['']);
-  const [instructions, setInstructions] = useState('');
-  const [startDate, setStartDate] = useState(todayDDMMYYYY());
-  const [stock, setStock] = useState('');
+  const createMedication = useCreateMedication();
+  const updateMedication = useUpdateMedication();
+  const isPending = createMedication.isPending || updateMedication.isPending;
+
+  const [name, setName] = useState(medication?.name ?? '');
+  const [dosage, setDosage] = useState(medication?.dosage ?? '');
+  const [form, setForm] = useState(medication?.form ?? '');
+  const [frequency, setFrequency] = useState(medication?.frequency ?? '');
+  const [times, setTimes] = useState<string[]>(medication?.times ?? ['']);
+  const [instructions, setInstructions] = useState(medication?.instructions ?? '');
+  const [startDate, setStartDate] = useState(
+    medication ? formatISOToDDMMYYYY(medication.startDate) : todayDDMMYYYY()
+  );
+  const [stock, setStock] = useState(
+    medication?.stock !== undefined && medication.stock !== null ? String(medication.stock) : ''
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function addTime() {
@@ -96,27 +117,50 @@ export function AddMedicationScreen() {
     if (!validate()) return;
 
     const startDateISO = parseDateToISO(startDate)!;
+    const payload = {
+      name: name.trim(),
+      dosage: dosage.trim(),
+      form: form.trim() || null,
+      frequency: frequency.trim(),
+      times: times.map((t) => t.trim()),
+      instructions: instructions.trim() || null,
+      startDate: startDateISO,
+      stock: stock ? Number(stock) : null,
+    };
 
-    createMedication.mutate(
-      {
-        name: name.trim(),
-        dosage: dosage.trim(),
-        form: form.trim() || undefined,
-        frequency: frequency.trim(),
-        times: times.map((t) => t.trim()),
-        instructions: instructions.trim() || undefined,
-        startDate: startDateISO,
-        stock: stock ? Number(stock) : undefined,
-      },
-      {
-        onSuccess: () => {
-          navigation.goBack();
+    if (isEditing && medication) {
+      updateMedication.mutate(
+        {
+          id: medication.id,
+          input: payload,
         },
-        onError: () => {
-          Alert.alert('Error', 'No se pudo guardar el medicamento. Intenta de nuevo.');
+        {
+          onSuccess: () => {
+            navigation.goBack();
+          },
+          onError: () => {
+            Alert.alert('Error', 'No se pudo actualizar el medicamento. Intenta de nuevo.');
+          },
+        }
+      );
+    } else {
+      createMedication.mutate(
+        {
+          ...payload,
+          form: form.trim() || undefined,
+          instructions: instructions.trim() || undefined,
+          stock: stock ? Number(stock) : undefined,
         },
-      },
-    );
+        {
+          onSuccess: () => {
+            navigation.goBack();
+          },
+          onError: () => {
+            Alert.alert('Error', 'No se pudo guardar el medicamento. Intenta de nuevo.');
+          },
+        }
+      );
+    }
   }
 
   return (
@@ -134,7 +178,9 @@ export function AddMedicationScreen() {
           >
             <Ionicons name="chevron-back" size={24} color="#2C2C2C" />
           </Pressable>
-          <Text style={styles.headerTitle}>Agregar medicamento</Text>
+          <Text style={styles.headerTitle}>
+            {isEditing ? 'Editar medicamento' : 'Agregar medicamento'}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -258,17 +304,19 @@ export function AddMedicationScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.submitButton,
-              createMedication.isPending && styles.submitButtonDisabled,
+              isPending && styles.submitButtonDisabled,
               pressed && styles.submitButtonPressed,
             ]}
             onPress={handleSubmit}
-            disabled={createMedication.isPending}
+            disabled={isPending}
             accessibilityLabel="Guardar medicamento"
           >
-            {createMedication.isPending ? (
+            {isPending ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Guardar medicamento</Text>
+              <Text style={styles.submitButtonText}>
+                {isEditing ? 'Guardar cambios' : 'Guardar medicamento'}
+              </Text>
             )}
           </Pressable>
         </ScrollView>

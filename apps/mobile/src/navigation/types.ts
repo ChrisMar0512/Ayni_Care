@@ -1,3 +1,6 @@
+import type { Medication } from '../types/medication';
+import type { Appointment } from '../types/appointment';
+
 export type AuthStackParamList = {
   Login: undefined;
   OTP: {
@@ -26,12 +29,12 @@ export type TabParamList = {
 
 export type MedicationsStackParamList = {
   MedicationsList: undefined;
-  AddMedication: undefined;
+  AddMedication: { medication?: Medication } | undefined;
 };
 
 export type AppointmentsStackParamList = {
   AppointmentsList: undefined;
-  AddAppointment: undefined;
+  AddAppointment: { appointment?: Appointment } | undefined;
 };
 
 export type FamiliaStackParamList = {

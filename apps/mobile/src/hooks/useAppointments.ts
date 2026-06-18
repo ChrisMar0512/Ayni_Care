@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
-import type { Appointment, CreateAppointmentInput } from '../types/appointment';
+import type { Appointment, CreateAppointmentInput, UpdateAppointmentInput } from '../types/appointment';
 import type { ApiResponse } from '@ayni-care/shared';
 
 const QUERY_KEY = ['appointments'] as const;
@@ -32,6 +32,18 @@ export function useDeleteAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/api/appointments/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+export function useUpdateAppointment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateAppointmentInput }) =>
+      api.patch<ApiResponse<Appointment>>(`/api/appointments/${id}`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });

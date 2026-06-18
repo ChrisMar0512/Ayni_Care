@@ -36,3 +36,16 @@ export interface CreateMedicationInput {
   endDate?: string;
   stock?: number;
 }
+
+export interface UpdateMedicationInput {
+  name?: string;
+  dosage?: string;
+  form?: string | null;
+  frequency?: string;
+  times?: string[];
+  instructions?: string | null;
+  startDate?: string;
+  endDate?: string | null;
+  stock?: number | null;
+  isActive?: boolean;
+}

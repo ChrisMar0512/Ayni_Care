@@ -7,13 +7,14 @@ import {
   ActivityIndicator,
   Pressable,
   SafeAreaView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppointments, useDeleteAppointment } from '../../hooks/useAppointments';
 import { useAuthStore } from '../../stores/authStore';
-import { Alert } from 'react-native';
 import type { Appointment, AppointmentType, AppointmentStatus } from '../../types/appointment';
 import type { AppointmentsStackParamList } from '../../navigation/types';
 
@@ -70,10 +71,12 @@ function AppointmentCard({
   appointment,
   isPrimaryCaregiver,
   onDelete,
+  onEdit,
 }: {
   appointment: Appointment;
   isPrimaryCaregiver: boolean;
   onDelete: (id: string, title: string) => void;
+  onEdit: (appointment: Appointment) => void;
 }) {
   const upcoming = isUpcoming(appointment.scheduledAt);
   const statusStyle = STATUS_COLORS[appointment.status];
@@ -92,13 +95,22 @@ function AppointmentCard({
               {appointment.title}
             </Text>
             {isPrimaryCaregiver && (
-              <Pressable
-                onPress={() => onDelete(appointment.id, appointment.title)}
-                accessibilityLabel="Eliminar cita"
-                hitSlop={8}
-              >
-                <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 4 }} />
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                <Pressable
+                  onPress={() => onEdit(appointment)}
+                  accessibilityLabel="Editar cita"
+                  hitSlop={8}
+                >
+                  <Ionicons name="pencil-outline" size={18} color="#D4856A" />
+                </Pressable>
+                <Pressable
+                  onPress={() => onDelete(appointment.id, appointment.title)}
+                  accessibilityLabel="Eliminar cita"
+                  hitSlop={8}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </Pressable>
+              </View>
             )}
             <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
               <Text style={[styles.statusText, { color: statusStyle.text }]}>
@@ -149,21 +161,32 @@ export function AppointmentsScreen() {
   const { role } = useAuthStore();
   const isPrimaryCaregiver = role === 'primary_caregiver';
 
+  function handleEdit(appointment: Appointment) {
+    navigation.navigate('AddAppointment', { appointment });
+  }
+
   function handleDelete(id: string, title: string) {
-    Alert.alert(
-      'Eliminar cita',
-      `¿Estás seguro de que deseas eliminar la cita "${title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            deleteAppointment.mutate(id);
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`¿Estás seguro de que deseas eliminar la cita "${title}"?`);
+      if (confirmed) {
+        deleteAppointment.mutate(id);
+      }
+    } else {
+      Alert.alert(
+        'Eliminar cita',
+        `¿Estás seguro de que deseas eliminar la cita "${title}"?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: () => {
+              deleteAppointment.mutate(id);
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   }
 
   if (isLoading) {
@@ -243,6 +266,7 @@ export function AppointmentsScreen() {
                 appointment={item}
                 isPrimaryCaregiver={isPrimaryCaregiver}
                 onDelete={handleDelete}
+                onEdit={handleEdit}
               />
             </>
           )}
