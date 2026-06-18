@@ -11,7 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useMedications, useAdministerMedication } from '../../hooks/useMedications';
+import { useMedications, useAdministerMedication, useDeleteMedication } from '../../hooks/useMedications';
+import { useAuthStore } from '../../stores/authStore';
+import { Alert } from 'react-native';
 import type { Medication } from '../../types/medication';
 import type { MedicationsStackParamList } from '../../navigation/types';
 
@@ -25,10 +27,14 @@ function MedicationCard({
   medication,
   onAdminister,
   isAdministering,
+  isPrimaryCaregiver,
+  onDelete,
 }: {
   medication: Medication;
   onAdminister: (id: string) => void;
   isAdministering: boolean;
+  isPrimaryCaregiver: boolean;
+  onDelete: (id: string, name: string) => void;
 }) {
   const dosesGiven = todayAdministeredCount(medication);
   const totalTimes = medication.times.length;
@@ -42,9 +48,20 @@ function MedicationCard({
         </View>
 
         <View style={styles.cardContent}>
-          <Text style={styles.medName} numberOfLines={1}>
-            {medication.name}
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <Text style={styles.medName} numberOfLines={1}>
+              {medication.name}
+            </Text>
+            {isPrimaryCaregiver && (
+              <Pressable
+                onPress={() => onDelete(medication.id, medication.name)}
+                accessibilityLabel="Eliminar medicamento"
+                hitSlop={8}
+              >
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              </Pressable>
+            )}
+          </View>
           <Text style={styles.medDosage}>
             {medication.dosage}
             {medication.form ? ` · ${medication.form}` : ''}
@@ -108,9 +125,29 @@ export function MedicationsScreen() {
   const navigation = useNavigation<NavProp>();
   const { data, isLoading, error, refetch } = useMedications();
   const administerMedication = useAdministerMedication();
+  const deleteMedication = useDeleteMedication();
+  const { role } = useAuthStore();
+  const isPrimaryCaregiver = role === 'primary_caregiver';
 
   function handleAdminister(id: string) {
     administerMedication.mutate({ id });
+  }
+
+  function handleDelete(id: string, name: string) {
+    Alert.alert(
+      'Eliminar medicamento',
+      `¿Estás seguro de que deseas eliminar "${name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            deleteMedication.mutate(id);
+          },
+        },
+      ]
+    );
   }
 
   if (isLoading) {
@@ -173,6 +210,8 @@ export function MedicationsScreen() {
             <MedicationCard
               medication={item}
               onAdminister={handleAdminister}
+              isPrimaryCaregiver={isPrimaryCaregiver}
+              onDelete={handleDelete}
               isAdministering={
                 administerMedication.isPending &&
                 administerMedication.variables?.id === item.id

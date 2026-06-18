@@ -11,7 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAppointments } from '../../hooks/useAppointments';
+import { useAppointments, useDeleteAppointment } from '../../hooks/useAppointments';
+import { useAuthStore } from '../../stores/authStore';
+import { Alert } from 'react-native';
 import type { Appointment, AppointmentType, AppointmentStatus } from '../../types/appointment';
 import type { AppointmentsStackParamList } from '../../navigation/types';
 
@@ -64,7 +66,15 @@ function isUpcoming(iso: string): boolean {
   return new Date(iso) >= new Date();
 }
 
-function AppointmentCard({ appointment }: { appointment: Appointment }) {
+function AppointmentCard({
+  appointment,
+  isPrimaryCaregiver,
+  onDelete,
+}: {
+  appointment: Appointment;
+  isPrimaryCaregiver: boolean;
+  onDelete: (id: string, title: string) => void;
+}) {
   const upcoming = isUpcoming(appointment.scheduledAt);
   const statusStyle = STATUS_COLORS[appointment.status];
   const icon = TYPE_ICONS[appointment.type];
@@ -81,6 +91,15 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
             <Text style={[styles.appointmentTitle, !upcoming && styles.textPast]} numberOfLines={2}>
               {appointment.title}
             </Text>
+            {isPrimaryCaregiver && (
+              <Pressable
+                onPress={() => onDelete(appointment.id, appointment.title)}
+                accessibilityLabel="Eliminar cita"
+                hitSlop={8}
+              >
+                <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 4 }} />
+              </Pressable>
+            )}
             <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
               <Text style={[styles.statusText, { color: statusStyle.text }]}>
                 {STATUS_LABELS[appointment.status]}
@@ -126,6 +145,26 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
 export function AppointmentsScreen() {
   const navigation = useNavigation<NavProp>();
   const { data, isLoading, error, refetch } = useAppointments();
+  const deleteAppointment = useDeleteAppointment();
+  const { role } = useAuthStore();
+  const isPrimaryCaregiver = role === 'primary_caregiver';
+
+  function handleDelete(id: string, title: string) {
+    Alert.alert(
+      'Eliminar cita',
+      `¿Estás seguro de que deseas eliminar la cita "${title}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            deleteAppointment.mutate(id);
+          },
+        },
+      ]
+    );
+  }
 
   if (isLoading) {
     return (
@@ -200,7 +239,11 @@ export function AppointmentsScreen() {
                   PASADAS ({past.length})
                 </Text>
               ) : null}
-              <AppointmentCard appointment={item} />
+              <AppointmentCard
+                appointment={item}
+                isPrimaryCaregiver={isPrimaryCaregiver}
+                onDelete={handleDelete}
+              />
             </>
           )}
         />
