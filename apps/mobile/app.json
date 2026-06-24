@@ -22,6 +22,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.aynicare.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ecace12d-4812-4bfb-a4c1-4ee5cfda5269"
+      }
     }
   }
 }

@@ -14,6 +14,7 @@ import notesRoutes from './routes/notes.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import jobsRoutes from './routes/jobs.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import adminRoutes from './routes/admin.routes';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -71,6 +72,7 @@ app.use('/api/expenses', expensesRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/jobs', jobsRoutes);
+app.use('/admin', adminRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────
 app.use(errorHandler);
