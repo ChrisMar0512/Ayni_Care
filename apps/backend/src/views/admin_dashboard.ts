@@ -449,7 +449,7 @@ export const adminDashboardHtml = `
     // Main initial fetch
     async function init() {
       try {
-        const port = window.location.port || '3000';
+        const port = window.location.port;
         const hostname = window.location.hostname;
         const protocol = window.location.protocol;
         const apiBase = \`\${protocol}//\${hostname}\${port ? ':' + port : ''}\`;
