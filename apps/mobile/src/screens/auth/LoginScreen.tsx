@@ -27,16 +27,6 @@ function normalizePhone(value: string) {
   return digits.startsWith('0') ? `+${digits.slice(1)}` : `+${digits}`;
 }
 
-// TODO: REMOVER ANTES DE PRODUCCIÓN — botón temporal para testing sin auth
-const DEV_MOCK_USER = { id: 'dev-user-id', email: 'dev@aynicare.local' };
-const DEV_MOCK_MEMBER = {
-  id: 'dev-member-id',
-  familyId: 'dev-family-id',
-  role: 'primary_caregiver' as const,
-  name: 'Usuario Dev',
-  family: { name: 'Familia de prueba' },
-};
-
 export function LoginScreen({ navigation }: Props) {
   const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -125,36 +115,6 @@ export function LoginScreen({ navigation }: Props) {
               <Text style={styles.buttonText}>Enviar código</Text>
             )}
           </Pressable>
-
-          {/* TODO: REMOVER ANTES DE PRODUCCIÓN — botón temporal para testing sin auth */}
-          {__DEV__ && (
-            <>
-              <Pressable
-                style={styles.devButton}
-                onPress={() => setAuth(DEV_MOCK_USER, DEV_MOCK_MEMBER, 'dev-token', 'dev-refresh')}
-                accessibilityLabel="Entrar sin iniciar sesión (solo desarrollo)"
-              >
-                <Text style={styles.devButtonText}>
-                  Entrar sin iniciar sesión (solo desarrollo)
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.devButton, { borderColor: '#87A96B', marginTop: 10 }]}
-                onPress={() => {
-                  const randomNum = Math.floor(Math.random() * 1000000);
-                  const mockUserId = `dev-new-user-${randomNum}`;
-                  const mockUser = { id: mockUserId, email: `new-user-${randomNum}@aynicare.local` };
-                  setAuth(mockUser, null, `dev-token-new:${mockUserId}`, 'dev-refresh');
-                }}
-                accessibilityLabel="Entrar como nuevo usuario (solo desarrollo)"
-              >
-                <Text style={[styles.devButtonText, { color: '#87A96B' }]}>
-                  Entrar como nuevo usuario (solo desarrollo)
-                </Text>
-              </Pressable>
-            </>
-          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -239,22 +199,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '600',
-  },
-  devButton: {
-    marginTop: 16,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#F4B860',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  devButtonText: {
-    color: '#F4B860',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
 });

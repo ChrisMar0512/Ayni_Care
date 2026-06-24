@@ -17,6 +17,10 @@
       "dest": "apps/backend/src/index.ts"
     },
     {
+      "src": "/admin(.*)",
+      "dest": "apps/backend/src/index.ts"
+    },
+    {
       "src": "/health",
       "dest": "apps/backend/src/index.ts"
     }
@@ -24,7 +28,7 @@
   "crons": [
     {
       "path": "/api/jobs/reminders",
-      "schedule": "0 0 * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }
