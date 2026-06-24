@@ -14,7 +14,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
   const token = authHeader.slice(7);
 
-  if (process.env.NODE_ENV === 'development' && (token === 'dev-token' || token.startsWith('dev-token-new:'))) {
+  if ((process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') && (token === 'dev-token' || token.startsWith('dev-token-new:'))) {
     const mockUserId = token.startsWith('dev-token-new:') 
       ? token.split(':')[1]! 
       : 'dev-user-id';
@@ -109,7 +109,7 @@ export const authenticateNewUser = async (req: Request, res: Response, next: Nex
 
   const token = authHeader.slice(7);
 
-  if (process.env.NODE_ENV === 'development' && token.startsWith('dev-token-new:')) {
+  if ((process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') && token.startsWith('dev-token-new:')) {
     const mockUserId = token.split(':')[1] || 'new-dev-user-id';
     
     // Check if user already belongs to a family
