@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Platform,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -161,6 +162,14 @@ export function AppointmentsScreen() {
   const { role } = useAuthStore();
   const isPrimaryCaregiver = role === 'primary_caregiver';
 
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
   function handleEdit(appointment: Appointment) {
     navigation.navigate('AddAppointment', { appointment });
   }
@@ -229,49 +238,60 @@ export function AppointmentsScreen() {
         </Pressable>
       </View>
 
-      {appointments.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Sin citas agendadas</Text>
-          <Text style={styles.emptySub}>Registra las citas médicas y terapias del paciente</Text>
-          <Pressable
-            style={styles.emptyAddButton}
-            onPress={() => navigation.navigate('AddAppointment')}
-          >
-            <Text style={styles.emptyAddButtonText}>Agendar cita</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={[...upcoming, ...past]}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            upcoming.length > 0 && past.length > 0 ? (
-              <Text style={styles.sectionHeader}>
-                PRÓXIMAS ({upcoming.length})
+      <FlatList
+        data={[...upcoming, ...past]}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          appointments.length === 0
+            ? [styles.listContent, { flexGrow: 1, justifyContent: 'center' }]
+            : styles.listContent
+        }
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Sin citas agendadas</Text>
+            <Text style={styles.emptySub}>Registra las citas médicas y terapias del paciente</Text>
+            <Pressable
+              style={styles.emptyAddButton}
+              onPress={() => navigation.navigate('AddAppointment')}
+            >
+              <Text style={styles.emptyAddButtonText}>Agendar cita</Text>
+            </Pressable>
+          </View>
+        }
+        ListHeaderComponent={
+          upcoming.length > 0 && past.length > 0 ? (
+            <Text style={styles.sectionHeader}>
+              PRÓXIMAS ({upcoming.length})
+            </Text>
+          ) : null
+        }
+        ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
+        renderItem={({ item, index }) => (
+          <>
+            {index === upcoming.length && past.length > 0 ? (
+              <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
+                PASADAS ({past.length})
               </Text>
-            ) : null
-          }
-          ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
-          renderItem={({ item, index }) => (
-            <>
-              {index === upcoming.length && past.length > 0 ? (
-                <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
-                  PASADAS ({past.length})
-                </Text>
-              ) : null}
-              <AppointmentCard
-                appointment={item}
-                isPrimaryCaregiver={isPrimaryCaregiver}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-              />
-            </>
-          )}
-        />
-      )}
+            ) : null}
+            <AppointmentCard
+              appointment={item}
+              isPrimaryCaregiver={isPrimaryCaregiver}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+            />
+          </>
+        )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#D4856A"]}
+            tintColor="#D4856A"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }

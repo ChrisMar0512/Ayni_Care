@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -178,6 +179,14 @@ export function ExpensesScreen() {
   const navigation = useNavigation<NavProp>();
   const { data, isLoading, error, refetch } = useExpenses();
 
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -224,27 +233,38 @@ export function ExpensesScreen() {
         </Pressable>
       </View>
 
-      {expenses.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Sin gastos registrados</Text>
-          <Text style={styles.emptySub}>Registra los gastos del cuidado y divídelos entre la familia</Text>
-          <Pressable
-            style={styles.emptyAddButton}
-            onPress={() => navigation.navigate('AddGasto')}
-          >
-            <Text style={styles.emptyAddButtonText}>Registrar gasto</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={expenses}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <ExpenseCard expense={item} />}
-        />
-      )}
+      <FlatList
+        data={expenses}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          expenses.length === 0
+            ? [styles.listContent, { flexGrow: 1, justifyContent: 'center' }]
+            : styles.listContent
+        }
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Sin gastos registrados</Text>
+            <Text style={styles.emptySub}>Registra los gastos del cuidado y divídelos entre la familia</Text>
+            <Pressable
+              style={styles.emptyAddButton}
+              onPress={() => navigation.navigate('AddGasto')}
+            >
+              <Text style={styles.emptyAddButtonText}>Registrar gasto</Text>
+            </Pressable>
+          </View>
+        }
+        renderItem={({ item }) => <ExpenseCard expense={item} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#D4856A"]}
+            tintColor="#D4856A"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }

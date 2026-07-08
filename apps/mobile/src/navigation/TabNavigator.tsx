@@ -2,7 +2,6 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { HomeScreen } from '../screens/home/HomeScreen';
 import { ActivitiesScreen } from '../screens/activities/ActivitiesScreen';
 import { AddActivityScreen } from '../screens/activities/AddActivityScreen';
 import { MedicationsScreen } from '../screens/medications/MedicationsScreen';
@@ -87,7 +86,6 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<keyof TabParamList, { focused: IconName; default: IconName }> = {
   Inicio: { focused: 'home', default: 'home-outline' },
-  Actividades: { focused: 'checkmark-circle', default: 'checkmark-circle-outline' },
   Medicamentos: { focused: 'medical', default: 'medical-outline' },
   Agenda: { focused: 'calendar', default: 'calendar-outline' },
   Familia: { focused: 'people', default: 'people-outline' },
@@ -119,8 +117,7 @@ export function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Inicio" component={HomeScreen} />
-      <Tab.Screen name="Actividades" component={ActivitiesNavigator} />
+      <Tab.Screen name="Inicio" component={ActivitiesNavigator} />
       <Tab.Screen name="Medicamentos" component={MedicationsNavigator} />
       <Tab.Screen name="Agenda" component={AppointmentsNavigator} />
       <Tab.Screen name="Familia" component={FamiliaNavigator} />

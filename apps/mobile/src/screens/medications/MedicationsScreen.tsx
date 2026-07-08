@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Platform,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -141,6 +142,14 @@ export function MedicationsScreen() {
   const { role } = useAuthStore();
   const isPrimaryCaregiver = role === 'primary_caregiver';
 
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
   function handleAdminister(id: string) {
     administerMedication.mutate({ id });
   }
@@ -211,39 +220,50 @@ export function MedicationsScreen() {
         </Pressable>
       </View>
 
-      {medications.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="medical-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Sin medicamentos activos</Text>
-          <Text style={styles.emptySub}>Agrega los medicamentos del paciente para llevar el control</Text>
-          <Pressable
-            style={styles.emptyAddButton}
-            onPress={() => navigation.navigate('AddMedication')}
-          >
-            <Text style={styles.emptyAddButtonText}>Agregar medicamento</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={medications}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <MedicationCard
-              medication={item}
-              onAdminister={handleAdminister}
-              isPrimaryCaregiver={isPrimaryCaregiver}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              isAdministering={
-                administerMedication.isPending &&
-                administerMedication.variables?.id === item.id
-              }
-            />
-          )}
-        />
-      )}
+      <FlatList
+        data={medications}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          medications.length === 0
+            ? [styles.listContent, { flexGrow: 1, justifyContent: 'center' }]
+            : styles.listContent
+        }
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="medical-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Sin medicamentos activos</Text>
+            <Text style={styles.emptySub}>Agrega los medicamentos del paciente para llevar el control</Text>
+            <Pressable
+              style={styles.emptyAddButton}
+              onPress={() => navigation.navigate('AddMedication')}
+            >
+              <Text style={styles.emptyAddButtonText}>Agregar medicamento</Text>
+            </Pressable>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <MedicationCard
+            medication={item}
+            onAdminister={handleAdminister}
+            isPrimaryCaregiver={isPrimaryCaregiver}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+            isAdministering={
+              administerMedication.isPending &&
+              administerMedication.variables?.id === item.id
+            }
+          />
+        )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#D4856A"]}
+            tintColor="#D4856A"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }

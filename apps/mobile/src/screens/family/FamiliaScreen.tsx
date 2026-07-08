@@ -12,6 +12,14 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FamiliaStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../stores/authStore';
+import type { MemberRole } from '@ayni-care/shared';
+
+const ROLE_LABELS: Record<MemberRole, string> = {
+  primary_caregiver: 'Cuidador Principal',
+  remote_family: 'Familiar Remoto',
+  weekend_helper: 'Ayudante de Fin de Semana',
+  paid_caregiver: 'Cuidador Contratado',
+};
 
 type NavProp = NativeStackNavigationProp<FamiliaStackParamList, 'FamiliaHub'>;
 
@@ -45,7 +53,7 @@ function SectionCard({ icon, title, description, color, bgColor, onPress }: Sect
 
 export function FamiliaScreen() {
   const navigation = useNavigation<NavProp>();
-  const member = useAuthStore((s) => s.member);
+  const { member, logout } = useAuthStore();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,6 +96,36 @@ export function FamiliaScreen() {
           bgColor="#EFF6FF"
           onPress={() => navigation.navigate('Miembros')}
         />
+
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>MI CUENTA</Text>
+
+        <View style={styles.profileCard}>
+          <View style={styles.profileHeader}>
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileAvatarText}>
+                {member?.name ? member.name.charAt(0).toUpperCase() : 'U'}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{member?.name || 'Usuario'}</Text>
+              <Text style={styles.profileEmail}>
+                {useAuthStore.getState().user?.email || useAuthStore.getState().user?.phone || ''}
+              </Text>
+              {member?.role && (
+                <View style={styles.profileRoleBadge}>
+                  <Text style={styles.profileRoleText}>
+                    {ROLE_LABELS[member.role]}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <Pressable style={styles.logoutButton} onPress={logout}>
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+            <Text style={styles.logoutText}>Cerrar sesión</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -181,5 +219,77 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#D1D5DB',
     textAlign: 'center',
+  },
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  profileAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#D4856A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileAvatarText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  profileInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  profileName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  profileRoleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+  profileRoleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontWeight: '600',
   },
 });

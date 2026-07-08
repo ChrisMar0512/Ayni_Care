@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -40,6 +41,14 @@ export function FamilyMembersScreen() {
   const currentUser = useAuthStore((s) => s.user);
   const { data: members, isLoading, error, refetch } = useFamilyMembers();
   const removeMember = useRemoveMember();
+
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const isPrimaryCaregiver = currentMember?.role === 'primary_caregiver';
 
@@ -132,6 +141,14 @@ export function FamilyMembersScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#D4856A"]}
+            tintColor="#D4856A"
+          />
+        }
         renderItem={({ item }) => {
           const style = ROLE_COLORS[item.role] || { bg: '#F3F4F6', text: '#4B5563', icon: 'person-outline' };
           const isCurrentUser = item.id === currentMember?.id || (item.userId !== undefined && item.userId === currentUser?.id);

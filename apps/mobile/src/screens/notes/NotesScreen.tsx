@@ -10,6 +10,7 @@ import {
   Alert,
   ScrollView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -107,6 +108,14 @@ export function NotesScreen() {
   );
   const deleteNote = useDeleteNote();
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
   function handleDelete(id: string) {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('¿Seguro que quieres eliminar esta nota?');
@@ -200,33 +209,44 @@ export function NotesScreen() {
         ))}
       </ScrollView>
 
-      {notes.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Sin notas</Text>
-          <Text style={styles.emptySub}>
-            {activeFilter !== 'all'
-              ? `No hay notas de tipo "${NOTE_TYPE_LABELS[activeFilter]}"`
-              : 'Registra observaciones y entrega de turno entre cuidadores'}
-          </Text>
-          {activeFilter === 'all' && (
-            <Pressable
-              style={styles.emptyAddButton}
-              onPress={() => navigation.navigate('AddNota')}
-            >
-              <Text style={styles.emptyAddButtonText}>Nueva nota</Text>
-            </Pressable>
-          )}
-        </View>
-      ) : (
-        <FlatList
-          data={notes}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <NoteCard note={item} onDelete={handleDelete} />}
-        />
-      )}
+      <FlatList
+        data={notes}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          notes.length === 0
+            ? [styles.listContent, { flexGrow: 1, justifyContent: 'center' }]
+            : styles.listContent
+        }
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="document-text-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Sin notas</Text>
+            <Text style={styles.emptySub}>
+              {activeFilter !== 'all'
+                ? `No hay notas de tipo "${NOTE_TYPE_LABELS[activeFilter]}"`
+                : 'Registra observaciones y entrega de turno entre cuidadores'}
+            </Text>
+            {activeFilter === 'all' && (
+              <Pressable
+                style={styles.emptyAddButton}
+                onPress={() => navigation.navigate('AddNota')}
+              >
+                <Text style={styles.emptyAddButtonText}>Nueva nota</Text>
+              </Pressable>
+            )}
+          </View>
+        }
+        renderItem={({ item }) => <NoteCard note={item} onDelete={handleDelete} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#D4856A"]}
+            tintColor="#D4856A"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }

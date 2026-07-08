@@ -8,6 +8,7 @@ import {
   Pressable,
   SectionList,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import { useCompleteActivity } from '../../hooks/useActivities';
 import { useDashboard, DashboardItem } from '../../hooks/useDashboard';
 import { useAdministerMedication } from '../../hooks/useMedications';
 import { DashboardItemCard } from '../../components/dashboard/DashboardItemCard';
+import { useAuthStore } from '../../stores/authStore';
 import type { ActivitiesStackParamList } from '../../navigation/types';
 
 type NavProp = NativeStackNavigationProp<ActivitiesStackParamList, 'ActivitiesList'>;
@@ -39,10 +41,19 @@ function formatDate(iso: string): string {
 export function ActivitiesScreen() {
   const navigation = useNavigation<NavProp>();
   const [selectedDate] = useState(todayISO);
+  const { member } = useAuthStore();
   
   const { data, isLoading, error, refetch } = useDashboard(selectedDate);
   const completeActivity = useCompleteActivity();
   const administerMedication = useAdministerMedication();
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const pendientes = (data ?? []).filter((a) => a.status === 'pending');
   const completadas = (data ?? []).filter((a) => a.status !== 'pending');
@@ -88,8 +99,13 @@ export function ActivitiesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Dashboard Diario</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerGreeting}>
+            Hola{member?.name ? `, ${member.name.split(' ')[0]}` : ''} 👋
+          </Text>
+          {member?.family?.name ? (
+            <Text style={styles.headerFamilyName}>{member.family.name}</Text>
+          ) : null}
           <Text style={styles.headerDate}>{formatDate(selectedDate)}</Text>
         </View>
         <Pressable
@@ -102,35 +118,46 @@ export function ActivitiesScreen() {
         </Pressable>
       </View>
 
-      {sections.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="checkmark-done-circle-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>Sin pendientes hoy</Text>
-          <Text style={styles.emptySub}>No hay actividades, citas ni medicamentos para este día</Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>{section.title}</Text>
-          )}
-          renderItem={({ item }) => (
-            <DashboardItemCard
-              item={item}
-              onCompleteActivity={handleCompleteActivity}
-              onCompleteMedication={handleCompleteMedication}
-              isActionPending={
-                item.type === 'medication'
-                  ? administerMedication.isPending && administerMedication.variables?.id === item.originalId
-                  : completeActivity.isPending && completeActivity.variables?.id === item.originalId
-              }
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          sections.length === 0
+            ? [styles.listContent, { flexGrow: 1, justifyContent: 'center' }]
+            : styles.listContent
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="checkmark-done-circle-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Sin pendientes hoy</Text>
+            <Text style={styles.emptySub}>No hay actividades, citas ni medicamentos para este día</Text>
+          </View>
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionHeader}>{section.title}</Text>
+        )}
+        renderItem={({ item }) => (
+          <DashboardItemCard
+            item={item}
+            onCompleteActivity={handleCompleteActivity}
+            onCompleteMedication={handleCompleteMedication}
+            isActionPending={
+              item.type === 'medication'
+                ? administerMedication.isPending && administerMedication.variables?.id === item.originalId
+                : completeActivity.isPending && completeActivity.variables?.id === item.originalId
+            }
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#D4856A"]}
+            tintColor="#D4856A"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -156,15 +183,21 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 28,
+  headerGreeting: {
+    fontSize: 24,
     fontWeight: '700',
     color: '#2C2C2C',
   },
-  headerDate: {
+  headerFamilyName: {
     fontSize: 15,
-    color: '#9CA3AF',
+    color: '#87A96B',
+    fontWeight: '600',
     marginTop: 2,
+  },
+  headerDate: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 4,
     textTransform: 'capitalize',
   },
   addButton: {
