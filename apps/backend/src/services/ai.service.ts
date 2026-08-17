@@ -21,15 +21,16 @@ const getGeminiClient = () => {
 };
 
 const GEMINI_MODEL = 'gemini-3.6-flash';
+const GEMINI_FAST_MODEL = 'gemini-3.5-flash-lite';
 
-// Transcripción fiel de notas de voz a texto
+// Transcripción fiel y ultrarrápida de notas de voz a texto
 export const transcribeAudio = async (
   audioBase64: string,
   audioMimeType: string = 'audio/m4a'
 ): Promise<string> => {
   const gemini = getGeminiClient();
   const response = await gemini.models.generateContent({
-    model: GEMINI_MODEL,
+    model: GEMINI_FAST_MODEL,
     contents: [
       {
         inlineData: {

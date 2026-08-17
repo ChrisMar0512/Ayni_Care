@@ -43,12 +43,11 @@ export const ChatAssistantScreen: React.FC = () => {
     setIsTranscribing(true);
     try {
       const text = await transcribeVoice(audioBase64, audioMimeType);
-      if (text) {
-        setInputText(text);
+      if (text && text.trim().length > 0) {
+        setInputText(text.trim());
       }
-    } catch (err) {
-      console.warn('Error al transcribir, enviando directo:', err);
-      sendMessage({ audioBase64, audioMimeType });
+    } catch (err: any) {
+      console.warn('Error al transcribir voz:', err);
     } finally {
       setIsTranscribing(false);
     }

@@ -5,7 +5,8 @@ export const assistantService = {
   async sendMessage(data: AssistantChatRequest): Promise<AssistantChatResponse> {
     const response = await api.post<{ success: boolean; data: AssistantChatResponse; error?: string }>(
       '/api/assistant/chat',
-      data
+      data,
+      { timeout: 60000 }
     );
 
     if (!response.data.success || !response.data.data) {
@@ -18,7 +19,8 @@ export const assistantService = {
   async transcribeAudio(audioBase64: string, audioMimeType: string = 'audio/m4a'): Promise<string> {
     const response = await api.post<{ success: boolean; data: { text: string }; error?: string }>(
       '/api/assistant/transcribe',
-      { audioBase64, audioMimeType }
+      { audioBase64, audioMimeType },
+      { timeout: 45000 }
     );
 
     if (!response.data.success || !response.data.data) {
