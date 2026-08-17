@@ -62,12 +62,20 @@ async function seedDemoProfile() {
       primaryMember = await prisma.familyMember.create({
         data: {
           familyId: family.id,
-          userId: 'christian-user-id',
+          userId: '492c80d4-0510-4e21-b25e-2b289a64055d',
           name: 'Christian Carrillo',
-          email: 'christian@aynicare.pe',
+          email: 'marchristian48@gmail.com',
           phone: '+51999888777',
           role: 'primary_caregiver' as MemberRole,
           isActive: true,
+        },
+      });
+    } else {
+      await prisma.familyMember.update({
+        where: { id: primaryMember.id },
+        data: {
+          userId: '492c80d4-0510-4e21-b25e-2b289a64055d',
+          email: 'marchristian48@gmail.com',
         },
       });
     }

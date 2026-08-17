@@ -19,7 +19,7 @@ async function main() {
     console.log(`Familia: ${f.name} (ID: ${f.id})`);
     console.log(`Adulto Mayor: ${f.elderly?.name || 'Ninguno'}`);
     console.log('Miembros:');
-    f.members.forEach((m) => console.log(`  - ${m.name} (${m.role}) [ID: ${m.id}]`));
+    f.members.forEach((m) => console.log(`  - ${m.name} (${m.role}) [Email: ${m.email}, UserId: ${m.userId}, MemberID: ${m.id}]`));
     console.log(`Medicamentos (${f.medications.length}):`, f.medications.map((m) => m.name));
     console.log(`Actividades (${f.activities.length}):`, f.activities.map((a) => a.title));
     console.log(`Citas (${f.appointments.length}):`, f.appointments.map((a) => a.title));
