@@ -8,7 +8,54 @@ interface Props {
 }
 
 export const MedicationWidgetCard: React.FC<Props> = ({ widget }) => {
-  const { medicationName, dosage, skipped, skipReason, givenByName, givenAt } = widget.data || {};
+  const isCreation = widget.type === 'medication_created';
+
+  if (isCreation) {
+    const { name, dosage, frequency, times, instructions } = widget.data || {};
+    const timesStr = Array.isArray(times) ? times.join(', ') : times || '08:00';
+
+    return (
+      <View style={[styles.card, styles.createdCard]}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.iconBox, styles.createdIcon]}>
+              <Ionicons name="medical" size={18} color="#2D6A4F" />
+            </View>
+            <Text style={[styles.headerTitle, styles.createdTitle]}>
+              {widget.title || 'Medicamento en Horario'}
+            </Text>
+          </View>
+          <Text style={styles.activeBadge}>Activo</Text>
+        </View>
+
+        <Text style={styles.medName}>💊 {name || 'Medicamento'}</Text>
+
+        {dosage ? (
+          <Text style={styles.detailText}>
+            Dosis: <Text style={styles.boldText}>{dosage}</Text>
+          </Text>
+        ) : null}
+
+        {frequency ? (
+          <Text style={styles.detailText}>
+            Frecuencia: <Text style={styles.boldText}>{frequency}</Text>
+          </Text>
+        ) : null}
+
+        {timesStr ? (
+          <Text style={styles.detailText}>
+            Horarios: <Text style={styles.boldText}>{timesStr}</Text>
+          </Text>
+        ) : null}
+
+        {instructions ? (
+          <Text style={styles.instructionsText}>📝 {instructions}</Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  const { medicationName, dosage, skipped, skipReason, givenByName, givenAt, stockRemaining } = widget.data || {};
 
   const timeStr = givenAt
     ? new Date(givenAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
@@ -48,6 +95,12 @@ export const MedicationWidgetCard: React.FC<Props> = ({ widget }) => {
         </Text>
       ) : null}
 
+      {stockRemaining !== null && stockRemaining !== undefined ? (
+        <Text style={styles.subDetailText}>
+          Stock restante: <Text style={styles.boldText}>{stockRemaining} unidades</Text>
+        </Text>
+      ) : null}
+
       {isSkipped && skipReason ? (
         <Text style={styles.reasonText}>Motivo: {skipReason}</Text>
       ) : null}
@@ -67,9 +120,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9F5',
     borderColor: '#C6EAD9',
   },
+  createdCard: {
+    backgroundColor: '#F4F9F4',
+    borderColor: '#B7E4C7',
+  },
   skippedCard: {
     backgroundColor: '#FFFBEB',
     borderColor: '#FDE68A',
+  },
+  createdIcon: {
+    backgroundColor: '#D8F3DC',
+  },
+  createdTitle: {
+    color: '#2D6A4F',
+  },
+  activeBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2D6A4F',
+    backgroundColor: '#D8F3DC',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  instructionsText: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontStyle: 'italic',
+    marginTop: 3,
   },
   header: {
     flexDirection: 'row',

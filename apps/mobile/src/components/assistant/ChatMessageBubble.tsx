@@ -21,6 +21,7 @@ export const ChatMessageBubble: React.FC<Props> = ({ message }) => {
 
     switch (message.widget.type) {
       case 'medication_dose_logged':
+      case 'medication_created':
         return <MedicationWidgetCard widget={message.widget} />;
       case 'activity_created':
       case 'activity_completed':

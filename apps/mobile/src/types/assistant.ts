@@ -1,5 +1,6 @@
 export type AssistantWidgetType =
   | 'medication_dose_logged'
+  | 'medication_created'
   | 'activity_created'
   | 'activity_completed'
   | 'expense_created'

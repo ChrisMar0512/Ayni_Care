@@ -47,6 +47,40 @@ export const transcribeAudio = async (
   return response.text?.trim() || '';
 };
 
+// Helper para convertir fecha y hora local de Perú (UTC-5) a UTC Date para PostgreSQL
+const parsePeruTimeToUTC = (dateOrTimeStr: string): Date => {
+  if (!dateOrTimeStr) return new Date();
+
+  // Si viene en formato ISO completo con Z o timezone
+  if (dateOrTimeStr.includes('Z') || dateOrTimeStr.includes('+')) {
+    return new Date(dateOrTimeStr);
+  }
+
+  // Si viene como "YYYY-MM-DD HH:mm" o "YYYY-MM-DDTHH:mm"
+  if (dateOrTimeStr.includes('-') && (dateOrTimeStr.includes(':') || dateOrTimeStr.includes('T'))) {
+    const cleanStr = dateOrTimeStr.replace('T', ' ');
+    const [dPart, tPart] = cleanStr.split(' ');
+    const [yyyy, mm, dd] = dPart.split('-').map(Number);
+    const [hh, min] = (tPart || '00:00').split(':').map(Number);
+    // En Perú (UTC-5), la hora UTC correspondiente es hora local + 5
+    return new Date(Date.UTC(yyyy, mm - 1, dd, (hh || 0) + 5, min || 0, 0));
+  }
+
+  // Si viene solo como hora "HH:mm" (ej. "08:00" o "8:00")
+  const matchTime = dateOrTimeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (matchTime) {
+    const hh = parseInt(matchTime[1], 10);
+    const min = parseInt(matchTime[2], 10);
+    const nowPeru = new Date(Date.now() - 5 * 60 * 60 * 1000);
+    const yyyy = nowPeru.getUTCFullYear();
+    const mm = nowPeru.getUTCMonth();
+    const dd = nowPeru.getUTCDate();
+    return new Date(Date.UTC(yyyy, mm, dd, hh + 5, min, 0));
+  }
+
+  return new Date(dateOrTimeStr);
+};
+
 // ─── Tool Declarations for Gemini ─────────────────────────────────────────────
 
 const tools: FunctionDeclaration[] = [
@@ -78,8 +112,50 @@ const tools: FunctionDeclaration[] = [
     },
   },
   {
+    name: 'create_medication',
+    description:
+      'Registra y agrega un nuevo medicamento al horario regular o plan de salud del adulto mayor (ej. "Agrega Paracetamol los lunes, miércoles y viernes a las 8am").',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        name: {
+          type: Type.STRING,
+          description: 'Nombre del medicamento (ej. "Paracetamol", "Losartán", "Enalapril", etc.).',
+        },
+        dosage: {
+          type: Type.STRING,
+          description: 'Dosis (ej. "500mg", "1 tableta", "10ml", "1 pastilla").',
+        },
+        frequency: {
+          type: Type.STRING,
+          description:
+            'Frecuencia de administración (ej. "Lunes, Miércoles y Viernes", "Cada 8 horas", "Todos los días", "Una vez al día").',
+        },
+        times: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description:
+            'Lista de horas de toma en formato 24h HH:MM (ej. ["08:00"] o ["08:00", "20:00"]).',
+        },
+        form: {
+          type: Type.STRING,
+          description: 'Presentación: tableta, cápsula, jarabe, gotas, inyección, etc.',
+        },
+        instructions: {
+          type: Type.STRING,
+          description: 'Indicaciones especiales (ej. "Tomar después de comer", "Con un vaso lleno de agua").',
+        },
+        stock: {
+          type: Type.NUMBER,
+          description: 'Cantidad de pastillas o unidades iniciales en stock (opcional).',
+        },
+      },
+      required: ['name', 'dosage', 'frequency', 'times'],
+    },
+  },
+  {
     name: 'create_activity',
-    description: 'Crea una nueva tarea, recordatorio o actividad de cuidado diario para la familia.',
+    description: 'Crea una nueva tarea, recordatorio o actividad de cuidado diario para la familia (ej. "Bañar a papá", "Pasear 20 min", "Ejercicios de respiración"). NO usar para medicamentos.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -243,6 +319,8 @@ class AssistantToolExecutor {
     switch (name) {
       case 'log_medication_dose':
         return this.logMedicationDose(args);
+      case 'create_medication':
+        return this.createMedication(args);
       case 'create_activity':
         return this.createActivity(args);
       case 'complete_activity':
@@ -272,15 +350,11 @@ class AssistantToolExecutor {
     const { medicationName, skipped = false, skipReason, notes } = args;
 
     // Buscar medicamento insensible a mayúsculas
-    const meds = await prisma.medication.findMany({
-      where: {
-        familyId: this.user.familyId,
-        deletedAt: null,
-        isActive: true,
-      },
+    const medications = await prisma.medication.findMany({
+      where: { familyId: this.user.familyId, isActive: true, deletedAt: null },
     });
 
-    const match = meds.find((m) =>
+    const match = medications.find((m) =>
       m.name.toLowerCase().includes(medicationName.toLowerCase()) ||
       medicationName.toLowerCase().includes(m.name.toLowerCase())
     );
@@ -288,49 +362,54 @@ class AssistantToolExecutor {
     if (!match) {
       return {
         result: {
-          error: `No encontré ningún medicamento activo con el nombre "${medicationName}". Los disponibles son: ${meds.map((m) => m.name).join(', ') || 'ninguno registrado'}.`,
+          error: `No encontré el medicamento '${medicationName}' en la lista activa de la familia. ¿Deseas que lo agregue a su horario regular?`,
         },
         actionName: 'medication_not_found',
       };
     }
 
+    // Registrar dosis en la base de datos
     const log = await prisma.$transaction(async (tx) => {
-      const newLog = await tx.medLog.create({
+      const createdLog = await tx.medLog.create({
         data: {
           medicationId: match.id,
           givenById: this.user.memberId,
-          skipped: Boolean(skipped),
-          skipReason: skipReason || null,
+          givenAt: new Date(),
+          skipped,
+          skipReason: skipped ? skipReason : null,
           notes: notes || null,
         },
         include: {
+          medication: { select: { id: true, name: true, dosage: true, stock: true } },
           givenBy: { select: { id: true, name: true } },
-          medication: { select: { id: true, name: true, dosage: true, form: true } },
         },
       });
 
+      // Descontar stock si no fue omitido y hay stock configurado
       if (!skipped && match.stock !== null && match.stock > 0) {
         await tx.medication.update({
           where: { id: match.id },
-          data: { stock: { decrement: 1 } },
+          data: { stock: Math.max(0, match.stock - 1) },
         });
       }
 
-      return newLog;
+      return createdLog;
     });
 
-    await broadcast(this.user.familyId, 'medication:administered', { log });
+    // Notificar realtime a la familia
+    await broadcast(this.user.familyId, 'medication:dose_logged', log);
 
     const widget: AssistantWidget = {
       type: 'medication_dose_logged',
       title: skipped ? 'Dosis Omitida' : 'Dosis Registrada',
       data: {
-        medicationId: match.id,
         medicationName: match.name,
         dosage: match.dosage,
-        skipped,
-        skipReason,
         givenByName: log.givenBy.name,
+        skipped,
+        skipReason: log.skipReason,
+        notes: log.notes,
+        stockRemaining: match.stock !== null ? Math.max(0, match.stock - 1) : null,
         givenAt: log.givenAt.toISOString(),
       },
     };
@@ -348,7 +427,84 @@ class AssistantToolExecutor {
     };
   }
 
-  // 2. Crear Actividad
+  // 2. Crear / Configurar Nuevo Medicamento
+  private async createMedication(args: any) {
+    if (this.user.role === 'paid_caregiver') {
+      return {
+        result: {
+          error: 'Los cuidadores pagados no tienen permiso para agregar medicamentos nuevos al catálogo.',
+        },
+        actionName: 'create_medication_denied',
+      };
+    }
+
+    const {
+      name,
+      dosage = '1 dosis',
+      frequency = 'Todos los días',
+      times = ['08:00'],
+      form = 'pastilla',
+      instructions,
+      stock,
+    } = args;
+
+    // Formatear horas a HH:mm
+    const formattedTimes: string[] = (Array.isArray(times) ? times : [times]).map((t: string) => {
+      const match = String(t).trim().match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        return `${match[1].padStart(2, '0')}:${match[2]}`;
+      }
+      return String(t);
+    });
+
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const medication = await prisma.medication.create({
+      data: {
+        familyId: this.user.familyId,
+        name,
+        dosage,
+        frequency,
+        times: formattedTimes,
+        form: form || null,
+        instructions: instructions || null,
+        stock: stock !== undefined && stock !== null ? Number(stock) : null,
+        startDate: startOfToday,
+        isActive: true,
+      },
+    });
+
+    await broadcast(this.user.familyId, 'medication:created', medication);
+
+    const widget: AssistantWidget = {
+      type: 'medication_created',
+      title: 'Medicamento Agregado al Horario',
+      data: {
+        id: medication.id,
+        name: medication.name,
+        dosage: medication.dosage,
+        frequency: medication.frequency,
+        times: medication.times,
+        instructions: medication.instructions,
+      },
+    };
+
+    return {
+      result: {
+        success: true,
+        name: medication.name,
+        dosage: medication.dosage,
+        frequency: medication.frequency,
+        times: medication.times,
+      },
+      widget,
+      actionName: 'create_medication',
+    };
+  }
+
+  // 3. Crear Actividad
   private async createActivity(args: any) {
     if (this.user.role === 'paid_caregiver') {
       return {
@@ -374,14 +530,7 @@ class AssistantToolExecutor {
 
     let scheduledAt: Date | undefined = undefined;
     if (scheduledTime) {
-      if (scheduledTime.includes('T')) {
-        scheduledAt = new Date(scheduledTime);
-      } else {
-        const now = new Date();
-        const [hh, mm] = scheduledTime.split(':').map(Number);
-        const dateStr = now.toISOString().split('T')[0];
-        scheduledAt = new Date(`${dateStr}T${String(hh || 0).padStart(2, '0')}:${String(mm || 0).padStart(2, '0')}:00.000Z`);
-      }
+      scheduledAt = parsePeruTimeToUTC(scheduledTime);
     }
 
     const activity = await prisma.activity.create({
@@ -609,7 +758,7 @@ class AssistantToolExecutor {
 
     const { title, doctorName, location, scheduledDate, type = 'medical', notes } = args;
 
-    const scheduledAt = new Date(scheduledDate);
+    const scheduledAt = parsePeruTimeToUTC(scheduledDate);
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -657,7 +806,7 @@ class AssistantToolExecutor {
       data: {
         familyId: this.user.familyId,
         authorId: this.user.memberId,
-        title: title || null,
+        title: title || 'Nota rápida',
         content,
         type,
       },
@@ -673,15 +822,20 @@ class AssistantToolExecutor {
       title: 'Nota Guardada',
       data: {
         id: note.id,
-        title: note.title || 'Nota de Cuidado',
+        title: note.title,
         content: note.content,
-        authorName: note.author.name,
-        createdAt: note.createdAt.toISOString(),
+        type: note.type,
+        author: note.author.name,
       },
     };
 
     return {
-      result: { success: true, title: note.title, author: note.author.name },
+      result: {
+        success: true,
+        title: note.title,
+        type: note.type,
+        author: note.author.name,
+      },
       widget,
       actionName: 'create_note',
     };
@@ -821,10 +975,13 @@ CONTEXTO ACTUAL DE LA FAMILIA:
 
 REGLAS DE INTERACCIÓN:
 1. Tono: Cálido, empático, conciso, respetuoso y con modismos amables latinoamericanos/peruanos.
-2. EJECUCIÓN CON HERRAMIENTAS: Cuando el usuario te cuente que hizo algo (ej. "ya le di su pastilla", "compré pañales", "agenda cita con el geriatra", "bañé a papá"), DEBES invocar la herramienta correspondiente para registrarlo en la base de datos.
+2. EJECUCIÓN CON HERRAMIENTAS: Cuando el usuario te cuente que hizo algo o pida una acción (ej. "ya le di su pastilla", "agrega Paracetamol al horario", "compré pañales", "agenda cita con el geriatra", "bañé a papá"), DEBES invocar la herramienta correspondiente para registrarlo en la base de datos.
 3. No inventes IDs ni datos que no tengas. Si falta un dato crítico (por ejemplo, el monto de un gasto), pregunta amablemente.
 4. Si el usuario hace una consulta sobre medicamentos o el día, consulta la herramienta 'get_daily_summary'.
 5. Sé breve en tus respuestas textuales, pues la app mostrará una tarjeta interactiva visual complementaria con la acción ejecutada.
+6. DISTINCIÓN CRÍTICA ENTRE MEDICAMENTOS Y ACTIVIDADES:
+   - Si el usuario te pide registrar, agregar o configurar un medicamento en el horario regular (ej. "agrégalo como toma lunes, miércoles y viernes a las 8am", "agrega Losartán 50mg cada 12 horas"), DEBES invocar la herramienta 'create_medication'.
+   - NUNCA uses 'create_activity' para medicamentos o pastillas. 'create_activity' es exclusivamente para tareas de cuidado diario como baño, aseo, paseos o cambios de apósito.
 `.trim();
 
   const executor = new AssistantToolExecutor(user);
