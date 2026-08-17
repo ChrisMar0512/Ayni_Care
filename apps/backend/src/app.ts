@@ -53,8 +53,9 @@ app.use((req, res, next) => {
 app.use('/api/', generalLimiter);
 app.use('/api/auth/', authLimiter);
 
-// ── Body parsing ──────────────────────────────────────────────────────────────
-app.use(express.json());
+// ── Body parsing (Permitir hasta 25MB para notas de voz en base64) ────────────
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {

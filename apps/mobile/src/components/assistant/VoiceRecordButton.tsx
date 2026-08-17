@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 
 interface Props {
   onSendAudio: (base64Audio: string, mimeType: string) => void;
@@ -53,23 +54,31 @@ export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) =>
       setRecording(null);
 
       if (uri) {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const reader = new FileReader();
+        let base64Pure = '';
+        if (Platform.OS !== 'web') {
+          base64Pure = await FileSystem.readAsStringAsync(uri, {
+            encoding: 'base64',
+          });
+        } else {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          base64Pure = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const res = reader.result as string;
+              resolve(res.includes(',') ? res.split(',')[1] : res);
+            };
+            reader.readAsDataURL(blob);
+          });
+        }
 
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          const base64Pure = base64data.includes(',') ? base64data.split(',')[1] : base64data;
+        if (base64Pure) {
           onSendAudio(base64Pure, 'audio/m4a');
-          setIsProcessing(false);
-        };
-
-        reader.readAsDataURL(blob);
-      } else {
-        setIsProcessing(false);
+        }
       }
     } catch (err) {
-      console.error('Error al detener grabación:', err);
+      console.error('Error al procesar audio:', err);
+    } finally {
       setIsProcessing(false);
     }
   };
