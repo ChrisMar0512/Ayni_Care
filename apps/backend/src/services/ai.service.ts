@@ -20,6 +20,32 @@ const getGeminiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+const GEMINI_MODEL = 'gemini-3.6-flash';
+
+// Transcripción fiel de notas de voz a texto
+export const transcribeAudio = async (
+  audioBase64: string,
+  audioMimeType: string = 'audio/m4a'
+): Promise<string> => {
+  const gemini = getGeminiClient();
+  const response = await gemini.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: [
+      {
+        inlineData: {
+          data: audioBase64,
+          mimeType: audioMimeType,
+        },
+      },
+      {
+        text: 'Transcribe fielmente lo que se dice en este audio en español. Devuelve exclusivamente el texto hablado sin explicaciones, comillas ni formato markdown.',
+      },
+    ],
+  });
+
+  return response.text?.trim() || '';
+};
+
 // ─── Tool Declarations for Gemini ─────────────────────────────────────────────
 
 const tools: FunctionDeclaration[] = [
@@ -802,6 +828,8 @@ REGLAS DE INTERACCIÓN:
 
   const executor = new AssistantToolExecutor(user);
 
+  let userTranscription: string | undefined = undefined;
+
   // 3. Preparar contenidos para Gemini
   const contents: any[] = [];
 
@@ -813,9 +841,24 @@ REGLAS DE INTERACCIÓN:
     });
   }
 
-  // Agregar mensaje actual (texto y/o audio)
-  const currentParts: any[] = [];
+  // Si se envió un audio, transcribirlo primero
+  let effectiveMessage = message || '';
   if (audioBase64) {
+    try {
+      userTranscription = await transcribeAudio(audioBase64, audioMimeType);
+      if (userTranscription) {
+        effectiveMessage = effectiveMessage
+          ? `${effectiveMessage} (Audio: ${userTranscription})`
+          : userTranscription;
+      }
+    } catch (err) {
+      console.warn('[AI] Falló transcripción previa de audio, pasando inlineData:', err);
+    }
+  }
+
+  // Agregar mensaje actual
+  const currentParts: any[] = [];
+  if (audioBase64 && !userTranscription) {
     currentParts.push({
       inlineData: {
         data: audioBase64,
@@ -823,8 +866,8 @@ REGLAS DE INTERACCIÓN:
       },
     });
   }
-  if (message) {
-    currentParts.push({ text: message });
+  if (effectiveMessage) {
+    currentParts.push({ text: effectiveMessage });
   }
 
   if (currentParts.length === 0) {
@@ -838,7 +881,7 @@ REGLAS DE INTERACCIÓN:
 
   // 4. Invocar Gemini con Function Calling
   const response = await gemini.models.generateContent({
-    model: 'gemini-1.5-flash',
+    model: GEMINI_MODEL,
     contents,
     config: {
       systemInstruction,
@@ -881,7 +924,7 @@ REGLAS DE INTERACCIÓN:
     });
 
     const secondTurnResponse = await gemini.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: GEMINI_MODEL,
       contents,
       config: {
         systemInstruction,
@@ -895,6 +938,7 @@ REGLAS DE INTERACCIÓN:
 
     return {
       message: replyText,
+      userTranscription,
       widget: finalWidget,
       actionsExecuted,
     };
@@ -907,6 +951,7 @@ REGLAS DE INTERACCIÓN:
 
   return {
     message: replyText,
+    userTranscription,
     widget: finalWidget,
     actionsExecuted,
   };

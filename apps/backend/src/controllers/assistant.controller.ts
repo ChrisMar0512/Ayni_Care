@@ -44,3 +44,30 @@ export const chatWithAssistant = async (
     next(err);
   }
 };
+
+// POST /api/assistant/transcribe
+export const transcribeVoice = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { audioBase64, audioMimeType } = req.body;
+
+    if (!audioBase64) {
+      res.status(400).json({ success: false, data: null, error: 'audioBase64 es requerido' });
+      return;
+    }
+
+    const { transcribeAudio } = await import('../services/ai.service');
+    const text = await transcribeAudio(audioBase64, audioMimeType);
+
+    res.json({
+      success: true,
+      data: { text },
+    });
+  } catch (err: any) {
+    console.error('[Assistant] Error al transcribir voz:', err);
+    next(err);
+  }
+};

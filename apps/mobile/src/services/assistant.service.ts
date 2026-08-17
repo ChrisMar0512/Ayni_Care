@@ -14,4 +14,17 @@ export const assistantService = {
 
     return response.data.data;
   },
+
+  async transcribeAudio(audioBase64: string, audioMimeType: string = 'audio/m4a'): Promise<string> {
+    const response = await api.post<{ success: boolean; data: { text: string }; error?: string }>(
+      '/api/assistant/transcribe',
+      { audioBase64, audioMimeType }
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || 'Error al transcribir la nota de voz');
+    }
+
+    return response.data.data.text;
+  },
 };

@@ -59,21 +59,25 @@ export function useAssistant() {
           history,
         });
 
-        // Actualizar mensaje pendiente con la respuesta real de la IA
+        // Actualizar mensaje de usuario (con la transcripción si fue audio) y el mensaje de respuesta de la IA
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === pendingAssistantId
-              ? {
-                  id: `assistant-${Date.now()}`,
-                  role: 'assistant',
-                  content: response.message,
-                  createdAt: new Date().toISOString(),
-                  widget: response.widget,
-                  actionsExecuted: response.actionsExecuted,
-                  isPending: false,
-                }
-              : m
-          )
+          prev.map((m) => {
+            if (m.id === userMsgId && response.userTranscription) {
+              return { ...m, content: response.userTranscription };
+            }
+            if (m.id === pendingAssistantId) {
+              return {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: response.message,
+                createdAt: new Date().toISOString(),
+                widget: response.widget,
+                actionsExecuted: response.actionsExecuted,
+                isPending: false,
+              };
+            }
+            return m;
+          })
         );
 
         // Si la IA ejecutó acciones en la BD, refrescar las vistas de la app
@@ -111,6 +115,10 @@ export function useAssistant() {
     [messages, queryClient]
   );
 
+  const transcribeVoice = useCallback(async (audioBase64: string, audioMimeType: string = 'audio/m4a') => {
+    return assistantService.transcribeAudio(audioBase64, audioMimeType);
+  }, []);
+
   const clearMessages = useCallback(() => {
     setMessages([INITIAL_MESSAGE]);
     setError(null);
@@ -121,6 +129,7 @@ export function useAssistant() {
     isLoading,
     error,
     sendMessage,
+    transcribeVoice,
     clearMessages,
   };
 }

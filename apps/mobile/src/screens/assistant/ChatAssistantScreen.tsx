@@ -18,7 +18,8 @@ import { VoiceRecordButton } from '../../components/assistant/VoiceRecordButton'
 
 export const ChatAssistantScreen: React.FC = () => {
   const [inputText, setInputText] = useState('');
-  const { messages, isLoading, sendMessage, clearMessages } = useAssistant();
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const { messages, isLoading, sendMessage, transcribeVoice, clearMessages } = useAssistant();
   const flatListRef = useRef<FlatList>(null);
 
   // Auto-scroll al recibir un nuevo mensaje
@@ -37,9 +38,20 @@ export const ChatAssistantScreen: React.FC = () => {
     sendMessage({ message: text });
   };
 
-  const handleSendAudio = (audioBase64: string, audioMimeType: string) => {
-    if (isLoading) return;
-    sendMessage({ audioBase64, audioMimeType });
+  const handleSendAudio = async (audioBase64: string, audioMimeType: string) => {
+    if (isLoading || isTranscribing) return;
+    setIsTranscribing(true);
+    try {
+      const text = await transcribeVoice(audioBase64, audioMimeType);
+      if (text) {
+        setInputText(text);
+      }
+    } catch (err) {
+      console.warn('Error al transcribir, enviando directo:', err);
+      sendMessage({ audioBase64, audioMimeType });
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   const handleSelectSuggestion = (prompt: string) => {
@@ -100,26 +112,26 @@ export const ChatAssistantScreen: React.FC = () => {
         <View style={styles.inputContainer}>
           <VoiceRecordButton
             onSendAudio={handleSendAudio}
-            disabled={isLoading}
+            disabled={isLoading || isTranscribing}
           />
 
           <View style={styles.inputWrapper}>
             <TextInput
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Escribe o mantén el micrófono..."
-              placeholderTextColor="#9CA3AF"
+              placeholder={isTranscribing ? 'Transcribiendo tu voz con IA...' : 'Escribe o presiona el micrófono...'}
+              placeholderTextColor={isTranscribing ? '#D4856A' : '#9CA3AF'}
               style={styles.textInput}
               multiline
               maxLength={500}
-              editable={!isLoading}
+              editable={!isLoading && !isTranscribing}
               onSubmitEditing={handleSendText}
             />
 
             {inputText.trim().length > 0 ? (
               <TouchableOpacity
                 onPress={handleSendText}
-                disabled={isLoading}
+                disabled={isLoading || isTranscribing}
                 activeOpacity={0.7}
                 style={styles.sendButton}
               >

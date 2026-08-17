@@ -37,6 +37,7 @@ export interface AssistantChatRequest {
 
 export interface AssistantChatResponse {
   message: string;
+  userTranscription?: string;
   widget?: AssistantWidget;
   actionsExecuted?: string[];
 }
