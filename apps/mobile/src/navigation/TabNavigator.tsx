@@ -16,6 +16,7 @@ import { ExpensesScreen } from '../screens/expenses/ExpensesScreen';
 import { AddExpenseScreen } from '../screens/expenses/AddExpenseScreen';
 import { NotesScreen } from '../screens/notes/NotesScreen';
 import { AddNoteScreen } from '../screens/notes/AddNoteScreen';
+import { ChatAssistantScreen } from '../screens/assistant/ChatAssistantScreen';
 import type {
   TabParamList,
   ActivitiesStackParamList,
@@ -86,6 +87,7 @@ const FONDO = '#FFFFFF';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<keyof TabParamList, { focused: IconName; default: IconName }> = {
+  Asistente: { focused: 'sparkles', default: 'sparkles-outline' },
   Inicio: { focused: 'home', default: 'home-outline' },
   Medicamentos: { focused: 'medical', default: 'medical-outline' },
   Agenda: { focused: 'calendar', default: 'calendar-outline' },
@@ -118,6 +120,7 @@ export function TabNavigator() {
         },
       })}
     >
+      <Tab.Screen name="Asistente" component={ChatAssistantScreen} />
       <Tab.Screen name="Inicio" component={ActivitiesNavigator} />
       <Tab.Screen name="Medicamentos" component={MedicationsNavigator} />
       <Tab.Screen name="Agenda" component={AppointmentsNavigator} />
