@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 
 interface Props {
   onSelectSuggestion: (text: string) => void;
@@ -16,11 +16,11 @@ const SUGGESTIONS = [
 
 export const QuickSuggestionPills: React.FC<Props> = ({ onSelectSuggestion, disabled }) => {
   return (
-    <View className="py-2">
+    <View style={styles.container}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={styles.scrollContent}
       >
         {SUGGESTIONS.map((item, index) => (
           <TouchableOpacity
@@ -28,16 +28,44 @@ export const QuickSuggestionPills: React.FC<Props> = ({ onSelectSuggestion, disa
             disabled={disabled}
             onPress={() => onSelectSuggestion(item.prompt)}
             activeOpacity={0.7}
-            className={`mr-2.5 px-3.5 py-2 rounded-full border border-emerald-300 bg-emerald-50/90 shadow-sm ${
-              disabled ? 'opacity-50' : 'active:bg-emerald-100'
-            }`}
+            style={[styles.pill, disabled && styles.pillDisabled]}
           >
-            <Text className="text-xs font-semibold text-emerald-900">
-              {item.label}
-            </Text>
+            <Text style={styles.pillText}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 8,
+    backgroundColor: '#F8F5F0',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  pill: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  pillDisabled: {
+    opacity: 0.5,
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2C2C2C',
+  },
+});

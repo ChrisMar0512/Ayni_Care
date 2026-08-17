@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AssistantWidget } from '../../types/assistant';
 
@@ -11,49 +11,136 @@ export const ExpenseWidgetCard: React.FC<Props> = ({ widget }) => {
   const { title, amount, currency = 'PEN', paidBy, splits = [] } = widget.data || {};
 
   return (
-    <View className="mt-3 p-4 rounded-2xl bg-amber-50/70 border border-amber-200">
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-2">
-          <View className="w-8 h-8 rounded-full bg-amber-100 items-center justify-center">
-            <Ionicons name="wallet-outline" size={20} color="#D97706" />
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.iconBox}>
+            <Ionicons name="wallet-outline" size={18} color="#D4856A" />
           </View>
-          <Text className="font-semibold text-sm text-amber-800">
-            {widget.title || 'Gasto Compartido Registrado'}
+          <Text style={styles.headerTitle}>
+            {widget.title || 'Gasto Registrado'}
           </Text>
         </View>
-        <Text className="text-base font-bold text-amber-900">
+        <Text style={styles.amountText}>
           {currency === 'PEN' ? 'S/.' : '$'} {Number(amount || 0).toFixed(2)}
         </Text>
       </View>
 
-      <Text className="text-lg font-bold text-gray-900 mb-1">
-        🛒 {title || 'Gasto de cuidado'}
-      </Text>
+      <Text style={styles.expenseTitle}>🛒 {title || 'Gasto del cuidado'}</Text>
 
-      {paidBy && (
-        <Text className="text-xs text-gray-600 mb-2">
-          Pagado por: <Text className="font-semibold text-gray-800">{paidBy}</Text>
+      {paidBy ? (
+        <Text style={styles.paidByText}>
+          Pagado por: <Text style={styles.boldText}>{paidBy}</Text>
         </Text>
-      )}
+      ) : null}
 
-      {splits.length > 0 && (
-        <View className="mt-2 pt-2 border-t border-amber-200/80">
-          <Text className="text-xs font-semibold text-amber-900 mb-1">
-            División entre familiares:
-          </Text>
+      {splits.length > 0 ? (
+        <View style={styles.splitsDivider}>
+          <Text style={styles.splitsHeader}>División entre familiares:</Text>
           {splits.map((s: any, idx: number) => (
-            <View key={idx} className="flex-row items-center justify-between py-0.5">
-              <Text className="text-xs text-gray-700 font-medium">• {s.name}</Text>
-              <Text className="text-xs font-semibold text-gray-900">
+            <View key={idx} style={styles.splitRow}>
+              <Text style={styles.memberName}>• {s.name}</Text>
+              <Text style={styles.splitAmount}>
                 {currency === 'PEN' ? 'S/.' : '$'} {Number(s.amount).toFixed(2)}{' '}
-                <Text className={s.isPaid ? 'text-emerald-600 font-bold' : 'text-amber-600 font-normal'}>
+                <Text style={s.isPaid ? styles.paidBadge : styles.pendingBadge}>
                   ({s.isPaid ? 'Cubierto' : 'Pendiente'})
                 </Text>
               </Text>
             </View>
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: '#FDF0EB',
+    borderColor: '#F8D7CC',
+    gap: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FADCCE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8C3D24',
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D4856A',
+  },
+  expenseTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  paidByText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  boldText: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  splitsDivider: {
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F5C6B5',
+    gap: 4,
+  },
+  splitsHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8C3D24',
+    marginBottom: 2,
+  },
+  splitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 1,
+  },
+  memberName: {
+    fontSize: 13,
+    color: '#4B5563',
+  },
+  splitAmount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  paidBadge: {
+    color: '#2D6A4F',
+    fontWeight: '700',
+  },
+  pendingBadge: {
+    color: '#D97706',
+    fontWeight: '600',
+  },
+});

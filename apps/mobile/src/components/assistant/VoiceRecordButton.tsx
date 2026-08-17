@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, Alert, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 
@@ -53,14 +53,12 @@ export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) =>
       setRecording(null);
 
       if (uri) {
-        // En plataformas web o Expo, convertimos a base64
         const response = await fetch(uri);
         const blob = await response.blob();
         const reader = new FileReader();
 
         reader.onloadend = () => {
           const base64data = reader.result as string;
-          // Extraer la porción base64 pura después de la coma
           const base64Pure = base64data.includes(',') ? base64data.split(',')[1] : base64data;
           onSendAudio(base64Pure, 'audio/m4a');
           setIsProcessing(false);
@@ -78,8 +76,8 @@ export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) =>
 
   if (isProcessing) {
     return (
-      <View className="w-12 h-12 rounded-full bg-emerald-100 items-center justify-center">
-        <ActivityIndicator size="small" color="#2D6A4F" />
+      <View style={styles.buttonProcessing}>
+        <ActivityIndicator size="small" color="#D4856A" />
       </View>
     );
   }
@@ -89,15 +87,49 @@ export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) =>
       disabled={disabled}
       onPress={isRecording ? stopRecording : startRecording}
       activeOpacity={0.7}
-      className={`w-12 h-12 rounded-full items-center justify-center shadow-sm ${
-        isRecording ? 'bg-red-500 animate-pulse' : 'bg-[#2D6A4F]'
-      } ${disabled ? 'opacity-50' : ''}`}
+      style={[
+        styles.button,
+        isRecording ? styles.buttonRecording : styles.buttonIdle,
+        disabled && styles.buttonDisabled,
+      ]}
     >
       <Ionicons
         name={isRecording ? 'stop' : 'mic'}
-        size={24}
+        size={22}
         color="#FFFFFF"
       />
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  button: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  buttonIdle: {
+    backgroundColor: '#D4856A',
+  },
+  buttonRecording: {
+    backgroundColor: '#EF4444',
+  },
+  buttonProcessing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FDF0EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+});

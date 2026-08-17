@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AssistantWidget } from '../../types/assistant';
 
@@ -11,29 +11,27 @@ export const DailySummaryWidgetCard: React.FC<Props> = ({ widget }) => {
   const { medications = [], activities = [], appointments = [] } = widget.data || {};
 
   return (
-    <View className="mt-3 p-4 rounded-2xl bg-emerald-50/90 border border-emerald-300">
-      <View className="flex-row items-center space-x-2 mb-3">
-        <View className="w-8 h-8 rounded-full bg-emerald-200/80 items-center justify-center">
-          <Ionicons name="sunny" size={20} color="#1B4332" />
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.iconBox}>
+          <Ionicons name="sunny" size={20} color="#D4856A" />
         </View>
-        <Text className="font-bold text-base text-emerald-950">
-          {widget.title || 'Resumen del Cuidado de Hoy'}
+        <Text style={styles.headerTitle}>
+          {widget.title || 'Resumen del Día de Hoy'}
         </Text>
       </View>
 
       {/* Medicamentos */}
-      <View className="mb-3 bg-white/80 p-3 rounded-xl border border-emerald-100">
-        <Text className="text-xs font-bold text-emerald-900 mb-1.5 uppercase tracking-wide">
-          💊 Medicamentos ({medications.length})
-        </Text>
+      <View style={styles.sectionBox}>
+        <Text style={styles.sectionHeader}>💊 Medicamentos ({medications.length})</Text>
         {medications.length === 0 ? (
-          <Text className="text-xs text-gray-500 italic">No hay medicamentos para hoy.</Text>
+          <Text style={styles.emptyText}>No hay medicamentos programados.</Text>
         ) : (
           medications.map((m: any, idx: number) => (
-            <View key={idx} className="flex-row items-center justify-between py-1 border-b border-gray-100 last:border-b-0">
-              <Text className="text-sm font-semibold text-gray-800">• {m.name} ({m.dosage})</Text>
-              <Text className={`text-xs font-bold ${m.isFullyTaken ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {m.isFullyTaken ? '✅ Completo' : `⏳ ${m.takenToday}/${m.times?.length || 1} tomas`}
+            <View key={idx} style={styles.itemRow}>
+              <Text style={styles.itemTitle}>• {m.name} ({m.dosage})</Text>
+              <Text style={m.isFullyTaken ? styles.completeBadge : styles.pendingBadge}>
+                {m.isFullyTaken ? '✅ Tomado' : `⏳ ${m.takenToday}/${m.times?.length || 1} tomas`}
               </Text>
             </View>
           ))
@@ -41,17 +39,15 @@ export const DailySummaryWidgetCard: React.FC<Props> = ({ widget }) => {
       </View>
 
       {/* Actividades */}
-      <View className="mb-3 bg-white/80 p-3 rounded-xl border border-emerald-100">
-        <Text className="text-xs font-bold text-emerald-900 mb-1.5 uppercase tracking-wide">
-          📋 Tareas del Día ({activities.length})
-        </Text>
+      <View style={styles.sectionBox}>
+        <Text style={styles.sectionHeader}>📋 Tareas del Día ({activities.length})</Text>
         {activities.length === 0 ? (
-          <Text className="text-xs text-gray-500 italic">No hay actividades registradas.</Text>
+          <Text style={styles.emptyText}>No hay tareas registradas.</Text>
         ) : (
           activities.map((a: any, idx: number) => (
-            <View key={idx} className="flex-row items-center justify-between py-1 border-b border-gray-100 last:border-b-0">
-              <Text className="text-sm text-gray-800">{a.title}</Text>
-              <Text className={`text-xs font-semibold ${a.status === 'completed' ? 'text-emerald-600' : 'text-gray-500'}`}>
+            <View key={idx} style={styles.itemRow}>
+              <Text style={styles.itemTitle}>{a.title}</Text>
+              <Text style={a.status === 'completed' ? styles.completeBadge : styles.pendingBadge}>
                 {a.status === 'completed' ? 'Hecha' : 'Pendiente'}
               </Text>
             </View>
@@ -60,19 +56,98 @@ export const DailySummaryWidgetCard: React.FC<Props> = ({ widget }) => {
       </View>
 
       {/* Citas */}
-      {appointments.length > 0 && (
-        <View className="bg-white/80 p-3 rounded-xl border border-emerald-100">
-          <Text className="text-xs font-bold text-emerald-900 mb-1.5 uppercase tracking-wide">
-            📅 Citas ({appointments.length})
-          </Text>
+      {appointments.length > 0 ? (
+        <View style={styles.sectionBox}>
+          <Text style={styles.sectionHeader}>📅 Citas ({appointments.length})</Text>
           {appointments.map((app: any, idx: number) => (
-            <View key={idx} className="py-1">
-              <Text className="text-sm font-bold text-indigo-900">{app.title}</Text>
-              {app.doctor && <Text className="text-xs text-gray-600">Dr(a): {app.doctor}</Text>}
+            <View key={idx} style={styles.itemRow}>
+              <Text style={styles.appointmentText}>{app.title}</Text>
+              {app.doctor ? <Text style={styles.doctorText}>Dr(a): {app.doctor}</Text> : null}
             </View>
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: '#FDFBF7',
+    borderColor: '#EBDDC9',
+    gap: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FDF0EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  sectionBox: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0E7D8',
+    gap: 6,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8C3D24',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  emptyText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  itemTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2C2C2C',
+  },
+  completeBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2D6A4F',
+  },
+  pendingBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D97706',
+  },
+  appointmentText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3730A3',
+  },
+  doctorText: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+});

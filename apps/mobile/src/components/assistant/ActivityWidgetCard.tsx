@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AssistantWidget } from '../../types/assistant';
 
@@ -16,40 +16,122 @@ export const ActivityWidgetCard: React.FC<Props> = ({ widget }) => {
     : null;
 
   return (
-    <View className={`mt-3 p-4 rounded-2xl border ${isCompleted ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}>
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-2">
-          <View className={`w-8 h-8 rounded-full items-center justify-center ${isCompleted ? 'bg-emerald-100' : 'bg-blue-100'}`}>
+    <View style={[styles.card, isCompleted ? styles.completedCard : styles.pendingCard]}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={[styles.iconBox, isCompleted ? styles.completedIcon : styles.pendingIcon]}>
             <Ionicons
               name={isCompleted ? 'checkbox' : 'list-outline'}
-              size={20}
+              size={18}
               color={isCompleted ? '#2D6A4F' : '#2563EB'}
             />
           </View>
-          <Text className={`font-semibold text-sm ${isCompleted ? 'text-emerald-800' : 'text-blue-800'}`}>
+          <Text style={[styles.headerTitle, isCompleted ? styles.completedTitle : styles.pendingTitle]}>
             {widget.title || (isCompleted ? 'Tarea Completada' : 'Tarea Creada')}
           </Text>
         </View>
-        {timeStr && <Text className="text-xs text-gray-500 font-medium">{timeStr}</Text>}
+        {timeStr ? <Text style={styles.timeText}>{timeStr}</Text> : null}
       </View>
 
-      <Text className="text-lg font-bold text-gray-900 mb-1">
-        📋 {title || 'Actividad'}
-      </Text>
+      <Text style={styles.activityTitle}>📋 {title || 'Actividad'}</Text>
 
-      {assignedTo && (
-        <Text className="text-xs text-gray-600">
-          Asignado a: <Text className="font-semibold text-gray-800">{assignedTo}</Text>
+      {assignedTo ? (
+        <Text style={styles.detailText}>
+          Asignado a: <Text style={styles.boldText}>{assignedTo}</Text>
         </Text>
-      )}
+      ) : null}
 
-      {priority && priority !== 'normal' && (
-        <View className="mt-2 self-start px-2 py-0.5 rounded-full bg-red-100">
-          <Text className="text-[11px] font-bold text-red-700 uppercase">
+      {priority && priority !== 'normal' ? (
+        <View style={styles.priorityBadge}>
+          <Text style={styles.priorityText}>
             Prioridad {priority === 'urgent' ? 'Urgente' : priority}
           </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+  },
+  completedCard: {
+    backgroundColor: '#F0F9F5',
+    borderColor: '#C6EAD9',
+  },
+  pendingCard: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedIcon: {
+    backgroundColor: '#D8F3DC',
+  },
+  pendingIcon: {
+    backgroundColor: '#DBEAFE',
+  },
+  headerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  completedTitle: {
+    color: '#1B4332',
+  },
+  pendingTitle: {
+    color: '#1E40AF',
+  },
+  timeText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A2B1A',
+  },
+  detailText: {
+    fontSize: 13,
+    color: '#4B5563',
+  },
+  boldText: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  priorityBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B91C1C',
+    textTransform: 'uppercase',
+  },
+});

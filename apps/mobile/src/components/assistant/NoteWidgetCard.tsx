@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AssistantWidget } from '../../types/assistant';
 
@@ -12,37 +12,101 @@ export const NoteWidgetCard: React.FC<Props> = ({ widget }) => {
 
   const timeStr = createdAt
     ? new Date(createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-    : 'Ahora';
+    : 'Hoy';
 
   return (
-    <View className="mt-3 p-4 rounded-2xl bg-teal-50/70 border border-teal-200">
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-2">
-          <View className="w-8 h-8 rounded-full bg-teal-100 items-center justify-center">
-            <Ionicons name="document-text-outline" size={20} color="#0D9488" />
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.iconBox}>
+            <Ionicons name="document-text-outline" size={18} color="#87A96B" />
           </View>
-          <Text className="font-semibold text-sm text-teal-800">
-            {widget.title || 'Nota Guardada'}
+          <Text style={styles.headerTitle}>
+            {widget.title || 'Nota de Cuidado Guardada'}
           </Text>
         </View>
-        <Text className="text-xs text-gray-500 font-medium">{timeStr}</Text>
+        <Text style={styles.timeText}>{timeStr}</Text>
       </View>
 
-      {title && (
-        <Text className="text-base font-bold text-gray-900 mb-1">
-          📝 {title}
-        </Text>
-      )}
+      {title ? <Text style={styles.noteTitle}>📝 {title}</Text> : null}
 
-      <Text className="text-sm text-gray-800 bg-white/60 p-2.5 rounded-xl border border-teal-100 mb-2">
-        "{content}"
-      </Text>
+      <View style={styles.quoteBox}>
+        <Text style={styles.quoteText}>"{content}"</Text>
+      </View>
 
-      {authorName && (
-        <Text className="text-xs text-gray-500">
-          Escrita por: <Text className="font-medium text-gray-700">{authorName}</Text>
+      {authorName ? (
+        <Text style={styles.authorText}>
+          Registrado por: <Text style={styles.boldText}>{authorName}</Text>
         </Text>
-      )}
+      ) : null}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: '#F0F7EB',
+    borderColor: '#D4E8C8',
+    gap: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E2F0D9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B6B32',
+  },
+  timeText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  noteTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  quoteBox: {
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2F0D9',
+    marginVertical: 4,
+  },
+  quoteText: {
+    fontSize: 13,
+    color: '#374151',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  authorText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  boldText: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+});

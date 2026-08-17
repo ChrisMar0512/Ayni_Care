@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AssistantWidget } from '../../types/assistant';
 
@@ -21,44 +21,99 @@ export const AppointmentWidgetCard: React.FC<Props> = ({ widget }) => {
     : 'Fecha por definir';
 
   return (
-    <View className="mt-3 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200">
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center space-x-2">
-          <View className="w-8 h-8 rounded-full bg-indigo-100 items-center justify-center">
-            <Ionicons name="calendar" size={20} color="#4F46E5" />
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.iconBox}>
+            <Ionicons name="calendar" size={18} color="#4F46E5" />
           </View>
-          <Text className="font-semibold text-sm text-indigo-800">
+          <Text style={styles.headerTitle}>
             {widget.title || 'Cita Agendada en Calendario'}
           </Text>
         </View>
       </View>
 
-      <Text className="text-lg font-bold text-gray-900 mb-1">
-        🩺 {title || 'Cita Médica'}
-      </Text>
+      <Text style={styles.appointmentTitle}>🩺 {title || 'Cita Médica'}</Text>
 
-      <View className="mt-2 space-y-1">
-        <View className="flex-row items-center space-x-1.5">
-          <Ionicons name="time-outline" size={16} color="#4B5563" />
-          <Text className="text-sm font-semibold text-gray-800">{formattedDate}</Text>
-        </View>
-
-        {doctorName && (
-          <View className="flex-row items-center space-x-1.5 mt-1">
-            <Ionicons name="person-outline" size={16} color="#4B5563" />
-            <Text className="text-xs text-gray-700">
-              Especialista: <Text className="font-medium text-gray-900">{doctorName}</Text>
-            </Text>
-          </View>
-        )}
-
-        {location && (
-          <View className="flex-row items-center space-x-1.5 mt-1">
-            <Ionicons name="location-outline" size={16} color="#4B5563" />
-            <Text className="text-xs text-gray-700">{location}</Text>
-          </View>
-        )}
+      <View style={styles.detailRow}>
+        <Ionicons name="time-outline" size={16} color="#6B7280" />
+        <Text style={styles.dateText}>{formattedDate}</Text>
       </View>
+
+      {doctorName ? (
+        <View style={styles.detailRow}>
+          <Ionicons name="person-outline" size={16} color="#6B7280" />
+          <Text style={styles.detailText}>
+            Especialista: <Text style={styles.boldText}>{doctorName}</Text>
+          </Text>
+        </View>
+      ) : null}
+
+      {location ? (
+        <View style={styles.detailRow}>
+          <Ionicons name="location-outline" size={16} color="#6B7280" />
+          <Text style={styles.detailText}>{location}</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    gap: 4,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#3730A3',
+  },
+  appointmentTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E1B4B',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#312E81',
+  },
+  detailText: {
+    fontSize: 13,
+    color: '#4B5563',
+  },
+  boldText: {
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+});

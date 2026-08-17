@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AssistantChatMessage } from '../../types/assistant';
 import { MedicationWidgetCard } from './MedicationWidgetCard';
@@ -44,52 +44,149 @@ export const ChatMessageBubble: React.FC<Props> = ({ message }) => {
 
   if (isUser) {
     return (
-      <View className="flex-row justify-end my-1.5 px-4">
-        <View className="max-w-[82%] bg-[#2D6A4F] rounded-3xl rounded-tr-sm px-4 py-3 shadow-sm">
-          <Text className="text-white text-base font-normal leading-relaxed">
-            {message.content}
-          </Text>
-          {timeStr && (
-            <Text className="text-[11px] text-emerald-200 self-end mt-1 font-light">
-              {timeStr}
-            </Text>
-          )}
+      <View style={styles.userRow}>
+        <View style={styles.userBubble}>
+          <Text style={styles.userText}>{message.content}</Text>
+          {timeStr ? <Text style={styles.userTime}>{timeStr}</Text> : null}
         </View>
       </View>
     );
   }
 
   return (
-    <View className="flex-row justify-start my-2 px-4 space-x-2">
+    <View style={styles.assistantRow}>
       {/* Avatar de Ayni */}
-      <View className="w-8 h-8 rounded-full bg-[#2D6A4F] items-center justify-center mt-1 shadow-xs">
-        <Ionicons name="leaf" size={16} color="#FFFFFF" />
+      <View style={styles.avatar}>
+        <Ionicons name="sparkles" size={16} color="#FFFFFF" />
       </View>
 
-      <View className="max-w-[82%]">
-        <View className="bg-white rounded-3xl rounded-tl-sm px-4 py-3.5 border border-gray-100 shadow-xs">
-          <View className="flex-row items-center justify-between mb-1">
-            <Text className="text-xs font-bold text-[#2D6A4F]">Ayni</Text>
-            {timeStr && !message.isPending && (
-              <Text className="text-[10px] text-gray-400 font-light">{timeStr}</Text>
-            )}
+      <View style={styles.assistantContainer}>
+        <View style={styles.assistantBubble}>
+          <View style={styles.bubbleHeader}>
+            <Text style={styles.senderName}>Ayni</Text>
+            {timeStr && !message.isPending ? (
+              <Text style={styles.assistantTime}>{timeStr}</Text>
+            ) : null}
           </View>
 
           {message.isPending ? (
-            <View className="flex-row items-center space-x-2 py-1">
-              <ActivityIndicator size="small" color="#2D6A4F" />
-              <Text className="text-sm text-gray-500 italic">Escribiendo y coordinando...</Text>
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="small" color="#D4856A" />
+              <Text style={styles.loadingText}>Coordinando con la familia...</Text>
             </View>
           ) : (
-            <Text className="text-gray-900 text-base leading-relaxed">
-              {message.content}
-            </Text>
+            <Text style={styles.assistantText}>{message.content}</Text>
           )}
 
-          {/* Renderizado de Widgets / Componentes Vivos */}
+          {/* Renderizado de Widgets */}
           {renderWidget()}
         </View>
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  userRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginVertical: 4,
+    paddingHorizontal: 16,
+  },
+  userBubble: {
+    maxWidth: '82%',
+    backgroundColor: '#D4856A',
+    borderRadius: 20,
+    borderTopRightRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  userText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    lineHeight: 22,
+    fontWeight: '400',
+  },
+  userTime: {
+    fontSize: 11,
+    color: '#FDEEE9',
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    fontWeight: '400',
+  },
+  assistantRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginVertical: 6,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#D4856A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  assistantContainer: {
+    maxWidth: '84%',
+    flex: 1,
+  },
+  assistantBubble: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  senderName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D4856A',
+  },
+  assistantTime: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  assistantText: {
+    fontSize: 16,
+    color: '#2C2C2C',
+    lineHeight: 23,
+  },
+  loadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+});

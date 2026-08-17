@@ -7,9 +7,9 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
-  StatusBar,
+  StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAssistant } from '../../hooks/useAssistant';
 import { ChatMessageBubble } from '../../components/assistant/ChatMessageBubble';
@@ -48,38 +48,35 @@ export const ChatAssistantScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FAF8]">
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAF8" />
-
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* ─── Encabezado ────────────────────────────────────────── */}
-      <View className="px-5 py-3.5 bg-white border-b border-gray-200/70 flex-row items-center justify-between shadow-xs">
-        <View className="flex-row items-center space-x-3">
-          <View className="w-10 h-10 rounded-full bg-[#2D6A4F] items-center justify-center shadow-xs">
-            <Ionicons name="leaf" size={20} color="#FFFFFF" />
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.avatar}>
+            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
           </View>
           <View>
-            <View className="flex-row items-center space-x-1.5">
-              <Text className="text-lg font-bold text-gray-900">Ayni Asistente</Text>
-              <View className="w-2 h-2 rounded-full bg-emerald-500" />
+            <View style={styles.titleRow}>
+              <Text style={styles.headerTitle}>Ayni Asistente</Text>
+              <View style={styles.onlineDot} />
             </View>
-            <Text className="text-xs text-gray-500 font-medium">
-              Coordinación inteligente por voz y chat
-            </Text>
+            <Text style={styles.headerSub}>Coordinación inteligente por voz y chat</Text>
           </View>
         </View>
 
         <TouchableOpacity
           onPress={clearMessages}
           activeOpacity={0.6}
-          className="p-2 rounded-full hover:bg-gray-100"
+          style={styles.trashBtn}
+          accessibilityLabel="Limpiar conversación"
         >
-          <Ionicons name="trash-outline" size={20} color="#6B7280" />
+          <Ionicons name="trash-outline" size={20} color="#9CA3AF" />
         </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
+        style={styles.keyboardContainer}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* ─── Lista de Mensajes ─────────────────────────────────── */}
@@ -88,7 +85,7 @@ export const ChatAssistantScreen: React.FC = () => {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ChatMessageBubble message={item} />}
-          contentContainerStyle={{ paddingVertical: 12, paddingBottom: 24 }}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
@@ -100,40 +97,147 @@ export const ChatAssistantScreen: React.FC = () => {
         />
 
         {/* ─── Barra de Entrada (Texto y Audio) ───────────────────── */}
-        <View className="px-4 py-3 bg-white border-t border-gray-200 flex-row items-center space-x-2">
-          {/* Botón de Voz */}
+        <View style={styles.inputContainer}>
           <VoiceRecordButton
             onSendAudio={handleSendAudio}
             disabled={isLoading}
           />
 
-          {/* Campo de Texto */}
-          <View className="flex-1 flex-row items-center bg-[#F3F4F6] rounded-full px-4 py-2.5 min-h-[48px] border border-gray-200">
+          <View style={styles.inputWrapper}>
             <TextInput
               value={inputText}
               onChangeText={setInputText}
               placeholder="Escribe o mantén el micrófono..."
               placeholderTextColor="#9CA3AF"
-              className="flex-1 text-base text-gray-900 p-0"
+              style={styles.textInput}
               multiline
               maxLength={500}
               editable={!isLoading}
               onSubmitEditing={handleSendText}
             />
 
-            {inputText.trim().length > 0 && (
+            {inputText.trim().length > 0 ? (
               <TouchableOpacity
                 onPress={handleSendText}
                 disabled={isLoading}
                 activeOpacity={0.7}
-                className="ml-2 w-8 h-8 rounded-full bg-[#2D6A4F] items-center justify-center"
+                style={styles.sendButton}
               >
                 <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8F5F0',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#D4856A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  headerSub: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 1,
+  },
+  trashBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingVertical: 12,
+    paddingBottom: 16,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    gap: 10,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#2C2C2C',
+    padding: 0,
+    maxHeight: 100,
+  },
+  sendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#D4856A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+});
