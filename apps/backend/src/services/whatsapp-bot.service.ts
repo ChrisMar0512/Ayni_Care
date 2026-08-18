@@ -109,7 +109,18 @@ export async function startWhatsAppBot() {
         msg.message?.extendedTextMessage?.text ||
         '';
 
-      console.log(`[WhatsApp Bot] Mensaje de ${rawPhone}. Tipo: ${isAudio ? 'Nota de Voz' : 'Texto'}`);
+      // 🛡️ FILTRO DE PROTECCIÓN PARA TUS CHATS PERSONALES:
+      // Si es un mensaje de texto normal que no menciona "Ayni" ni empieza con "/",
+      // se ignora por completo para que puedas chatear con tus amigos y familia con normalidad.
+      const mentionsAyni = textMessage.toLowerCase().includes('ayni');
+      const hasPrefix = textMessage.startsWith('!') || textMessage.startsWith('/');
+
+      if (!isAudio && !mentionsAyni && !hasPrefix) {
+        // Mensaje personal de WhatsApp normal: ignorar para no interrumpir tus conversaciones
+        continue;
+      }
+
+      console.log(`[WhatsApp Bot] 🌿 Mensaje para Ayni de ${rawPhone}. Tipo: ${isAudio ? 'Nota de Voz' : 'Texto'}`);
 
       // Buscar al miembro familiar en la BD
       let member = await prisma.familyMember.findFirst({
@@ -131,9 +142,11 @@ export async function startWhatsAppBot() {
       }
 
       if (!member) {
-        await sock.sendMessage(remoteJid, {
-          text: '¡Hola! Soy Ayni, tu asistente de cuidado familiar. 🌿\n\nNo encontré tu número registrado en ninguna familia de Ayni Care.',
-        });
+        if (mentionsAyni || hasPrefix) {
+          await sock.sendMessage(remoteJid, {
+            text: '¡Hola! Soy Ayni, tu asistente de cuidado familiar. 🌿\n\nNo encontré tu número registrado en ninguna familia de Ayni Care.',
+          });
+        }
         continue;
       }
 
