@@ -344,6 +344,20 @@ const tools: FunctionDeclaration[] = [
       },
     },
   },
+  {
+    name: 'get_upcoming_appointments',
+    description:
+      'Consulta las próximas citas médicas, consultas con doctores/especialistas, controles, exámenes clínicos o terapias agendadas en el calendario para los próximos días o semanas.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        limit: {
+          type: Type.NUMBER,
+          description: 'Cantidad máxima de citas a consultar (por defecto 5).',
+        },
+      },
+    },
+  },
 ];
 
 // ─── Tool Execution Handlers ──────────────────────────────────────────────────
@@ -372,6 +386,8 @@ class AssistantToolExecutor {
         return this.createExpense(args);
       case 'create_appointment':
         return this.createAppointment(args);
+      case 'get_upcoming_appointments':
+        return this.getUpcomingAppointments(args);
       case 'create_note':
         return this.createNote(args);
       case 'get_daily_summary':
@@ -893,7 +909,7 @@ class AssistantToolExecutor {
     const endOfToday = new Date(startOfToday);
     endOfToday.setUTCHours(23, 59, 59, 999);
 
-    const [medications, activities, appointments] = await Promise.all([
+    const [medications, activities, appointmentsToday, upcomingAppointments] = await Promise.all([
       prisma.medication.findMany({
         where: { familyId: this.user.familyId, isActive: true, deletedAt: null },
         include: {
@@ -921,6 +937,15 @@ class AssistantToolExecutor {
           scheduledAt: { gte: startOfToday, lte: endOfToday },
         },
       }),
+      prisma.appointment.findMany({
+        where: {
+          familyId: this.user.familyId,
+          deletedAt: null,
+          scheduledAt: { gte: startOfToday },
+        },
+        orderBy: { scheduledAt: 'asc' },
+        take: 3,
+      }),
     ]);
 
     const medSummary = medications.map((m) => ({
@@ -943,7 +968,7 @@ class AssistantToolExecutor {
       data: {
         medications: medSummary,
         activities: actSummary,
-        appointments: appointments.map((app) => ({
+        appointments: (appointmentsToday.length > 0 ? appointmentsToday : upcomingAppointments).map((app) => ({
           title: app.title,
           time: app.scheduledAt.toISOString(),
           doctor: app.doctorName,
@@ -956,10 +981,69 @@ class AssistantToolExecutor {
         totalMedications: medications.length,
         medications: medSummary,
         activities: actSummary,
-        appointments: appointments.map((app) => ({ title: app.title, time: app.scheduledAt })),
+        appointmentsToday: appointmentsToday.map((app) => ({ title: app.title, time: app.scheduledAt })),
+        upcomingAppointments: upcomingAppointments.map((app) => ({
+          title: app.title,
+          doctor: app.doctorName,
+          scheduledAt: app.scheduledAt,
+          location: app.location,
+        })),
       },
       widget,
       actionName: 'get_daily_summary',
+    };
+  }
+
+  // 8. Consultar Próximas Citas Médicas Agendadas
+  private async getUpcomingAppointments(args: any) {
+    const limit = Math.min(10, Math.max(1, Number(args?.limit) || 5));
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        familyId: this.user.familyId,
+        deletedAt: null,
+        scheduledAt: { gte: startOfToday },
+      },
+      orderBy: { scheduledAt: 'asc' },
+      take: limit,
+    });
+
+    const appointmentsFormatted = appointments.map((app) => ({
+      id: app.id,
+      title: app.title,
+      doctorName: app.doctorName,
+      location: app.location,
+      type: app.type,
+      scheduledAt: app.scheduledAt.toISOString(),
+      notes: app.notes,
+    }));
+
+    let widget: AssistantWidget | undefined = undefined;
+    if (appointments.length > 0) {
+      const nextApp = appointments[0];
+      widget = {
+        type: 'appointment_created',
+        title: 'Próxima Cita Médica',
+        data: {
+          id: nextApp.id,
+          title: nextApp.title,
+          doctorName: nextApp.doctorName,
+          location: nextApp.location,
+          scheduledAt: nextApp.scheduledAt.toISOString(),
+        },
+      };
+    }
+
+    return {
+      result: {
+        totalFound: appointments.length,
+        appointments: appointmentsFormatted,
+      },
+      widget,
+      actionName: 'get_upcoming_appointments',
     };
   }
 }
@@ -974,35 +1058,40 @@ export interface ProcessAssistantChatOptions {
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
-export const processAssistantChat = async ({
-  user,
-  message,
-  audioBase64,
-  audioMimeType = 'audio/m4a',
-  history = [],
-}: ProcessAssistantChatOptions): Promise<AssistantChatResponse> => {
+export const processAssistantChat = async (
+  options: ProcessAssistantChatOptions
+): Promise<AssistantChatResponse> => {
+  const { user, message, audioBase64, audioMimeType, history = [] } = options;
   const gemini = getGeminiClient();
 
-  // 1. Obtener información de contexto familiar
-  const family = await prisma.family.findUnique({
-    where: { id: user.familyId },
-    include: {
-      elderly: true,
-      members: { where: { isActive: true }, select: { id: true, name: true, role: true } },
-    },
-  });
+  // 1. Obtener contexto de la familia y el adulto mayor
+  const [family, members] = await Promise.all([
+    prisma.family.findUnique({
+      where: { id: user.familyId },
+      include: { elderly: true },
+    }),
+    prisma.familyMember.findMany({
+      where: { familyId: user.familyId, isActive: true },
+    }),
+  ]);
 
-  const elderlyName = family?.elderly?.name || 'el adulto mayor';
-  const elderlyConditions = family?.elderly?.conditions?.join(', ') || 'ninguna registrada';
-  const elderlyAllergies = family?.elderly?.allergies?.join(', ') || 'ninguna registrada';
-  const currentUserMember = family?.members.find((m) => m.id === user.memberId);
-  const currentUserName = currentUserMember?.name || 'Familiar';
-  const familyMembersList = family?.members.map((m) => `${m.name} (${m.role})`).join(', ') || '';
+  const elderly = family?.elderly;
+  const elderlyName = elderly?.name || 'Adulto Mayor';
+  const elderlyConditions = elderly?.conditions?.join(', ') || 'Ninguna registrada';
+  const elderlyAllergies = elderly?.allergies?.join(', ') || 'Ninguna conocida';
 
-  const nowPeru = new Date(Date.now() - 5 * 60 * 60 * 1000);
-  const currentTimeStr = nowPeru.toISOString().replace('T', ' ').substring(0, 16);
+  const familyMembersList = members
+    .map((m) => `${m.name} (${m.role}${m.id === user.memberId ? ' - tú' : ''})`)
+    .join(', ');
 
-  // 2. System Instruction
+  const currentUserName = members.find((m) => m.id === user.memberId)?.name || 'Familiar';
+
+  // Obtener fecha y hora actual en Perú
+  const now = new Date();
+  const peruTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+  const currentTimeStr = peruTime.toISOString().replace('T', ' ').substring(0, 16);
+
+  // 2. System prompt enriquecido
   const systemInstruction = `
 Eres Ayni, el asistente inteligente de coordinación de cuidado de la app "Ayni Care".
 Tu misión es facilitar al máximo la vida de las familias latinoamericanas que cuidan a un adulto mayor en casa.
@@ -1012,7 +1101,7 @@ CONTEXTO ACTUAL DE LA FAMILIA:
 - Adulto Mayor: ${elderlyName}
 - Condiciones Médicas: ${elderlyConditions}
 - Alergias: ${elderlyAllergies}
-- Usuario actual en el chat: ${currentUserName} (Rol: ${user.role})
+- Usuario actual: ${currentUserName} (Rol: ${user.role})
 - Miembros de la red familiar: ${familyMembersList}
 - Fecha y Hora actual en Perú (UTC-5): ${currentTimeStr}
 
@@ -1020,9 +1109,12 @@ REGLAS DE INTERACCIÓN:
 1. Tono: Cálido, empático, conciso, respetuoso y con modismos amables latinoamericanos/peruanos.
 2. EJECUCIÓN CON HERRAMIENTAS: Cuando el usuario te cuente que hizo algo o pida una acción (ej. "ya le di su pastilla", "agrega Paracetamol al horario", "compré pañales", "agenda cita con el geriatra", "bañé a papá"), DEBES invocar la herramienta correspondiente para registrarlo en la base de datos.
 3. No inventes IDs ni datos que no tengas. Si falta un dato crítico (por ejemplo, el monto de un gasto), pregunta amablemente.
-4. Si el usuario hace una consulta sobre medicamentos o el día, consulta la herramienta 'get_daily_summary'.
-5. Sé breve en tus respuestas textuales, pues la app mostrará una tarjeta interactiva visual complementaria con la acción ejecutada.
-6. DISTINCIÓN CRÍTICA ENTRE MEDICAMENTOS Y ACTIVIDADES:
+4. Si el usuario hace una consulta sobre medicamentos o el día de hoy, consulta 'get_daily_summary'.
+5. CONSULTAS DE CITAS MÉDICAS:
+   - Si el usuario pregunta por las próximas citas médicas, controles con doctores/especialistas o terapias agendadas (ej. "¿cuál es la próxima cita médica y con qué doctor?", "¿cuándo tiene doctor mi papá?"), DEBES invocar la herramienta 'get_upcoming_appointments'.
+   - Informa el nombre de la cita, doctor(a), especialidad, lugar/clínica y la fecha u hora en que está programada.
+6. Sé breve en tus respuestas textuales, pues la app mostrará una tarjeta interactiva visual complementaria con la acción ejecutada.
+7. DISTINCIÓN CRÍTICA ENTRE MEDICAMENTOS Y ACTIVIDADES:
    - Si el usuario te pide registrar, agregar o configurar un medicamento en el horario regular (ej. "agrégalo como toma lunes, miércoles y viernes a las 8am", "agrega Losartán 50mg cada 12 horas"), DEBES invocar la herramienta 'create_medication'.
    - NUNCA uses 'create_activity' para medicamentos o pastillas. 'create_activity' es exclusivamente para tareas de cuidado diario como baño, aseo, paseos o cambios de apósito.
 `.trim();
