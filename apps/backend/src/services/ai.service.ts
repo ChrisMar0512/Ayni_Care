@@ -20,8 +20,52 @@ const getGeminiClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-const GEMINI_MODEL = 'gemini-3.6-flash';
-const GEMINI_FAST_MODEL = 'gemini-3.5-flash-lite';
+// Cascada de modelos disponibles para máxima resiliencia ante alta demanda (503 / 429)
+const MODEL_CANDIDATES = [
+  'gemini-3.6-flash',
+  'gemini-flash-latest',
+  'gemini-3.5-flash-lite',
+  'gemini-3.7-flash',
+];
+
+const TRANSCRIBE_CANDIDATES = [
+  'gemini-3.5-flash-lite',
+  'gemini-flash-latest',
+  'gemini-3.6-flash',
+];
+
+// Helper con reintentos automáticos y fallback de modelos
+const callGeminiWithFallback = async (
+  gemini: GoogleGenAI,
+  candidates: string[],
+  payload: { contents: any; config?: any }
+) => {
+  let lastError: any = null;
+
+  for (const model of candidates) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await gemini.models.generateContent({
+          model,
+          ...payload,
+        });
+        return response;
+      } catch (err: any) {
+        lastError = err;
+        const status = err?.status || err?.code;
+        console.warn(`[AI] Intento ${attempt} con modelo '${model}' falló (Status ${status}):`, err?.message || err);
+        // Si el modelo está ocupado o con alta demanda (503 / 429), pausar brevemente y reintentar o pasar al siguiente
+        if (status === 503 || status === 429 || String(err?.message).includes('high demand') || String(err?.message).includes('UNAVAILABLE')) {
+          await new Promise((r) => setTimeout(r, 400 * attempt));
+        } else {
+          break; // Pasar al siguiente modelo de la lista
+        }
+      }
+    }
+  }
+
+  throw lastError || new Error('No se pudo comunicar con los modelos de IA disponibles.');
+};
 
 // Transcripción fiel y ultrarrápida de notas de voz a texto
 export const transcribeAudio = async (
@@ -29,8 +73,7 @@ export const transcribeAudio = async (
   audioMimeType: string = 'audio/m4a'
 ): Promise<string> => {
   const gemini = getGeminiClient();
-  const response = await gemini.models.generateContent({
-    model: GEMINI_FAST_MODEL,
+  const response = await callGeminiWithFallback(gemini, TRANSCRIBE_CANDIDATES, {
     contents: [
       {
         inlineData: {
@@ -1037,9 +1080,8 @@ REGLAS DE INTERACCIÓN:
     parts: currentParts,
   });
 
-  // 4. Invocar Gemini con Function Calling
-  const response = await gemini.models.generateContent({
-    model: GEMINI_MODEL,
+  // 4. Invocar Gemini con Function Calling y Fallback
+  const response = await callGeminiWithFallback(gemini, MODEL_CANDIDATES, {
     contents,
     config: {
       systemInstruction,
@@ -1081,8 +1123,7 @@ REGLAS DE INTERACCIÓN:
       parts: toolResponseParts,
     });
 
-    const secondTurnResponse = await gemini.models.generateContent({
-      model: GEMINI_MODEL,
+    const secondTurnResponse = await callGeminiWithFallback(gemini, MODEL_CANDIDATES, {
       contents,
       config: {
         systemInstruction,

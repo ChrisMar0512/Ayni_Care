@@ -91,8 +91,18 @@ export function useAssistant() {
         }
       } catch (err: any) {
         console.error('[useAssistant] Error:', err);
-        const errMsg = err?.message || 'Hubo un error al comunicarse con Ayni.';
-        setError(errMsg);
+        let userFacingError = 'No pude procesar tu mensaje en este momento. Por favor, inténtalo nuevamente.';
+        const rawMsg = String(err?.response?.data?.error || err?.message || '');
+
+        if (rawMsg.includes('timeout')) {
+          userFacingError = 'La conexión tardó más de lo esperado. Por favor, vuelve a enviar tu mensaje.';
+        } else if (rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('500') || rawMsg.includes('UNAVAILABLE')) {
+          userFacingError = 'El servicio de IA tuvo un momento de alta demanda. Por favor, reintenta en unos segundos.';
+        } else if (err?.response?.data?.error) {
+          userFacingError = err.response.data.error;
+        }
+
+        setError(userFacingError);
 
         // Remover el mensaje pendiente y agregar un mensaje de error
         setMessages((prev) =>
@@ -101,7 +111,7 @@ export function useAssistant() {
               ? {
                   id: `assistant-err-${Date.now()}`,
                   role: 'assistant',
-                  content: `Lo siento, ocurrió un problema: ${errMsg}`,
+                  content: `Lo siento, ${userFacingError.toLowerCase()}`,
                   createdAt: new Date().toISOString(),
                   isPending: false,
                 }

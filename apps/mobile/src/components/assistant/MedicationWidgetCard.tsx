@@ -142,6 +142,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
+    alignSelf: 'center',
+    flexShrink: 0,
   },
   instructionsText: {
     fontSize: 12,
@@ -154,11 +156,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+    gap: 8,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flex: 1,
+    flexShrink: 1,
   },
   iconBox: {
     width: 28,
@@ -166,6 +171,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   successIcon: {
     backgroundColor: '#D8F3DC',
@@ -176,6 +182,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 13,
     fontWeight: '700',
+    flexShrink: 1,
   },
   successTitle: {
     color: '#1B4332',

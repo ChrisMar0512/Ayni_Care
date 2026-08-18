@@ -13,6 +13,55 @@ interface Props {
   message: AssistantChatMessage;
 }
 
+// Formateador visual para convertir markdown (**negrita**, *cursiva*, viñetas) en Text nativo estilizado
+const renderFormattedText = (content: string, baseStyle: any, boldColor: string = '#1A2B1A') => {
+  if (!content) return null;
+
+  const lines = content.split('\n');
+
+  return (
+    <Text style={baseStyle}>
+      {lines.map((line, lineIdx) => {
+        let formattedLine = line;
+        // Si la línea empieza con viñeta markdown "* " o "- ", convertirla a punto limpio "• "
+        if (/^\s*[\*\-]\s+/.test(formattedLine)) {
+          formattedLine = formattedLine.replace(/^\s*[\*\-]\s+/, '• ');
+        }
+
+        // Dividir por bloques de negrita (**...**) o cursiva (*...*)
+        const parts = formattedLine.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+
+        return (
+          <React.Fragment key={lineIdx}>
+            {parts.map((part, partIdx) => {
+              if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                return (
+                  <Text key={partIdx} style={[baseStyle, { fontWeight: '700', color: boldColor }]}>
+                    {part.slice(2, -2)}
+                  </Text>
+                );
+              }
+              if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+                return (
+                  <Text key={partIdx} style={[baseStyle, { fontStyle: 'italic' }]}>
+                    {part.slice(1, -1)}
+                  </Text>
+                );
+              }
+              return (
+                <Text key={partIdx} style={baseStyle}>
+                  {part}
+                </Text>
+              );
+            })}
+            {lineIdx < lines.length - 1 ? '\n' : null}
+          </React.Fragment>
+        );
+      })}
+    </Text>
+  );
+};
+
 export const ChatMessageBubble: React.FC<Props> = ({ message }) => {
   const isUser = message.role === 'user';
 
@@ -47,7 +96,7 @@ export const ChatMessageBubble: React.FC<Props> = ({ message }) => {
     return (
       <View style={styles.userRow}>
         <View style={styles.userBubble}>
-          <Text style={styles.userText}>{message.content}</Text>
+          {renderFormattedText(message.content, styles.userText, '#FFFFFF')}
           {timeStr ? <Text style={styles.userTime}>{timeStr}</Text> : null}
         </View>
       </View>
@@ -76,7 +125,7 @@ export const ChatMessageBubble: React.FC<Props> = ({ message }) => {
               <Text style={styles.loadingText}>Coordinando con la familia...</Text>
             </View>
           ) : (
-            <Text style={styles.assistantText}>{message.content}</Text>
+            renderFormattedText(message.content, styles.assistantText, '#1A2B1A')
           )}
 
           {/* Renderizado de Widgets */}
