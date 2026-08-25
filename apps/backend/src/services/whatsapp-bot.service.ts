@@ -50,7 +50,7 @@ const formatWidgetForWhatsApp = (widget: any): string => {
 };
 
 export async function startWhatsAppBot() {
-  const authDir = path.join(process.cwd(), 'whatsapp_auth');
+  const authDir = path.resolve(__dirname, '../../whatsapp_auth');
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
   const sock = makeWASocket({
@@ -93,9 +93,6 @@ export async function startWhatsAppBot() {
     if (m.type !== 'notify') return;
 
     for (const msg of m.messages) {
-      // Ignorar mensajes enviados por el propio bot
-      if (msg.key.fromMe) continue;
-
       const remoteJid = msg.key.remoteJid;
       if (!remoteJid || remoteJid.endsWith('@g.us')) continue; // Ignorar grupos por ahora
 
@@ -109,18 +106,34 @@ export async function startWhatsAppBot() {
         msg.message?.extendedTextMessage?.text ||
         '';
 
-      // 🛡️ FILTRO DE PROTECCIÓN PARA TUS CHATS PERSONALES:
-      // Si es un mensaje de texto normal que no menciona "Ayni" ni empieza con "/",
-      // se ignora por completo para que puedas chatear con tus amigos y familia con normalidad.
-      const mentionsAyni = textMessage.toLowerCase().includes('ayni');
-      const hasPrefix = textMessage.startsWith('!') || textMessage.startsWith('/');
+      // Si el mensaje es fromMe (enviado por el propio número, como en el chat de "Yo (Tú)"):
+      if (msg.key.fromMe) {
+        // Ignorar si es una respuesta enviada por el propio bot para no crear bucles
+        if (
+          textMessage.startsWith('🌿') ||
+          textMessage.startsWith('¡Hola') ||
+          textMessage.startsWith('Lo siento') ||
+          textMessage.startsWith('🎙️') ||
+          textMessage.includes('Acción procesada')
+        ) {
+          continue;
+        }
 
-      if (!isAudio && !mentionsAyni && !hasPrefix) {
-        // Mensaje personal de WhatsApp normal: ignorar para no interrumpir tus conversaciones
-        continue;
+        // Si es el chat contigo mismo ("Yo"), procesar si menciona ayni, tiene prefijo o es audio
+        const mentionsAyni = textMessage.toLowerCase().includes('ayni') || textMessage.startsWith('!') || textMessage.startsWith('/');
+        if (!isAudio && !mentionsAyni) {
+          continue;
+        }
+      } else {
+        // Mensaje recibido de otro contacto:
+        // 🛡️ Filtro de protección: Ignorar si es una conversación personal que no menciona a Ayni
+        const mentionsAyni = textMessage.toLowerCase().includes('ayni') || textMessage.startsWith('!') || textMessage.startsWith('/');
+        if (!isAudio && !mentionsAyni) {
+          continue;
+        }
       }
 
-      console.log(`[WhatsApp Bot] 🌿 Mensaje para Ayni de ${rawPhone}. Tipo: ${isAudio ? 'Nota de Voz' : 'Texto'}`);
+      console.log(`[WhatsApp Bot] 🌿 Procesando mensaje para Ayni de ${rawPhone}. Tipo: ${isAudio ? 'Nota de Voz' : 'Texto'}`);
 
       // Buscar al miembro familiar en la BD
       let member = await prisma.familyMember.findFirst({
@@ -142,11 +155,9 @@ export async function startWhatsAppBot() {
       }
 
       if (!member) {
-        if (mentionsAyni || hasPrefix) {
-          await sock.sendMessage(remoteJid, {
-            text: '¡Hola! Soy Ayni, tu asistente de cuidado familiar. 🌿\n\nNo encontré tu número registrado en ninguna familia de Ayni Care.',
-          });
-        }
+        await sock.sendMessage(remoteJid, {
+          text: '🌿 *Ayni:*\n¡Hola! Soy Ayni, tu asistente de cuidado familiar. No encontré tu número registrado en ninguna familia de Ayni Care.',
+        });
         continue;
       }
 
@@ -183,7 +194,7 @@ export async function startWhatsAppBot() {
           audioMimeType,
         });
 
-        let replyText = aiResponse.message || 'Acción procesada correctamente.';
+        let replyText = '🌿 *Ayni:*\n' + (aiResponse.message || 'Acción procesada correctamente.');
 
         if (aiResponse.widget) {
           replyText += formatWidgetForWhatsApp(aiResponse.widget);
