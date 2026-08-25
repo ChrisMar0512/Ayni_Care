@@ -22,16 +22,19 @@ const getGeminiClient = () => {
 
 // Cascada de modelos disponibles para máxima resiliencia ante alta demanda (503 / 429)
 const MODEL_CANDIDATES = [
-  'gemini-3.6-flash',
-  'gemini-flash-latest',
+  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+  'gemini-3.6-flash',
   'gemini-3.7-flash',
 ];
 
 const TRANSCRIBE_CANDIDATES = [
   'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash',
   'gemini-flash-latest',
-  'gemini-3.6-flash',
 ];
 
 // Helper con reintentos automáticos y fallback de modelos
@@ -53,12 +56,20 @@ const callGeminiWithFallback = async (
       } catch (err: any) {
         lastError = err;
         const status = err?.status || err?.code;
-        console.warn(`[AI] Intento ${attempt} con modelo '${model}' falló (Status ${status}):`, err?.message || err);
-        // Si el modelo está ocupado o con alta demanda (503 / 429), pausar brevemente y reintentar o pasar al siguiente
-        if (status === 503 || status === 429 || String(err?.message).includes('high demand') || String(err?.message).includes('UNAVAILABLE')) {
+        const errMsg = String(err?.message || '');
+        console.warn(`[AI] Intento ${attempt} con modelo '${model}' falló (Status ${status}):`, errMsg.slice(0, 150));
+
+        // Si es 429 (Cuota de este modelo agotada), pasar DIRECTO al siguiente modelo sin esperar
+        if (status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+          console.warn(`[AI] ⚡ Cuota de '${model}' superada. Cambiando inmediatamente al siguiente modelo...`);
+          break;
+        }
+
+        // Si es 503 (servidor saturado temporalmente), reintentar tras breve pausa
+        if (status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
           await new Promise((r) => setTimeout(r, 400 * attempt));
         } else {
-          break; // Pasar al siguiente modelo de la lista
+          break;
         }
       }
     }
