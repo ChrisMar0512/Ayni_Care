@@ -3,6 +3,7 @@ import twilio from 'twilio';
 import { prisma } from '../prisma/client';
 import { processAssistantChat } from '../services/ai.service';
 import { downloadTwilioMediaAsBase64, sendWhatsAppMessage } from '../services/whatsapp.service';
+import { formatTextForWhatsApp } from '../services/whatsapp-bot.service';
 
 const { MessagingResponse } = twilio.twiml;
 
@@ -125,7 +126,8 @@ export const handleIncomingWhatsApp = async (req: Request, res: Response, next: 
     });
 
     // 5. Formatear respuesta para WhatsApp
-    let replyText = aiResponse.message || 'Acción procesada correctamente.';
+    const cleanMessage = formatTextForWhatsApp(aiResponse.message || 'Acción procesada correctamente.');
+    let replyText = `🌿 *Ayni:*\n${cleanMessage}`;
 
     // Agregar resumen de tarjeta interactiva si ejecutó una acción
     if (aiResponse.widget) {
