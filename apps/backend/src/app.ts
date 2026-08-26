@@ -17,6 +17,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import adminRoutes from './routes/admin.routes';
 import assistantRoutes from './routes/assistant.routes';
 import whatsappRoutes from './routes/whatsapp.routes';
+import metaWhatsappRoutes from './routes/meta-whatsapp.routes';
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/notes', notesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/whatsapp/meta', metaWhatsappRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/admin', adminRoutes);
 
