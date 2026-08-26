@@ -9,6 +9,8 @@ import {
 } from '../services/meta-whatsapp.service';
 import { processOnboardingMessage } from '../services/onboarding.service';
 import { formatTextForWhatsApp } from '../services/whatsapp-bot.service';
+import { trackEvent, classifyInsightAsync } from '../services/analytics.service';
+import { isAwaitingPulseCheck, processPulseAnswer } from '../services/pulse-check.service';
 
 /**
  * Helper para formatear widgets visuales en texto de WhatsApp
@@ -137,6 +139,15 @@ export const handleIncomingMetaWebhook = async (req: Request, res: Response): Pr
       },
     });
 
+    // Telemetría no bloqueante
+    trackEvent({
+      familyId: member?.familyId,
+      memberId: member?.id,
+      eventType: messageType === 'audio' ? 'voice_note_received' : 'message_received',
+      channel: 'whatsapp',
+      metadata: { phone: cleanPhone },
+    });
+
     // 2. Si NO existe usuario, iniciar o continuar Onboarding Conversacional
     if (!member) {
       console.log(`[Meta WhatsApp] Usuario no registrado (${cleanPhone}). Derivando a Onboarding Conversacional...`);
@@ -153,7 +164,32 @@ export const handleIncomingMetaWebhook = async (req: Request, res: Response): Pr
       return;
     }
 
-    // 3. Si YA existe usuario, procesar con el Asistente Core de Ayni
+    // 3. Verificar si está respondiendo al Micro-Sondeo Semanal (Pulse Check)
+    if (isAwaitingPulseCheck(cleanPhone, textContent)) {
+      const pulseReply = await processPulseAnswer({
+        familyId: member.familyId,
+        memberId: member.id,
+        phone: cleanPhone,
+        rawAnswer: textContent,
+      });
+
+      await sendMetaWhatsAppMessage({
+        to: senderPhone,
+        text: pulseReply,
+      });
+      return;
+    }
+
+    // 4. Clasificación semántica e investigación de dolor en segundo plano
+    classifyInsightAsync({
+      familyId: member.familyId,
+      memberId: member.id,
+      senderRole: member.role,
+      messageText: textContent,
+      channel: 'whatsapp',
+    });
+
+    // 5. Si YA existe usuario, procesar con el Asistente Core de Ayni
     const aiResponse = await processAssistantChat({
       user: {
         userId: member.userId,
@@ -165,6 +201,16 @@ export const handleIncomingMetaWebhook = async (req: Request, res: Response): Pr
       audioBase64,
       audioMimeType,
     });
+
+    if (aiResponse.widget) {
+      trackEvent({
+        familyId: member.familyId,
+        memberId: member.id,
+        eventType: 'action_executed',
+        channel: 'whatsapp',
+        metadata: { actionType: aiResponse.widget.type },
+      });
+    }
 
     const cleanMessage = formatTextForWhatsApp(aiResponse.message || 'Acción procesada correctamente.');
     let replyText = `🌿 *Ayni:*\n${cleanMessage}`;

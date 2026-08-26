@@ -1,6 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getAdminStats } from '../controllers/admin.controller';
 import { adminDashboardHtml } from '../views/admin_dashboard';
+import {
+  getAnalyticsSummary,
+  renderInsightsDashboard,
+} from '../controllers/admin-analytics.controller';
 
 const router = Router();
 
@@ -40,7 +44,7 @@ const requireAdminToken = (req: Request, res: Response, next: NextFunction): voi
           </div>
           <div class="space-y-2">
             <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Acceso Restringido</h1>
-            <p class="text-sm text-slate-400">Se requiere el token de administración para visualizar el dashboard de control de calidad.</p>
+            <p class="text-sm text-slate-400">Se requiere el token de administración para visualizar el dashboard de control de calidad e insights.</p>
           </div>
           
           <form method="GET" class="space-y-4">
@@ -79,12 +83,16 @@ const requireAdminTokenJson = (req: Request, res: Response, next: NextFunction):
   next();
 };
 
-// HTML rendering route
+// ── Rutas de Dashboard y Analítica ──────────────────────────────────────────
 router.get('/', requireAdminToken, (req: Request, res: Response) => {
   res.send(adminDashboardHtml);
 });
 
-// JSON API route
+// Dashboard visual de Discovery e Inteligencia de Negocio
+router.get('/insights', requireAdminToken, renderInsightsDashboard);
+
+// API JSON con resumen analítico
+router.get('/analytics/summary', requireAdminTokenJson, getAnalyticsSummary);
 router.get('/api/admin/stats', requireAdminTokenJson, getAdminStats);
 
 export default router;

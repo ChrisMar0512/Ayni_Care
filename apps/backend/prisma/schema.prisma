@@ -278,3 +278,56 @@ model PushToken {
   member    FamilyMember @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 
+// ─── ANALÍTICA E INTELIGENCIA DE DATOS ────────────────
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  familyId  String?
+  memberId  String?
+  eventType String   // "message_received", "voice_note_received", "med_dose_logged", "expense_created", "appointment_created", "note_created", "onboarding_completed", "pulse_check_answered"
+  channel   String   // "whatsapp" | "mobile_app"
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
+  @@index([familyId])
+  @@index([createdAt])
+}
+
+model ConversationInsight {
+  id               String   @id @default(uuid())
+  familyId         String?
+  memberId         String?
+  senderRole       String?  // "primary_caregiver", "remote_family", etc.
+  messageSnippet   String   // texto resumido o transcripción
+  category         String   // "medication", "expense", "caregiver_friction", "emergency_night", "clinical_doubt", "remote_guilt", "unmet_need", "general"
+  sentiment        String   // "calm", "stressed", "confused", "urgent", "frustrated"
+  urgencyLevel     String   // "low", "medium", "high", "critical"
+  painPointSummary String?  // Ej. "Cuidadora faltó sin avisar", "Hermano no aporta dinero"
+  isUnmetNeed      Boolean  @default(false)
+  commercialIntent String?  // "pharma_subscription", "caregiver_hire", "telemedicine_sos", "family_wallet", "equipment"
+  entitiesDetected Json?    // { clinics: [], meds: [], doctors: [], amount: number }
+  createdAt        DateTime @default(now())
+
+  @@index([category])
+  @@index([urgencyLevel])
+  @@index([isUnmetNeed])
+  @@index([createdAt])
+}
+
+model WeeklyPulseResponse {
+  id          String   @id @default(uuid())
+  familyId    String
+  memberId    String
+  phone       String
+  question    String
+  rawAnswer   String
+  topFriction String   // "medication_procurement", "caregiver_fatigue", "family_finances", "clinical_confusion", "other"
+  details     String?
+  createdAt   DateTime @default(now())
+
+  @@index([familyId])
+  @@index([topFriction])
+  @@index([createdAt])
+}
+

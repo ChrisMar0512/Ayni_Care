@@ -1128,6 +1128,11 @@ REGLAS DE INTERACCIÓN:
 7. DISTINCIÓN CRÍTICA ENTRE MEDICAMENTOS Y ACTIVIDADES:
    - Si el usuario te pide registrar, agregar o configurar un medicamento en el horario regular (ej. "agrégalo como toma lunes, miércoles y viernes a las 8am", "agrega Losartán 50mg cada 12 horas"), DEBES invocar la herramienta 'create_medication'.
    - NUNCA uses 'create_activity' para medicamentos o pastillas. 'create_activity' es exclusivamente para tareas de cuidado diario como baño, aseo, paseos o cambios de apósito.
+8. PROTOCOLO EMPÁTICO ANTE PROBLEMAS CRÍTICOS O SITUACIONES NO RESUELTAS:
+   - Si el usuario comparte una situación difícil, sobrecarga, queja de dinero o imprevisto (ej. "la cuidadora no vino y no sé qué hacer", "estoy agotada", "mi hermano no aporta"):
+     a) Muestra EMPATÍA HUMANA GENUINA primero (ej: "Lamento mucho escuchar eso, entiendo lo desgastante y estresante que es cuando surgen estos imprevistos...").
+     b) Si menciona síntomas agudos o alarma médica, aconseja con prudencia consultar a su médico tratante o llamar a emergencias (SAMU 106 / EsSalud 117).
+     c) Si busca un servicio que aún no esté automatizado, sé transparente con calidez y ofrece registrar una nota o tarea en la bitácora familiar para que todos los familiares estén coordinados.
 `.trim();
 
   const executor = new AssistantToolExecutor(user);
