@@ -5,7 +5,7 @@ import { broadcast } from './realtime.service';
 import { AssistantChatResponse, AssistantWidget } from '../types/assistant';
 
 // Helper to initialize Gemini client safely
-const getGeminiClient = () => {
+export const getGeminiClient = () => {
   const apiKey =
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_GENAI_API_KEY ||
@@ -21,7 +21,7 @@ const getGeminiClient = () => {
 };
 
 // Cascada de modelos disponibles para máxima resiliencia ante alta demanda (503 / 429)
-const MODEL_CANDIDATES = [
+export const MODEL_CANDIDATES = [
   'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
@@ -30,7 +30,7 @@ const MODEL_CANDIDATES = [
   'gemini-3.7-flash',
 ];
 
-const TRANSCRIBE_CANDIDATES = [
+export const TRANSCRIBE_CANDIDATES = [
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
   'gemini-3.5-flash',
@@ -38,7 +38,7 @@ const TRANSCRIBE_CANDIDATES = [
 ];
 
 // Helper con reintentos automáticos y fallback de modelos
-const callGeminiWithFallback = async (
+export const callGeminiWithFallback = async (
   gemini: GoogleGenAI,
   candidates: string[],
   payload: { contents: any; config?: any }

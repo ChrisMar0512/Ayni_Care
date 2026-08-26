@@ -1,7 +1,11 @@
-import { GoogleGenAI, Type } from '@google/genai';
 import { randomUUID } from 'crypto';
 import { prisma } from '../prisma/client';
 import { MemberRole } from '@prisma/client';
+import {
+  getGeminiClient,
+  callGeminiWithFallback,
+  MODEL_CANDIDATES,
+} from './ai.service';
 import { formatTextForWhatsApp } from './whatsapp-bot.service';
 
 interface OnboardingSession {
@@ -16,16 +20,6 @@ interface OnboardingSession {
 
 // Memoria de sesiones de onboarding en curso por número telefónico
 const sessions = new Map<string, OnboardingSession>();
-
-const getGeminiClient = () => {
-  const apiKey =
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GENAI_API_KEY ||
-    process.env.GOOGLE_API_KEY;
-
-  if (!apiKey) throw new Error('GEMINI_API_KEY no configurada.');
-  return new GoogleGenAI({ apiKey });
-};
 
 /**
  * Procesa un mensaje entrante para usuarios que están en proceso de Onboarding
@@ -80,8 +74,7 @@ Devuelve estrictamente un objeto JSON con este esquema:
 }
 `;
 
-      const aiRes = await gemini.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const aiRes = await callGeminiWithFallback(gemini, MODEL_CANDIDATES, {
         contents: [{ text: parsePrompt }],
         config: {
           responseMimeType: 'application/json',
@@ -162,8 +155,7 @@ Devuelve estrictamente un JSON con esta estructura:
 }
 `;
 
-      const medRes = await gemini.models.generateContent({
-        model: 'gemini-3.5-flash',
+      const medRes = await callGeminiWithFallback(gemini, MODEL_CANDIDATES, {
         contents: [{ text: medPrompt }],
         config: {
           responseMimeType: 'application/json',
