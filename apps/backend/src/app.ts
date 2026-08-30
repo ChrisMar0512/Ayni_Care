@@ -20,6 +20,9 @@ import whatsappRoutes from './routes/meta-whatsapp.routes';
 
 const app = express();
 
+// ── Trust Proxy for Vercel / Cloud proxies ────────────────────────────────────
+app.set('trust proxy', 1);
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
@@ -32,7 +35,7 @@ app.use(cors({
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, data: null, error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
@@ -40,7 +43,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, data: null, error: 'Demasiados intentos. Espera 15 minutos.' },
@@ -58,9 +61,22 @@ app.use('/api/auth/', authLimiter);
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get(['/health', '/api/health'], (_req, res) => {
-  res.json({ success: true, data: { status: 'ok', time: new Date().toISOString() }, error: undefined });
+// ── Health check & Diagnóstico ────────────────────────────────────────────────
+app.get(['/', '/health', '/api/health'], (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      status: 'ok',
+      service: 'Ayni Care API',
+      time: new Date().toISOString(),
+      env: {
+        has_database: Boolean(process.env.DATABASE_URL),
+        has_gemini: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY),
+        has_meta_token: Boolean(process.env.META_WA_VERIFY_TOKEN),
+      },
+    },
+    error: undefined,
+  });
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
