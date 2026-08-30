@@ -59,8 +59,8 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
 // ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
-  res.json({ success: true, data: { status: 'ok' }, error: undefined });
+app.get(['/health', '/api/health'], (_req, res) => {
+  res.json({ success: true, data: { status: 'ok', time: new Date().toISOString() }, error: undefined });
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────

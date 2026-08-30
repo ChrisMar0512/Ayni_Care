@@ -1,34 +1,14 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "apps/backend/src/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "node_modules/.prisma/client/**"
-        ]
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "apps/backend/src/index.ts"
-    },
-    {
-      "src": "/admin(.*)",
-      "dest": "apps/backend/src/index.ts"
-    },
-    {
-      "src": "/health",
-      "dest": "apps/backend/src/index.ts"
-    }
-  ],
   "crons": [
     {
       "path": "/api/jobs/reminders",
       "schedule": "0 0 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
     }
   ]
 }
