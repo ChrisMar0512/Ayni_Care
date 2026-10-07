@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Ayni Care",
+    "slug": "ayni-care",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.aynicare.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.aynicare.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ecace12d-4812-4bfb-a4c1-4ee5cfda5269"
+      }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

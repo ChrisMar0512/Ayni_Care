@@ -1,0 +1,12 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": [
+    "whatsapp_auth/**",
+    "node_modules/**",
+    "dist/**",
+    "**/*.test.ts",
+    "src/scripts/**"
+  ],
+  "exec": "ts-node src/index.ts"
+}

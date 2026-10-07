@@ -1,0 +1,23 @@
+{
+  "name": "ayni-care",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "scripts": {
+    "bootstrap": "npm install",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:mobile": "expo start apps/mobile",
+    "build": "npm run build --workspaces --if-present",
+    "vercel-build": "prisma generate --schema=apps/backend/prisma/schema.prisma && npm run build --workspace=apps/backend",
+    "lint": "echo \"Linter no configurado aún\"",
+    "test": "echo \"Sin tests aún\"",
+    "postinstall": "prisma generate --schema=apps/backend/prisma/schema.prisma || npm run db:generate --workspace=apps/backend || echo 'Prisma skipped'"
+  }
+}

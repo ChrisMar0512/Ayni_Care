@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(npm install *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); pkgs=d.get\\('packages',{}\\); metros={k:v.get\\('version'\\) for k,v in pkgs.items\\(\\) if 'metro' in k.split\\('/'\\)[-1] and 'metro' == k.split\\('/'\\)[-1]}; print\\(json.dumps\\(metros, indent=2\\)\\)\")",
+      "Bash(node *)",
+      "Bash(python3 -c ' *)",
+      "Bash(sed -n '55,80p' /Users/tiago/Documents/ayni-care/apps/mobile/node_modules/@expo/metro-config/src/ExpoMetroConfig.ts)",
+      "Bash(sed -n '55,80p' /Users/tiago/Documents/ayni-care/apps/mobile/node_modules/@expo/metro-config/build/ExpoMetroConfig.js)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('main:', d.get\\('main'\\)\\); print\\('module:', d.get\\('module'\\)\\); print\\('source:', d.get\\('source'\\)\\)\")",
+      "Bash(timeout 30 npx expo start --non-interactive)",
+      "Bash(pkill -f \"expo start\")",
+      "Bash(pkill -f \"metro\")",
+      "Bash(npm info *)",
+      "Bash(npm view *)",
+      "Bash(npx expo-doctor *)",
+      "Bash(npx expo *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('expo version:', d.get\\('version'\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('root react version:', d.get\\('version'\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('root react-native version:', d.get\\('version'\\)\\)\")",
+      "Bash(grep -E \"^react$|^react-native$\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('backend deps:', list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\)[:10]\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('nativewind version:', d.get\\('version'\\)\\); print\\('nativewind peerDeps:', d.get\\('peerDependencies',{}\\)\\)\")",
+      "Bash(npm dedupe *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('nativewind bundled react-native:', d.get\\('version'\\)\\)\")",
+      "Bash(python3 *)",
+      "Bash(npm --version)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx tsc *)",
+      "Bash(git -C /Users/tiago/Documents/ayni-care status)",
+      "Bash(git -C /Users/tiago/Documents/ayni-care diff --stat)",
+      "Bash(git *)"
+    ]
+  }
+}
