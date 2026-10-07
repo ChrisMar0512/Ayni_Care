@@ -8,7 +8,7 @@ import {
   downloadMetaMediaAsBase64,
 } from '../services/meta-whatsapp.service';
 import { processOnboardingMessage } from '../services/onboarding.service';
-import { formatTextForWhatsApp } from '../services/whatsapp-bot.service';
+import { formatTextForWhatsApp } from '../utils/whatsapp-formatter';
 import { trackEvent, classifyInsightAsync } from '../services/analytics.service';
 import { isAwaitingPulseCheck, processPulseAnswer } from '../services/pulse-check.service';
 

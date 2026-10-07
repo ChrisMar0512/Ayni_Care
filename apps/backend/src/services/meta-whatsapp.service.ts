@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { formatTextForWhatsApp } from './whatsapp-bot.service';
+import { formatTextForWhatsApp } from '../utils/whatsapp-formatter';
 
 const GRAPH_API_VERSION = 'v21.0';
 

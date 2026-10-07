@@ -6,7 +6,7 @@ import {
   callGeminiWithFallback,
   MODEL_CANDIDATES,
 } from './ai.service';
-import { formatTextForWhatsApp } from './whatsapp-bot.service';
+import { formatTextForWhatsApp } from '../utils/whatsapp-formatter';
 
 interface OnboardingSession {
   phone: string;

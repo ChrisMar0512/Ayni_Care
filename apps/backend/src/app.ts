@@ -33,12 +33,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ── Rate limiting ─────────────────────────────────────────────────────────────
+// ── Rate limiting (Safe for Serverless / Cloud Proxies) ─────────────────────────
+const getClientIp = (req: express.Request): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || req.ip || '127.0.0.1';
+};
+
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req),
+  validate: false,
   message: { success: false, data: null, error: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' },
 });
 
@@ -47,6 +57,8 @@ const authLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req),
+  validate: false,
   message: { success: false, data: null, error: 'Demasiados intentos. Espera 15 minutos.' },
 });
 
@@ -63,7 +75,7 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
 // ── Health check & Diagnóstico ────────────────────────────────────────────────
-app.get(['/', '/health', '/api/health'], (_req, res) => {
+app.get(['/', '/health', '/api', '/api/', '/api/health'], (_req, res) => {
   res.json({
     success: true,
     data: {
