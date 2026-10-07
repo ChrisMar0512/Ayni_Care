@@ -4,6 +4,7 @@ import { broadcast } from '../services/realtime.service';
 import { sendInvitationEmail } from '../services/email.service';
 import { CreateFamilyInput, InviteMemberInput, JoinFamilyInput } from '../schemas/family.schema';
 import { MemberRole } from '@prisma/client';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 
 // POST /api/family — crea familia y asigna al usuario como primary_caregiver
 export const createFamily = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -161,6 +162,11 @@ export const joinFamily = async (req: Request, res: Response, next: NextFunction
 export const listMembers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { familyId } = req.user;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      res.json({ success: true, data: demoStore.members });
+      return;
+    }
 
     const members = await prisma.familyMember.findMany({
       where: { familyId, isActive: true },

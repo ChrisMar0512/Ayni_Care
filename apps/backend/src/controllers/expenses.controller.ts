@@ -2,11 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
 import { CreateExpenseInput } from '../schemas/expense.schema';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 
 // GET /api/expenses
 export const listExpenses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { familyId } = req.user;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      res.json({ success: true, data: demoStore.expenses });
+      return;
+    }
 
     const expenses = await prisma.expense.findMany({
       where: { familyId, deletedAt: null },
@@ -31,6 +37,37 @@ export const createExpense = async (req: Request, res: Response, next: NextFunct
     const { familyId, memberId } = req.user;
     const { title, amount, currency, category, date, receipt, notes, splits } =
       req.validatedBody as CreateExpenseInput;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      const newExp = {
+        id: `exp-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        paidById: memberId,
+        paidBy: { id: memberId, name: 'Carlos Mendoza' },
+        title,
+        amount: Number(amount),
+        currency: currency || 'PEN',
+        category,
+        date: new Date(date).toISOString(),
+        receipt: receipt || null,
+        notes: notes || null,
+        splits: splits.map((s, idx) => ({
+          id: `split-${Date.now()}-${idx}`,
+          expenseId: `exp-${Date.now()}`,
+          memberId: s.memberId,
+          amount: Number(s.amount),
+          isPaid: false,
+          member: {
+            id: s.memberId,
+            name: s.memberId === 'dev-member-id' ? 'Carlos Mendoza' : 'Sofía Mendoza',
+          },
+        })),
+        createdAt: new Date().toISOString(),
+      };
+      demoStore.expenses.unshift(newExp as any);
+      res.status(201).json({ success: true, data: newExp });
+      return;
+    }
 
     // Verify all split members belong to this family
     const memberIds = splits.map((s) => s.memberId);
@@ -96,6 +133,18 @@ export const payExpenseSplit = async (req: Request, res: Response, next: NextFun
     const { familyId } = req.user;
     const { expenseId, splitId } = req.params;
 
+    if (familyId === DEMO_FAMILY_ID) {
+      for (const exp of demoStore.expenses) {
+        const split = exp.splits.find((s) => s.id === splitId);
+        if (split) {
+          split.isPaid = true;
+          (split as any).paidAt = new Date().toISOString();
+          res.json({ success: true, data: split });
+          return;
+        }
+      }
+    }
+
     const expense = await prisma.expense.findFirst({
       where: { id: expenseId, familyId, deletedAt: null },
       select: { id: true },
@@ -140,6 +189,12 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
   try {
     const { familyId } = req.user;
     const { id } = req.params;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      demoStore.expenses = demoStore.expenses.filter((e) => e.id !== id);
+      res.json({ success: true, data: null });
+      return;
+    }
 
     const existing = await prisma.expense.findFirst({
       where: { id, familyId, deletedAt: null },

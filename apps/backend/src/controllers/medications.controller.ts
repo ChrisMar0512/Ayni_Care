@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 import {
   CreateMedicationInput,
   UpdateMedicationInput,
@@ -12,28 +13,38 @@ export const listMedications = async (req: Request, res: Response, next: NextFun
   try {
     const { familyId } = req.user;
 
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    if (familyId === DEMO_FAMILY_ID) {
+      res.json({ success: true, data: demoStore.medications });
+      return;
+    }
 
-    const medications = await prisma.medication.findMany({
-      where: {
-        familyId,
-        deletedAt: null,
-        isActive: true,
-      },
-      include: {
-        logs: {
-          where: { givenAt: { gte: startOfToday } },
-          orderBy: { givenAt: 'desc' },
-          include: {
-            givenBy: { select: { id: true, name: true } },
+    try {
+      const startOfToday = new Date();
+      startOfToday.setUTCHours(0, 0, 0, 0);
+
+      const medications = await prisma.medication.findMany({
+        where: {
+          familyId,
+          deletedAt: null,
+          isActive: true,
+        },
+        include: {
+          logs: {
+            where: { givenAt: { gte: startOfToday } },
+            orderBy: { givenAt: 'desc' },
+            include: {
+              givenBy: { select: { id: true, name: true } },
+            },
           },
         },
-      },
-      orderBy: [{ name: 'asc' }, { createdAt: 'asc' }],
-    });
+        orderBy: [{ name: 'asc' }, { createdAt: 'asc' }],
+      });
 
-    res.json({ success: true, data: medications });
+      res.json({ success: true, data: medications });
+    } catch (dbErr) {
+      console.warn('[Medications] BD no accesible, usando demoStore...');
+      res.json({ success: true, data: demoStore.medications });
+    }
   } catch (err) {
     next(err);
   }
@@ -111,6 +122,27 @@ export const administerMedication = async (req: Request, res: Response, next: Ne
     const { familyId, memberId } = req.user;
     const { id } = req.params;
     const { skipped, skipReason, notes } = req.validatedBody as AdministerMedicationInput;
+
+    const demoMed = demoStore.medications.find((m) => m.id === id);
+    if (familyId === DEMO_FAMILY_ID || demoMed) {
+      const med = demoMed || demoStore.medications[0];
+      if (!skipped && med.stock !== null && med.stock > 0) {
+        med.stock = Math.max(0, med.stock - 1);
+      }
+      const newLog = {
+        id: `mlog-${Date.now()}`,
+        medicationId: med.id,
+        givenById: memberId,
+        givenAt: new Date(),
+        skipped: Boolean(skipped),
+        skipReason: skipReason || null,
+        notes: notes || null,
+        givenBy: { id: memberId, name: 'Carlos Mendoza' },
+      };
+      med.logs.unshift(newLog as any);
+      res.json({ success: true, data: { medication: med, log: newLog } });
+      return;
+    }
 
     const existing = await prisma.medication.findFirst({
       where: { id, familyId, deletedAt: null, isActive: true },

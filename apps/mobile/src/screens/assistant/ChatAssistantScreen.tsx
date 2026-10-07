@@ -118,7 +118,7 @@ export const ChatAssistantScreen: React.FC = () => {
             <TextInput
               value={inputText}
               onChangeText={setInputText}
-              placeholder={isTranscribing ? 'Transcribiendo tu voz con IA...' : 'Escribe o presiona el micrófono...'}
+              placeholder={isTranscribing ? 'Transcribiendo tu voz con IA...' : 'Escribe o presiona el micrófono... (ej. "Papá tomó su pastilla")'}
               placeholderTextColor={isTranscribing ? '#D4856A' : '#9CA3AF'}
               style={styles.textInput}
               multiline

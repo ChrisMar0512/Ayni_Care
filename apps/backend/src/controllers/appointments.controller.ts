@@ -3,6 +3,7 @@ import { AppointmentStatus, Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
 import { CreateAppointmentInput, UpdateAppointmentInput } from '../schemas/appointment.schema';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 
 const VALID_APPOINTMENT_STATUSES: AppointmentStatus[] = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
 
@@ -11,6 +12,15 @@ export const listAppointments = async (req: Request, res: Response, next: NextFu
   try {
     const { familyId } = req.user;
     const { status, from, to } = req.query;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      let filtered = [...demoStore.appointments];
+      if (typeof status === 'string') {
+        filtered = filtered.filter((a) => a.status === status);
+      }
+      res.json({ success: true, data: filtered });
+      return;
+    }
 
     if (typeof status === 'string' && !VALID_APPOINTMENT_STATUSES.includes(status as AppointmentStatus)) {
       res.status(400).json({
@@ -60,6 +70,27 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     const { title, type, scheduledAt, location, doctorName, durationMin, notes } =
       req.validatedBody as CreateAppointmentInput;
 
+    if (familyId === DEMO_FAMILY_ID) {
+      const newAppt = {
+        id: `appt-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        title,
+        type,
+        scheduledAt: new Date(scheduledAt),
+        location: location || null,
+        doctorName: doctorName || null,
+        durationMin: durationMin || 60,
+        notes: notes || null,
+        status: 'scheduled',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+      demoStore.appointments.push(newAppt as any);
+      res.status(201).json({ success: true, data: newAppt });
+      return;
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         familyId,
@@ -87,6 +118,20 @@ export const updateAppointment = async (req: Request, res: Response, next: NextF
     const { familyId } = req.user;
     const { id } = req.params;
     const updates = req.validatedBody as UpdateAppointmentInput;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      const appt = demoStore.appointments.find((a) => a.id === id);
+      if (!appt) {
+        res.status(404).json({ success: false, data: null, error: 'Cita no encontrada' });
+        return;
+      }
+      Object.assign(appt, {
+        ...updates,
+        scheduledAt: updates.scheduledAt ? new Date(updates.scheduledAt) : appt.scheduledAt,
+      });
+      res.json({ success: true, data: appt });
+      return;
+    }
 
     const existing = await prisma.appointment.findFirst({
       where: { id, familyId, deletedAt: null },
@@ -119,6 +164,15 @@ export const deleteAppointment = async (req: Request, res: Response, next: NextF
   try {
     const { familyId } = req.user;
     const { id } = req.params;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      const idx = demoStore.appointments.findIndex((a) => a.id === id);
+      if (idx !== -1) {
+        demoStore.appointments.splice(idx, 1);
+      }
+      res.json({ success: true, data: null });
+      return;
+    }
 
     const existing = await prisma.appointment.findFirst({
       where: { id, familyId, deletedAt: null },

@@ -3,6 +3,7 @@ import { NoteType } from '@prisma/client';
 import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
 import { CreateNoteInput } from '../schemas/note.schema';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 
 const VALID_NOTE_TYPES: NoteType[] = ['general', 'medical', 'handoff', 'symptom', 'observation'];
 
@@ -11,6 +12,12 @@ export const listNotes = async (req: Request, res: Response, next: NextFunction)
   try {
     const { familyId } = req.user;
     const { type } = req.query;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      const notes = type ? demoStore.notes.filter((n) => n.type === type) : demoStore.notes;
+      res.json({ success: true, data: notes });
+      return;
+    }
 
     if (typeof type === 'string' && !VALID_NOTE_TYPES.includes(type as NoteType)) {
       res.status(400).json({
@@ -44,6 +51,22 @@ export const createNote = async (req: Request, res: Response, next: NextFunction
   try {
     const { familyId, memberId } = req.user;
     const { title, content, type } = req.validatedBody as CreateNoteInput;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      const newNote = {
+        id: `note-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        authorId: memberId,
+        author: { id: memberId, name: 'Carlos Mendoza' },
+        title,
+        content,
+        type,
+        createdAt: new Date().toISOString(),
+      };
+      demoStore.notes.unshift(newNote as any);
+      res.status(201).json({ success: true, data: newNote });
+      return;
+    }
 
     const note = await prisma.note.create({
       data: {

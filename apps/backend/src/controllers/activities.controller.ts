@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma/client';
 import { broadcast } from '../services/realtime.service';
 import { sendPushNotifications } from '../services/notification.service';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 import {
   CreateActivityInput,
   UpdateActivityInput,
@@ -38,6 +39,11 @@ function mapAppointmentToActivity(appt: any): any {
 export const listActivities = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { familyId } = req.user;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      res.json({ success: true, data: demoStore.activities });
+      return;
+    }
     const { assignedToId, date } = req.query;
 
     const where: Prisma.ActivityWhereInput = {
@@ -122,6 +128,26 @@ export const createActivity = async (req: Request, res: Response, next: NextFunc
     const { title, description, scheduledAt, assignedToId, recurrence, priority } =
       req.validatedBody as CreateActivityInput;
 
+    if (familyId === DEMO_FAMILY_ID) {
+      const newAct = {
+        id: `act-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        title,
+        description: description || null,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+        assignedToId: assignedToId || 'dev-member-id',
+        recurrence: recurrence || 'once',
+        priority: priority || 'normal',
+        status: 'pending',
+        assignedTo: { id: assignedToId || 'dev-member-id', name: 'Carlos Mendoza' },
+        logs: [],
+        createdAt: new Date(),
+      };
+      demoStore.activities.unshift(newAct as any);
+      res.status(201).json({ success: true, data: newAct });
+      return;
+    }
+
     if (assignedToId) {
       const member = await prisma.familyMember.findFirst({
         where: { id: assignedToId, familyId, isActive: true },
@@ -197,6 +223,15 @@ export const updateActivity = async (req: Request, res: Response, next: NextFunc
     const { id } = req.params;
     const updates = req.validatedBody as UpdateActivityInput;
 
+    if (familyId === DEMO_FAMILY_ID) {
+      const act = demoStore.activities.find((a) => a.id === id);
+      if (act) {
+        Object.assign(act, updates);
+        res.json({ success: true, data: act });
+        return;
+      }
+    }
+
     const existing = await prisma.activity.findFirst({
       where: { id, familyId, deletedAt: null },
       select: { id: true },
@@ -243,6 +278,29 @@ export const completeActivity = async (req: Request, res: Response, next: NextFu
     const { familyId, memberId } = req.user;
     const { id } = req.params;
     const { notes } = req.validatedBody as CompleteActivityInput;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      const act = demoStore.activities.find((a) => a.id === id);
+      if (act) {
+        act.status = 'completed';
+        const log = {
+          id: `log-${Date.now()}`,
+          completedAt: new Date().toISOString(),
+          notes: notes || null,
+          completedBy: { id: memberId, name: 'Carlos Mendoza' },
+        };
+        (act as any).logs = [log];
+        res.json({ success: true, data: { activity: act, log } });
+        return;
+      }
+
+      const appt = demoStore.appointments.find((a) => a.id === id);
+      if (appt) {
+        appt.status = 'completed';
+        res.json({ success: true, data: { activity: mapAppointmentToActivity(appt), log: null } });
+        return;
+      }
+    }
 
     const existing = await prisma.activity.findFirst({
       where: { id, familyId, deletedAt: null },
@@ -329,6 +387,12 @@ export const deleteActivity = async (req: Request, res: Response, next: NextFunc
   try {
     const { familyId } = req.user;
     const { id } = req.params;
+
+    if (familyId === DEMO_FAMILY_ID) {
+      demoStore.activities = demoStore.activities.filter((a) => a.id !== id);
+      res.json({ success: true, data: null });
+      return;
+    }
 
     const existing = await prisma.activity.findFirst({
       where: { id, familyId, deletedAt: null },

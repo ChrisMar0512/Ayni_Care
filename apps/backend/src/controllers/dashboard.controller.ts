@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../prisma/client';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 
 const getLocalTimeStr = (date: Date): string => {
   try {
@@ -162,57 +163,71 @@ export const getDailyDashboard = async (
     const start = new Date(`${dateStr}T05:00:00.000Z`);
     const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-    // 1. Obtener Actividades del día
-    const activities = await prisma.activity.findMany({
-      where: {
-        familyId,
-        deletedAt: null,
-        scheduledAt: { gte: start, lte: end },
-      },
-      include: {
-        assignedTo: { select: { id: true, name: true } },
-        logs: {
-          orderBy: { completedAt: 'desc' },
-          take: 1,
-          select: {
-            id: true,
-            completedAt: true,
-            notes: true,
-            completedBy: { select: { id: true, name: true } },
-          },
-        },
-      },
-    });
+    let activities: any[] = [];
+    let appointments: any[] = [];
+    let medications: any[] = [];
 
-    // 2. Obtener Citas de la Agenda del día
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        familyId,
-        deletedAt: null,
-        scheduledAt: { gte: start, lte: end },
-      },
-    });
-
-    // 3. Obtener Medicamentos activos hoy
-    const medications = await prisma.medication.findMany({
-      where: {
-        familyId,
-        isActive: true,
-        deletedAt: null,
-        startDate: { lte: end },
-        OR: [{ endDate: null }, { endDate: { gte: start } }],
-      },
-      include: {
-        logs: {
-          where: {
-            givenAt: { gte: start, lte: end },
-          },
-          include: {
-            givenBy: { select: { id: true, name: true } },
-          },
-        },
-      },
-    });
+    if (familyId === DEMO_FAMILY_ID) {
+      activities = demoStore.activities as any;
+      appointments = demoStore.appointments as any;
+      medications = demoStore.medications as any;
+    } else {
+      try {
+        [activities, appointments, medications] = await Promise.all([
+          prisma.activity.findMany({
+            where: {
+              familyId,
+              deletedAt: null,
+              scheduledAt: { gte: start, lte: end },
+            },
+            include: {
+              assignedTo: { select: { id: true, name: true } },
+              logs: {
+                orderBy: { completedAt: 'desc' },
+                take: 1,
+                select: {
+                  id: true,
+                  completedAt: true,
+                  notes: true,
+                  completedBy: { select: { id: true, name: true } },
+                },
+              },
+            },
+          }),
+          prisma.appointment.findMany({
+            where: {
+              familyId,
+              deletedAt: null,
+              scheduledAt: { gte: start, lte: end },
+            },
+          }),
+          prisma.medication.findMany({
+            where: {
+              familyId,
+              isActive: true,
+              deletedAt: null,
+              startDate: { lte: end },
+              OR: [{ endDate: null }, { endDate: { gte: start } }],
+            },
+            include: {
+              logs: {
+                where: {
+                  givenAt: { gte: start, lte: end },
+                },
+                include: {
+                  givenBy: { select: { id: true, name: true } },
+                },
+              },
+            },
+          }),
+        ]);
+      } catch (dbErr) {
+        console.warn('[Dashboard] BD no accesible, usando demoStore para Don Alberto Mendoza...');
+        activities = demoStore.activities as any;
+        appointments = demoStore.appointments as any;
+        medications = demoStore.medications as any;
+      }
+    }
 
     // ─── MAPEADO DE ITEMS ───────────────────────────────────
 
@@ -278,7 +293,7 @@ export const getDailyDashboard = async (
       }
 
       // Inicializar slots de este medicamento como pendientes
-      const slots = med.times.map(t => ({
+      const slots = (med.times || []).map((t: string) => ({
         time: t,
         status: 'pending',
         completedBy: null as any,
