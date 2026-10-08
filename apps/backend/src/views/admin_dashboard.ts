@@ -96,7 +96,13 @@ export const adminDashboardHtml = `
         </div>
       </div>
       
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-3">
+        <!-- LINK TO BUSINESS INSIGHTS -->
+        <a id="insightsLink" href="/admin/insights?token=aynicare-admin-2026" class="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-700 to-teal-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm hover:from-emerald-800 hover:to-teal-900 transition-all duration-200">
+          <i data-lucide="trending-up" class="w-4 h-4 text-emerald-300"></i>
+          <span>📊 Tesis de Negocio & Discovery</span>
+        </a>
+
         <!-- SERVER STATUS INDICATOR -->
         <div class="flex items-center bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-100">
           <span class="relative flex h-2.5 w-2.5 mr-2">
@@ -412,6 +418,10 @@ export const adminDashboardHtml = `
     // Get security token from URL
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token') || '';
+    if (token) {
+      const insEl = document.getElementById('insightsLink');
+      if (insEl) insEl.href = \`/admin/insights?token=\${encodeURIComponent(token)}\`;
+    }
 
     // Humanize user roles helper
     const roleMapping = {
