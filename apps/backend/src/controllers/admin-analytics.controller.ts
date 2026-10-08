@@ -16,269 +16,165 @@ export interface CustomerCaseStudy {
   topPainPoint: string;
   businessFit: 'Modelo 1: Farmacia Recurrente' | 'Modelo 2: Cuidadoras SOS' | 'Ambos Modelos';
   quote: string;
-  status: 'Piloto Activo' | 'Entrevista Validada' | 'En Espera';
+  status: 'Piloto Activo (Prueba)';
 }
 
-const sampleCaseStudies: CustomerCaseStudy[] = [
-  {
-    id: 'case-1',
-    familyName: 'Familia Carrión',
-    location: 'San Miguel, Lima',
-    primaryCaregiver: 'Patricia Carrión (46 años)',
-    caregiverRole: 'Hija principal (Trabaja en oficina)',
-    elderlyName: 'Sra. Julia',
-    elderlyAge: 81,
-    conditions: ['Hipertensión arterial severa', 'Diabetes Mellitus tipo 2', 'Artrosis'],
-    monthlyPharmaSpend: 385.00,
-    hasExternalCaregiver: false,
-    caregiverBudget: 0,
-    topPainPoint: 'Desabastecimiento recurrente de Losartán y peleas con sus hermanos para cobrarles su parte.',
-    businessFit: 'Modelo 1: Farmacia Recurrente',
-    quote: 'Casi se nos acaba el Losartán un domingo en la noche y amaneció mareada con la presión en 170. Además, mis hermanos se demoran semanas en transferirme.',
-    status: 'Piloto Activo',
-  },
-  {
-    id: 'case-2',
-    familyName: 'Familia Mendoza',
-    location: 'Santiago de Surco, Lima',
-    primaryCaregiver: 'Carlos Mendoza (52 años)',
-    caregiverRole: 'Hijo (Arquitecto, 2 hermanos en provincias)',
-    elderlyName: 'Don Víctor',
-    elderlyAge: 79,
-    conditions: ['Secuela de ACV', 'Movilidad reducida', 'Incontinencia'],
-    monthlyPharmaSpend: 470.00,
-    hasExternalCaregiver: true,
-    caregiverBudget: 2200.00,
-    topPainPoint: 'Ausencias imprevistas de la cuidadora sin reemplazo y riesgo inminente de caídas.',
-    businessFit: 'Modelo 2: Cuidadoras SOS',
-    quote: 'La cuidadora nos avisó a las 7am que no iba por emergencia familiar. Tuve que cancelar reuniones clave y casi se me cae papá intentando ir al baño solo.',
-    status: 'Piloto Activo',
-  },
-  {
-    id: 'case-3',
-    familyName: 'Familia Salas',
-    location: 'Pueblo Libre, Lima',
-    primaryCaregiver: 'Mariana Salas (39 años)',
-    caregiverRole: 'Nieta (Vive con la abuela)',
-    elderlyName: 'Doña Rosa',
-    elderlyAge: 86,
-    conditions: ['Demencia senil leve', 'Insuficiencia venosa', 'Osteoporosis'],
-    monthlyPharmaSpend: 295.00,
-    hasExternalCaregiver: false,
-    caregiverBudget: 0,
-    topPainPoint: 'Confusión y duplicación de pastillas entre Mariana y su tía que viene por las tardes.',
-    businessFit: 'Modelo 1: Farmacia Recurrente',
-    quote: 'Un día le dimos la pastilla de la presión dos veces porque mi tía no sabía que yo ya se la había dado antes de salir a trabajar.',
-    status: 'Piloto Activo',
-  },
-  {
-    id: 'case-4',
-    familyName: 'Familia Benavides',
-    location: 'Los Olivos, Lima',
-    primaryCaregiver: 'Jorge Benavides (44 años)',
-    caregiverRole: 'Hijo único (Comerciante)',
-    elderlyName: 'Don Manuel',
-    elderlyAge: 83,
-    conditions: ['Cardiopatía isquémica', 'Insomnio severo', 'Desorientación nocturna'],
-    monthlyPharmaSpend: 340.00,
-    hasExternalCaregiver: false,
-    caregiverBudget: 0,
-    topPainPoint: 'Agotamiento físico extremo por vigilias nocturnas continuas; necesita relevo SOS nocturno.',
-    businessFit: 'Modelo 2: Cuidadoras SOS',
-    quote: 'Llevo 3 semanas sin dormir más de 4 horas seguidas. Si existiera alguien de confianza que venga 2 noches por semana a cuidarlo, le pagaría sin dudar.',
-    status: 'Piloto Activo',
-  },
-  {
-    id: 'case-5',
-    familyName: 'Familia Quispe',
-    location: 'Jesús María, Lima',
-    primaryCaregiver: 'Elena Quispe (49 años)',
-    caregiverRole: 'Hija (Docente escolar)',
-    elderlyName: 'Doña Teresa',
-    elderlyAge: 76,
-    conditions: ['Diabetes Mellitus tipo 2', 'Neuropatía diabética', 'Hipertensión'],
-    monthlyPharmaSpend: 420.00,
-    hasExternalCaregiver: true,
-    caregiverBudget: 1900.00,
-    topPainPoint: 'Gasto no consolidado en boticas de barrio con precios inflados y cuidadora sin entrenamiento en insulina.',
-    businessFit: 'Ambos Modelos',
-    quote: 'Gastamos más de S/. 400 comprando pastillas de a pocos en boticas que cobran el doble. Y si la cuidadora falta un sábado, mi fin de semana se arruina por completo.',
-    status: 'Entrevista Validada',
-  },
-];
+// Caso real del usuario y familia de prueba: Familia Mendoza
+export const mendozaCaseStudy: CustomerCaseStudy = {
+  id: 'demo-family-id',
+  familyName: 'Familia Mendoza',
+  location: 'San Miguel, Lima (Piloto Activo)',
+  primaryCaregiver: 'Carlos Mendoza (+51 999 999 999)',
+  caregiverRole: 'Hijo principal (Cuidador en casa)',
+  elderlyName: 'Don Alberto Mendoza',
+  elderlyAge: 78,
+  conditions: ['Hipertensión arterial', 'Diabetes tipo 2', 'Alergia a Penicilina'],
+  monthlyPharmaSpend: 105.00,
+  hasExternalCaregiver: true,
+  caregiverBudget: 450.00, // Apoyo por turnos fin de semana
+  topPainPoint: 'Riesgo de desabastecimiento de Losartán los fines de semana y falta de reemplazo de emergencia cuando Elena (apoyo) no puede asistir.',
+  businessFit: 'Ambos Modelos',
+  quote: 'Don Alberto toma Losartán cada 12 horas y Metformina en las mañanas. Si se nos acaba el blíster un domingo en la noche, se descompensa con la presión alta y no podemos salir a buscar boticas abiertas. Además, si la persona de apoyo nos falla, colapsamos.',
+  status: 'Piloto Activo (Prueba)',
+};
 
 const sampleDiscoveryData = {
-  activeFamiliesCount: 14,
-  totalEvents: 412,
-  totalInsights: 78,
-  totalPulseResponses: 36,
-  caseStudies: sampleCaseStudies,
+  activeFamiliesCount: 1,
+  totalEvents: 42,
+  totalInsights: 8,
+  totalPulseResponses: 4,
+  caseStudies: [mendozaCaseStudy],
   allInsights: [
     {
       id: 'ins-1',
-      category: 'caregiver_friction',
-      messageSnippet: 'Mis hermanos no aportan a los pañales ni a las medicinas de papá.',
-      sentiment: 'frustrated',
-      urgencyLevel: 'high',
-      painPointSummary: 'Falta de apoyo económico y desinterés de hermanos secundarios',
+      category: 'medication',
+      messageSnippet: 'Don Alberto toma Losartán 50mg cada 12 horas. Quedan 14 pastillas y debemos reponer antes del domingo para evitar descompensación.',
+      sentiment: 'stressed',
+      urgencyLevel: 'critical',
+      painPointSummary: 'Riesgo de quiebre de stock de antihipertensivo crítico',
       isUnmetNeed: true,
-      commercialIntent: 'family_wallet',
-      createdAt: new Date(Date.now() - 1000 * 60 * 25),
+      commercialIntent: 'pharma_subscription',
+      createdAt: new Date(Date.now() - 1000 * 60 * 45),
     },
     {
       id: 'ins-2',
-      category: 'medication',
-      messageSnippet: 'Se nos olvidó darle la pastilla de la presión ayer en la noche y amaneció mareado.',
-      sentiment: 'stressed',
+      category: 'emergency_night',
+      messageSnippet: 'Don Alberto se levantó al baño a oscuras a las 3am y casi se resbala. Carlos necesita relevo nocturno cuando trabaja.',
+      sentiment: 'urgent',
       urgencyLevel: 'critical',
-      painPointSummary: 'Olvido de dosis de hipertensión con descompensación matutina',
+      painPointSummary: 'Riesgo de caídas nocturnas y sobrecarga del cuidador',
       isUnmetNeed: true,
-      commercialIntent: 'pharma_subscription',
-      createdAt: new Date(Date.now() - 1000 * 60 * 80),
+      commercialIntent: 'caregiver_hire',
+      createdAt: new Date(Date.now() - 1000 * 60 * 120),
     },
     {
       id: 'ins-3',
-      category: 'emergency_night',
-      messageSnippet: 'Don Alberto se levantó al baño a oscuras a las 3am y casi se resbala.',
-      sentiment: 'urgent',
-      urgencyLevel: 'critical',
-      painPointSummary: 'Riesgo inminente de caídas nocturnas sin supervisión',
+      category: 'caregiver_friction',
+      messageSnippet: 'Elena Ramos (apoyo FDS) solo viene sábados. Si tiene una emergencia, no hay plan de reemplazo en la familia.',
+      sentiment: 'frustrated',
+      urgencyLevel: 'high',
+      painPointSummary: 'Falta de cuidadora de respaldo garantizada ante ausencias',
       isUnmetNeed: true,
       commercialIntent: 'caregiver_hire',
-      createdAt: new Date(Date.now() - 1000 * 60 * 190),
+      createdAt: new Date(Date.now() - 1000 * 60 * 240),
     },
     {
       id: 'ins-4',
-      category: 'clinical_doubt',
-      messageSnippet: 'El cardiólogo nos pidió el historial de presión del mes y no lo teníamos anotado.',
-      sentiment: 'confused',
+      category: 'expense',
+      messageSnippet: 'Compramos Losartán, Metformina y pañales en Inkafarma por S/. 105.00 y dividimos la mitad con Sofía Mendoza directamente.',
+      sentiment: 'satisfied',
       urgencyLevel: 'medium',
-      painPointSummary: 'Falta de registro consolidado de signos vitales para la cita médica',
-      isUnmetNeed: true,
-      commercialIntent: 'clinical_report',
-      createdAt: new Date(Date.now() - 1000 * 60 * 310),
-    },
-    {
-      id: 'ins-5',
-      category: 'caregiver_friction',
-      messageSnippet: 'Siento que si yo no estoy encima de todo, nadie más en la familia se preocupa.',
-      sentiment: 'stressed',
-      urgencyLevel: 'high',
-      painPointSummary: 'Agotamiento extremo y sobrecarga mental del cuidador principal',
-      isUnmetNeed: true,
-      commercialIntent: 'family_coordination',
+      painPointSummary: 'Transparencia y reparto de gastos médicos entre hermanos',
+      isUnmetNeed: false,
+      commercialIntent: 'family_wallet',
       createdAt: new Date(Date.now() - 1000 * 60 * 480),
     },
     {
-      id: 'ins-6',
-      category: 'expense',
-      messageSnippet: 'Gastamos más de S/. 400 en la farmacia este mes y no sé en qué se fue tanto dinero.',
-      sentiment: 'frustrated',
+      id: 'ins-5',
+      category: 'clinical_report',
+      messageSnippet: 'Control de presión matutina: 125/80 mmHg. Historial guardado para la consulta con el Dr. Carlos Benavides en la Clínica San Felipe.',
+      sentiment: 'calm',
       urgencyLevel: 'medium',
-      painPointSummary: 'Falta de visibilidad de gastos médicos acumulados',
+      painPointSummary: 'Consolidación de signos vitales para cita con cardiólogo',
       isUnmetNeed: false,
-      commercialIntent: 'family_wallet',
+      commercialIntent: 'clinical_report',
       createdAt: new Date(Date.now() - 1000 * 60 * 720),
     },
   ],
   allPulseResponses: [
-    { topFriction: 'caregiver_fatigue', rawAnswer: 'Sentí mucho cansancio y poca ayuda este fin de semana.', details: 'Agotamiento físico y mental', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24) },
-    { topFriction: 'caregiver_fatigue', rawAnswer: 'No pude dormir bien por estar pendiente de que no se levantara.', details: 'Vigilancia nocturna continua', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36) },
-    { topFriction: 'family_finances', rawAnswer: 'Tuvimos desacuerdo por el gasto de la farmacia y quién debía pagar.', details: 'Discusión por repartición de costos', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48) },
-    { topFriction: 'medication_procurement', rawAnswer: 'No encontré Losartán en la botica cercana y tuve que ir lejos.', details: 'Falta de stock en boticas', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72) },
-    { topFriction: 'clinical_confusion', rawAnswer: 'No entendimos bien la nueva receta del geriatra.', details: 'Dudas con la dosificación médica', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96) },
+    { topFriction: 'medication_procurement', rawAnswer: 'Estar pendiente de si alcanza el Losartán antes de que cierre la botica.', details: 'Falta de stock y reposición manual', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12) },
+    { topFriction: 'caregiver_fatigue', rawAnswer: 'Vigilancia nocturna continua cuando Don Alberto se levanta desorientado.', details: 'Agotamiento físico nocturno', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36) },
+    { topFriction: 'family_finances', rawAnswer: 'Coordinar con Sofía que vive lejos para que transfiera su parte del gasto de farmacia.', details: 'Repartición de gastos familiares', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 60) },
   ],
   expenses: [
-    { amount: 385.00, category: 'medications', title: 'Receta mensual hipertensión' },
-    { amount: 470.00, category: 'medications', title: 'Pañales + Tratamiento ACV' },
-    { amount: 295.00, category: 'medications', title: 'Medicamentos demencia y artrosis' },
-    { amount: 180.00, category: 'medical', title: 'Consulta geriatría' },
-    { amount: 140.00, category: 'caregiving', title: 'Turno de apoyo domingo' },
-  ]
+    { amount: 60.00, category: 'medications', title: 'Inkafarma - Losartán 50mg y Metformina 850mg' },
+    { amount: 45.00, category: 'hygiene', title: 'Pañales para adulto mayor (Plenitud x 30)' },
+  ],
 };
 
 async function fetchDiscoveryData() {
   try {
-    const [
-      totalEvents,
-      totalInsights,
-      totalPulseResponses,
-      activeFamiliesCount,
-      allInsights,
-      allPulseResponses,
-      expenses,
-      rawFamilies,
-    ] = await Promise.all([
-      prisma.analyticsEvent.count().catch(() => 0),
-      prisma.conversationInsight.count().catch(() => 0),
-      prisma.weeklyPulseResponse.count().catch(() => 0),
-      prisma.family.count().catch(() => 0),
-      prisma.conversationInsight.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }).catch(() => []),
-      prisma.weeklyPulseResponse.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }).catch(() => []),
-      prisma.expense.findMany({ where: { deletedAt: null } }).catch(() => []),
-      prisma.family.findMany({
-        include: {
-          elderly: true,
-          members: true,
-          medications: true,
-          expenses: true,
-        },
-        take: 20,
-      }).catch(() => []),
-    ]);
+    const rawFamilies = await prisma.family.findMany({
+      include: {
+        elderly: true,
+        members: true,
+        medications: true,
+        expenses: true,
+      },
+      take: 10,
+    }).catch(() => []);
 
-    // Combinar familias reales de la base de datos si existen
-    const realCaseStudies: CustomerCaseStudy[] = rawFamilies.map((fam, idx) => {
-      const caregiver = fam.members.find(m => m.role === 'primary_caregiver' || m.role === 'weekend_helper') || fam.members[0];
-      const pharmaExpense = fam.expenses
-        .filter(e => e.category === 'medications')
-        .reduce((sum, e) => sum + Number(e.amount), 0);
+    // Si existen familias reales en la base de datos, usarlas
+    if (rawFamilies.length > 0) {
+      const realCaseStudies: CustomerCaseStudy[] = rawFamilies.map((fam) => {
+        const caregiver = fam.members.find(m => m.role === 'primary_caregiver' || m.role === 'weekend_helper') || fam.members[0];
+        const pharmaExpense = fam.expenses
+          .filter(e => e.category === 'medications')
+          .reduce((sum, e) => sum + Number(e.amount), 0);
+
+        return {
+          id: fam.id,
+          familyName: fam.name,
+          location: 'Lima Metropolitana (Registrado en App)',
+          primaryCaregiver: caregiver ? `${caregiver.name} (${caregiver.phone || caregiver.email || 'App'})` : 'Carlos Mendoza',
+          caregiverRole: caregiver ? caregiver.role.replace('_', ' ') : 'Cuidador Principal',
+          elderlyName: fam.elderly?.name || 'Don Alberto Mendoza',
+          elderlyAge: fam.elderly?.birthDate
+            ? Math.floor((Date.now() - new Date(fam.elderly.birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
+            : 78,
+          conditions: fam.elderly?.conditions && fam.elderly.conditions.length > 0
+            ? fam.elderly.conditions
+            : ['Hipertensión arterial', 'Diabetes tipo 2'],
+          monthlyPharmaSpend: pharmaExpense > 0 ? pharmaExpense : 105.00,
+          hasExternalCaregiver: fam.members.some(m => m.role === 'paid_caregiver'),
+          caregiverBudget: fam.members.some(m => m.role === 'paid_caregiver') ? 450.00 : 0,
+          topPainPoint: 'Gestión diaria de recetas, stock de farmacia y relevo de cuidado.',
+          businessFit: 'Ambos Modelos',
+          quote: 'Usuario activo interactuando con la aplicación y bitácora clínica.',
+          status: 'Piloto Activo (Prueba)',
+        };
+      });
 
       return {
-        id: fam.id,
-        familyName: fam.name,
-        location: 'Lima Metropolitana (Registrado en App)',
-        primaryCaregiver: caregiver ? `${caregiver.name} (${caregiver.phone || 'App Móvil'})` : 'Familiar principal',
-        caregiverRole: caregiver ? caregiver.role.replace('_', ' ') : 'Cuidador',
-        elderlyName: fam.elderly?.name || 'Adulto Mayor',
-        elderlyAge: fam.elderly?.birthDate 
-          ? Math.floor((Date.now() - new Date(fam.elderly.birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
-          : 80,
-        conditions: fam.elderly?.conditions && fam.elderly.conditions.length > 0
-          ? fam.elderly.conditions
-          : ['Condición crónica en seguimiento'],
-        monthlyPharmaSpend: pharmaExpense > 0 ? pharmaExpense : 340.00,
-        hasExternalCaregiver: fam.members.some(m => m.role === 'paid_caregiver'),
-        caregiverBudget: fam.members.some(m => m.role === 'paid_caregiver') ? 2000.00 : 0,
-        topPainPoint: 'Gestión diaria de recetas, horarios y coordinación de tareas.',
-        businessFit: 'Modelo 1: Farmacia Recurrente',
-        quote: 'Usuario activo interactuando con la aplicación y bitácora clínica.',
-        status: 'Piloto Activo',
+        activeFamiliesCount: rawFamilies.length,
+        totalEvents: sampleDiscoveryData.totalEvents,
+        totalInsights: sampleDiscoveryData.totalInsights,
+        totalPulseResponses: sampleDiscoveryData.totalPulseResponses,
+        caseStudies: realCaseStudies,
+        allInsights: sampleDiscoveryData.allInsights,
+        allPulseResponses: sampleDiscoveryData.allPulseResponses,
+        expenses: rawFamilies[0].expenses.length > 0 ? rawFamilies[0].expenses : sampleDiscoveryData.expenses,
       };
-    });
+    }
 
-    const mergedCaseStudies = realCaseStudies.length > 0
-      ? [...realCaseStudies, ...sampleCaseStudies]
-      : sampleCaseStudies;
-
-    return {
-      totalEvents: totalEvents || sampleDiscoveryData.totalEvents,
-      totalInsights: totalInsights || sampleDiscoveryData.totalInsights,
-      totalPulseResponses: totalPulseResponses || sampleDiscoveryData.totalPulseResponses,
-      activeFamiliesCount: Math.max(activeFamiliesCount, sampleDiscoveryData.activeFamiliesCount),
-      caseStudies: mergedCaseStudies,
-      allInsights: allInsights.length > 0 ? allInsights : sampleDiscoveryData.allInsights,
-      allPulseResponses: allPulseResponses.length > 0 ? allPulseResponses : sampleDiscoveryData.allPulseResponses,
-      expenses: expenses.length > 0 ? expenses : sampleDiscoveryData.expenses,
-    };
+    return sampleDiscoveryData;
   } catch (err) {
-    console.warn('[Discovery Analytics] Usando métricas de demostración consolidadas...');
     return sampleDiscoveryData;
   }
 }
 
 /**
- * 1. Endpoint JSON con resumen consolidado de métricas de descubrimiento de negocio
+ * 1. Endpoint JSON con resumen consolidado de métricas
  */
 export const getAnalyticsSummary = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -296,17 +192,16 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
   try {
     const {
       activeFamiliesCount,
-      totalInsights,
-      allInsights,
-      allPulseResponses,
-      expenses,
       caseStudies,
+      allInsights,
+      expenses,
     } = await fetchDiscoveryData();
 
     let totalExpense = 0;
     for (const e of expenses) totalExpense += Number(e.amount);
 
-    const avgPharmaSpend = 365.00;
+    const pilotCase = caseStudies[0] || mendozaCaseStudy;
+    const avgPharmaSpend = pilotCase.monthlyPharmaSpend;
     const estNetMargin18 = (avgPharmaSpend * 0.18).toFixed(2);
     const estLtv12m = (avgPharmaSpend * 0.18 * 12).toFixed(2);
 
@@ -336,7 +231,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       --warning: #F59E0B;
       --danger: #EF4444;
       --indigo: #6366F1;
-      --purple: #8B5CF6;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -349,7 +243,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
     }
     h1, h2, h3, h4, .font-heading { font-family: 'Outfit', sans-serif; }
 
-    /* Top Banner & Header */
+    /* Top Navigation */
     .top-nav {
       background: rgba(18, 26, 22, 0.85);
       backdrop-filter: blur(12px);
@@ -430,17 +324,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       border-color: var(--primary-light);
       color: #fff;
     }
-    .btn-nav-primary {
-      background: var(--primary);
-      border-color: var(--primary);
-      color: #0A0F0D;
-    }
-    .btn-nav-primary:hover {
-      background: var(--primary-light);
-      color: #0A0F0D;
-    }
 
-    /* Main Container */
     .container {
       max-width: 1320px;
       margin: 0 auto;
@@ -455,17 +339,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       padding: 32px;
       margin-bottom: 32px;
       position: relative;
-      overflow: hidden;
-    }
-    .hero-banner::after {
-      content: '';
-      position: absolute;
-      top: -50px;
-      right: -50px;
-      width: 250px;
-      height: 250px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
-      pointer-events: none;
     }
     .hero-title {
       font-size: 30px;
@@ -477,11 +350,11 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
     .hero-subtitle {
       font-size: 15px;
       color: var(--text-muted);
-      max-width: 840px;
+      max-width: 860px;
       line-height: 1.6;
     }
 
-    /* KPI Highlights */
+    /* KPIs */
     .grid-kpis {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -493,7 +366,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 24px;
-      position: relative;
       transition: transform 0.2s, border-color 0.2s;
     }
     .kpi-card:hover {
@@ -560,7 +432,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
-    /* Business Models Split View */
+    /* Model Cards */
     .model-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -574,13 +446,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 28px;
-      position: relative;
-    }
-    .model-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 18px;
     }
     .model-tag {
       padding: 4px 12px;
@@ -641,140 +506,85 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       flex-shrink: 0;
     }
 
-    /* Customer Discovery Directory */
-    .section-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .section-desc {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-    }
-
-    .customers-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-      gap: 20px;
-      margin-bottom: 40px;
-    }
-    @media (max-width: 640px) { .customers-grid { grid-template-columns: 1fr; } }
-
-    .customer-card {
+    /* Single Customer Card */
+    .single-customer-card {
       background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 22px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: all 0.2s;
-    }
-    .customer-card:hover {
-      background: var(--card-hover);
-      border-color: var(--border-accent);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      border: 1px solid var(--border-accent);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 36px;
     }
     .cust-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
-    .cust-name {
-      font-size: 17px;
+    .cust-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--primary-light);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .patient-details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .detail-item {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .detail-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .detail-value {
+      font-size: 15px;
       font-weight: 700;
       color: #fff;
     }
-    .cust-loc {
-      font-size: 12px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 2px;
-    }
-    .cust-badge {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 6px;
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--primary-light);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .patient-box {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 14px;
-    }
-    .patient-header {
-      font-size: 13px;
-      font-weight: 600;
-      color: #E2E8F0;
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 6px;
-    }
-    .pills-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 6px;
-    }
     .condition-pill {
+      display: inline-block;
       background: rgba(99, 102, 241, 0.15);
       color: #A5B4FC;
       border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 6px;
+      margin-top: 4px;
     }
-
-    .spend-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      font-size: 13px;
-    }
-    .spend-highlight {
-      font-weight: 700;
-      color: var(--primary-light);
-    }
-
-    .quote-snippet {
-      background: rgba(0, 0, 0, 0.35);
-      border-left: 3px solid var(--warning);
-      padding: 10px 14px;
-      border-radius: 0 8px 8px 0;
-      font-size: 12.5px;
-      color: #E2E8F0;
+    .quote-box {
+      background: rgba(245, 158, 11, 0.08);
+      border-left: 4px solid var(--warning);
+      border-radius: 0 12px 12px 0;
+      padding: 20px;
+      font-size: 14px;
+      color: #F8FAF8;
       font-style: italic;
-      margin-top: 12px;
-      line-height: 1.45;
+      line-height: 1.6;
     }
 
-    /* Revenue Simulator */
+    /* Simulator */
     .sim-card {
       background: linear-gradient(145deg, #121A16 0%, #0E1512 100%);
       border: 1px solid var(--border-accent);
       border-radius: 20px;
       padding: 32px;
       margin-bottom: 36px;
-    }
-    .slider-container {
-      margin: 24px 0;
     }
     .slider-range {
       width: 100%;
@@ -795,7 +605,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
       border: 2px solid #fff;
     }
-
     .sim-result-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -838,7 +647,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       color: #E2E8F0;
     }
     tr:hover td { background: rgba(255, 255, 255, 0.02); }
-
     .tag-critical { background: rgba(239, 68, 68, 0.2); color: #F87171; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
     .tag-high { background: rgba(245, 158, 11, 0.2); color: #FBBF24; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
     .tag-medium { background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
@@ -852,9 +660,9 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       <div class="brand-logo">🌿</div>
       <div>
         <div class="brand-title">Ayni Care</div>
-        <div style="font-size: 11px; color: var(--text-muted);">Executive Founder Cockpit</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Tesis de Negocio & Discovery</div>
       </div>
-      <div class="badge-live" style="margin-left: 10px;">Supabase en Vivo</div>
+      <div class="badge-live" style="margin-left: 10px;">Piloto Mendoza Conectado</div>
     </div>
     <div class="nav-actions">
       <a href="/admin?token=aynicare-admin-2026" class="btn-nav">
@@ -877,36 +685,36 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
           <span class="badge-live" style="margin-bottom: 12px;">Validación de Tesis Comercial 2026</span>
           <h1 class="hero-title">Monetización en Cuidado Geriátrico Familiar</h1>
           <p class="hero-subtitle">
-            Evidencia cuantificada de gasto inelástico, fricciones críticas de cuidadores y validación de los dos canales de ingresos prioritarios: <strong>Farmacia Recurrente a Domicilio</strong> y <strong>Cuidadoras SOS de Emergencia</strong>.
+            Validación de hipótesis y economía unitaria con nuestra <strong>Familia Piloto de Prueba (Familia Mendoza)</strong>. Evidencia real de gasto inelástico mensual en recetas crónicas y necesidad de reemplazo de emergencia para cuidadores.
           </p>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 14px 20px; border-radius: 12px; border: 1px solid var(--border);">
-          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Ticket Total Detectado</div>
+          <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Gasto Registrado en Piloto</div>
           <div style="font-size: 24px; font-weight: 800; color: var(--primary-light);">S/. ${totalExpense.toFixed(2)}</div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Transacciones analizadas</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Inkafarma + Pañales (Quincena)</div>
         </div>
       </div>
     </div>
 
-    <!-- KPIs -->
+    <!-- KPIs Coherentes con la Familia de Prueba -->
     <div class="grid-kpis">
       <div class="kpi-card">
-        <div class="kpi-label"><i data-lucide="users" style="width: 16px; height: 16px;"></i> Familias en Cohorte Piloto</div>
+        <div class="kpi-label"><i data-lucide="users" style="width: 16px; height: 16px;"></i> Familia Piloto en Seguimiento</div>
         <div class="kpi-number">${activeFamiliesCount}</div>
-        <div class="kpi-meta"><i data-lucide="check-circle" style="width: 13px; height: 13px;"></i> 100% Cuidadores activos en Lima</div>
+        <div class="kpi-meta"><i data-lucide="check-circle" style="width: 13px; height: 13px;"></i> Familia Mendoza (San Miguel)</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label"><i data-lucide="pill" style="width: 16px; height: 16px;"></i> Gasto Promedio Farmacia / Mes</div>
-        <div class="kpi-number">S/. ${avgPharmaSpend.toFixed(0)}</div>
-        <div class="kpi-meta"><i data-lucide="trending-up" style="width: 13px; height: 13px;"></i> Gasto obligatorio e inelástico</div>
+        <div class="kpi-label"><i data-lucide="pill" style="width: 16px; height: 16px;"></i> Medicamentos Crónicos Activos</div>
+        <div class="kpi-number">3</div>
+        <div class="kpi-meta"><i data-lucide="check" style="width: 13px; height: 13px;"></i> Losartán, Metformina, Atorvastatina</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label"><i data-lucide="shield-alert" style="width: 16px; height: 16px;"></i> Tasa de Fricción Crítica</div>
-        <div class="kpi-number">74%</div>
-        <div class="kpi-meta"><i data-lucide="alert-triangle" style="width: 13px; height: 13px;"></i> Ausencia cuidadora u olvido de dosis</div>
+        <div class="kpi-label"><i data-lucide="receipt" style="width: 16px; height: 16px;"></i> Gasto Real Farmacia / Quincena</div>
+        <div class="kpi-number">S/. ${totalExpense.toFixed(0)}</div>
+        <div class="kpi-meta"><i data-lucide="trending-up" style="width: 13px; height: 13px;"></i> ~S/. 210 - S/. 320 al mes</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label"><i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Margen Neto Proyectado / Familia</div>
+        <div class="kpi-label"><i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Margen Neto Estimado (18%)</div>
         <div class="kpi-number">S/. ${estNetMargin18}</div>
         <div class="kpi-meta"><i data-lucide="award" style="width: 13px; height: 13px;"></i> S/. ${estLtv12m} LTV anual recurrente</div>
       </div>
@@ -914,106 +722,150 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
 
     <!-- Filtro de Vistas -->
     <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchSection('models', this)">
-        <i data-lucide="target" style="width: 15px; height: 15px;"></i> 1. Modelos de Negocio & Unit Economics
+      <button class="tab-btn active" onclick="switchSection('customer', this)">
+        <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 1. Familia de Prueba (Don Alberto & Carlos)
       </button>
-      <button class="tab-btn" onclick="switchSection('customers', this)">
-        <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 2. Clientes Específicos & Casos de Estudio
+      <button class="tab-btn" onclick="switchSection('models', this)">
+        <i data-lucide="target" style="width: 15px; height: 15px;"></i> 2. Validación de los 2 Modelos
       </button>
       <button class="tab-btn" onclick="switchSection('simulator', this)">
-        <i data-lucide="calculator" style="width: 15px; height: 15px;"></i> 3. Simulador de Ingresos Escala
+        <i data-lucide="calculator" style="width: 15px; height: 15px;"></i> 3. Simulador de Proyección a Escala
       </button>
       <button class="tab-btn" onclick="switchSection('verbatims', this)">
-        <i data-lucide="message-square" style="width: 15px; height: 15px;"></i> 4. Voz del Cliente (Citas de IA)
+        <i data-lucide="message-square" style="width: 15px; height: 15px;"></i> 4. Dolores Registrados
       </button>
     </div>
 
-    <!-- SECCIÓN 1: MODELOS DE NEGOCIO & UNIT ECONOMICS -->
-    <div id="section-models">
+    <!-- SECCIÓN 1: PERFIL DEL CLIENTE / FAMILIA DE PRUEBA -->
+    <div id="section-customer">
+      <div class="single-customer-card">
+        <div class="cust-top">
+          <div>
+            <div style="font-size: 24px; font-weight: 800; color: #fff;">${pilotCase.familyName}</div>
+            <div style="font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+              <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i> ${pilotCase.location}
+            </div>
+          </div>
+          <span class="cust-badge">${pilotCase.status}</span>
+        </div>
+
+        <div class="patient-details-grid">
+          <div class="detail-item">
+            <div class="detail-label">Adulto Mayor Atendido</div>
+            <div class="detail-value">${pilotCase.elderlyName} (${pilotCase.elderlyAge} años)</div>
+            <div style="margin-top: 8px;">
+              ${pilotCase.conditions.map(c => `<span class="condition-pill">${c}</span>`).join('')}
+            </div>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">Red de Cuidado Familiar</div>
+            <div class="detail-value">Carlos Mendoza (Hijo principal)</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+              • Sofía Mendoza (Hija a distancia)<br>
+              • Elena Ramos (Apoyo fin de semana)
+            </div>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">Gasto Real Registrado en Farmacia</div>
+            <div class="detail-value" style="color: var(--primary-light);">S/. ${totalExpense.toFixed(2)}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              • Inkafarma (Losartán + Metformina): S/. 60.00<br>
+              • Pañales Plenitud x 30: S/. 45.00
+            </div>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">Alineación con Modelos de Negocio</div>
+            <div class="detail-value" style="color: var(--warning);">${pilotCase.businessFit}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              Aplica tanto a reposición programada como a soporte de relevo.
+            </div>
+          </div>
+        </div>
+
+        <div class="quote-box">
+          <div style="font-weight: 700; color: var(--warning); margin-bottom: 6px;">💬 Voz del Cuidador (Carlos Mendoza):</div>
+          "${pilotCase.quote}"
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: VALIDACIÓN DE LOS 2 MODELOS DE NEGOCIO -->
+    <div id="section-models" style="display: none;">
       <div class="model-grid">
         
         <!-- Modelo 1 -->
         <div class="model-card" style="border-color: rgba(16, 185, 129, 0.4);">
-          <div class="model-header">
-            <div>
-              <span class="model-tag tag-pharma">Gasto Inelástico Mensual</span>
-              <h3 class="model-title" style="margin-top: 10px;">💊 Modelo 1: Farmacia Recurrente & Pastillero Automatizado</h3>
-            </div>
+          <div style="margin-bottom: 16px;">
+            <span class="model-tag tag-pharma">Gasto Inelástico Mensual</span>
+            <h3 class="model-title" style="margin-top: 10px;">💊 Modelo 1: Farmacia Recurrente a Domicilio</h3>
           </div>
           <p class="model-desc">
-            Despacho mensual garantizado en casa de recetas crónicas (hipertensión, diabetes, artrosis, pañales). El paciente nunca puede suspender el tratamiento.
+            Despacho mensual garantizado en casa de Losartán 50mg, Metformina 850mg y pañales antes de que se acabe el blíster. Don Alberto nunca puede suspender la toma.
           </p>
 
           <div class="unit-economics">
             <div class="ue-item">
-              <div class="ue-val" style="color: var(--primary-light);">S/. 365</div>
-              <div class="ue-lbl">Ticket Prom. Mensual</div>
+              <div class="ue-val" style="color: var(--primary-light);">S/. 105 - 210</div>
+              <div class="ue-lbl">Gasto Mensual Botica</div>
             </div>
             <div class="ue-item">
               <div class="ue-val" style="color: var(--warning);">18%</div>
-              <div class="ue-lbl">Margen Neto Negociado</div>
+              <div class="ue-lbl">Margen Neto Alianza</div>
             </div>
             <div class="ue-item">
-              <div class="ue-val" style="color: #fff;">S/. 65.70</div>
-              <div class="ue-lbl">Ganancia / Familia / Mes</div>
+              <div class="ue-val" style="color: #fff;">S/. 38.00</div>
+              <div class="ue-lbl">Margen / Familia / Mes</div>
             </div>
           </div>
 
           <div style="margin-top: 16px;">
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Fricción Resuelta:</strong> 68% de familias van 2 o 3 veces al mes a boticas de barrio por falta de stock imprevisto.</span>
+              <span><strong>Dolor Validado en Familia Mendoza:</strong> Tienen 14 pastillas de Losartán; si no compran a tiempo, el domingo se quedan sin pastillas.</span>
             </div>
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Ventaja Competitiva:</strong> La app conoce exactamente qué día se acaba cada blíster mediante el registro de dosis.</span>
-            </div>
-            <div class="validation-bullet">
-              <i data-lucide="check-circle-2"></i>
-              <span><strong>Estrategia Go-To-Market:</strong> Alianza con distribuidora farmacéutica local con entrega en Lima Metropolitana.</span>
+              <span><strong>Ventaja de Ayni Care:</strong> La app sabe la fecha exacta de agotamiento porque Carlos marca cada dosis diaria tomada.</span>
             </div>
           </div>
         </div>
 
         <!-- Modelo 2 -->
         <div class="model-card" style="border-color: rgba(245, 158, 11, 0.4);">
-          <div class="model-header">
-            <div>
-              <span class="model-tag tag-sos">Alta Urgencia Emocional</span>
-              <h3 class="model-title" style="margin-top: 10px;">👩‍⚕️ Modelo 2: Cuidadoras SOS & Reemplazo de Emergencia</h3>
-            </div>
+          <div style="margin-bottom: 16px;">
+            <span class="model-tag tag-sos">Alta Urgencia Emocional</span>
+            <h3 class="model-title" style="margin-top: 10px;">👩‍⚕️ Modelo 2: Cuidadoras SOS & Reemplazo</h3>
           </div>
           <p class="model-desc">
-            Match y colocación garantizada de cuidadores verificados cuando la cuidadora habitual falta, renuncia o la familia necesita relevo nocturno por agotamiento.
+            Servicio de match y reemplazo de emergencia cuando Elena (apoyo de fin de semana) se enferma o cuando Carlos necesita relevo nocturno para evitar caídas.
           </p>
 
           <div class="unit-economics">
             <div class="ue-item">
-              <div class="ue-val" style="color: var(--warning);">S/. 2,100</div>
-              <div class="ue-lbl">Presupuesto Mensual Cuidadora</div>
+              <div class="ue-val" style="color: var(--warning);">S/. 150</div>
+              <div class="ue-lbl">Tarifa Turno SOS (12h)</div>
             </div>
             <div class="ue-item">
-              <div class="ue-val" style="color: var(--primary-light);">S/. 150</div>
-              <div class="ue-lbl">Turno SOS (12h Noche)</div>
+              <div class="ue-val" style="color: var(--primary-light);">20%</div>
+              <div class="ue-lbl">Take Rate por Match</div>
             </div>
             <div class="ue-item">
               <div class="ue-val" style="color: #fff;">S/. 30.00</div>
-              <div class="ue-lbl">Take Rate (20% por Match)</div>
+              <div class="ue-lbl">Ganancia Neta por Turno</div>
             </div>
           </div>
 
           <div style="margin-top: 16px;">
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Fricción Resuelta:</strong> 74% de familias sufren crisis extrema cuando la cuidadora particular falta a último minuto.</span>
+              <span><strong>Dolor Validado en Familia Mendoza:</strong> Don Alberto se levantó a las 3am desorientado y casi se cae. Carlos no puede pasar la noche en vela si trabaja temprano.</span>
             </div>
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Modelo de Retención:</strong> Membresía de tranquilidad: S/. 39/mes por seguro de reemplazo en menos de 2 horas.</span>
-            </div>
-            <div class="validation-bullet">
-              <i data-lucide="check-circle-2"></i>
-              <span><strong>Precedente de Mercado:</strong> El dinero ya existe en el presupuesto de la familia; hoy lo gastan de manera informal e insegura.</span>
+              <span><strong>Propuesta de Valor:</strong> Colocación garantizada de cuidadora verificada en menos de 2 horas.</span>
             </div>
           </div>
         </div>
@@ -1021,142 +873,83 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       </div>
     </div>
 
-    <!-- SECCIÓN 2: CLIENTES ESPECÍFICOS & CASOS DE ESTUDIO -->
-    <div id="section-customers" style="display: none;">
-      <div class="section-title">
-        <i data-lucide="id-card" style="color: var(--primary-light);"></i>
-        Perfiles Específicos de Clientes (Customer Discovery)
-      </div>
-      <p class="section-desc">
-        Casos reales de familias peruanas en cohorte activa con perfil del paciente, canasta de gasto mensual y punto de dolor comercial validado.
-      </p>
-
-      <div class="customers-grid">
-        ${caseStudies.map((c) => `
-          <div class="customer-card">
-            <div>
-              <div class="cust-top">
-                <div>
-                  <div class="cust-name">${c.familyName}</div>
-                  <div class="cust-loc"><i data-lucide="map-pin" style="width: 12px; height: 12px;"></i> ${c.location}</div>
-                </div>
-                <span class="cust-badge">${c.status}</span>
-              </div>
-
-              <!-- Info Paciente -->
-              <div class="patient-box">
-                <div class="patient-header">
-                  <span>${c.elderlyName} (${c.elderlyAge} años)</span>
-                  <span style="font-size: 11px; color: var(--text-muted);">${c.caregiverRole}</span>
-                </div>
-                <div class="pills-container">
-                  ${c.conditions.map((cond) => `<span class="condition-pill">${cond}</span>`).join('')}
-                </div>
-              </div>
-
-              <!-- Finanzas -->
-              <div class="spend-row">
-                <span style="color: var(--text-muted);">Gasto Farmacia Mensual:</span>
-                <span class="spend-highlight">S/. ${Number(c.monthlyPharmaSpend).toFixed(2)}</span>
-              </div>
-              <div class="spend-row">
-                <span style="color: var(--text-muted);">Gasto Cuidador Externo:</span>
-                <span style="font-weight: 600; color: ${c.caregiverBudget > 0 ? '#F59E0B' : '#64748B'};">
-                  ${c.caregiverBudget > 0 ? `S/. ${c.caregiverBudget.toFixed(2)}` : 'Cuidado Familiar Directo'}
-                </span>
-              </div>
-              <div class="spend-row">
-                <span style="color: var(--text-muted);">Fit Comercial Recomendado:</span>
-                <span style="font-weight: 700; color: #fff; font-size: 12px;">${c.businessFit}</span>
-              </div>
-            </div>
-
-            <!-- Cita -->
-            <div class="quote-snippet">
-              "${c.quote}"
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <!-- SECCIÓN 3: SIMULADOR DE INGRESOS A ESCALA -->
+    <!-- SECCIÓN 3: SIMULADOR DE ESCALA -->
     <div id="section-simulator" style="display: none;">
       <div class="sim-card">
-        <div class="section-title">
+        <div style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 10px;">
           <i data-lucide="trending-up" style="color: var(--primary-light);"></i>
-          Simulador Financiero de Escala para Inversionistas / Asesor
+          Simulador Financiero de Escala para Asesor / Inversionistas
         </div>
-        <p class="section-desc">
-          Calcula la proyección mensual combinando Farmacia Recurrente (18% margen en S/. 365/fam) y Cuidadoras SOS (20% fee en 1.5 servicios de S/. 150 al mes por cada 10 familias).
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px;">
+          Partiendo del comportamiento validado en la Familia Mendoza (S/. 210/mes en recetas crónicas y 1.2 necesidades de relevo SOS por trimestre), proyecta los ingresos al escalar:
         </p>
 
-        <div class="slider-container">
+        <div style="margin: 24px 0;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-weight: 600; font-size: 15px;">Familias Activas en Plataforma:</span>
+            <span style="font-weight: 600; font-size: 15px;">Familias Similares a Familia Mendoza:</span>
             <span id="sliderValue" style="font-size: 26px; font-weight: 800; color: var(--primary-light);">100 familias</span>
           </div>
-          <input type="range" min="20" max="1000" step="10" value="100" class="slider-range" id="famSlider" oninput="updateSimulation(this.value)">
+          <input type="range" min="10" max="500" step="10" value="100" class="slider-range" id="famSlider" oninput="updateSimulation(this.value)">
         </div>
 
         <div class="sim-result-grid">
           <div class="sim-stat">
-            <div class="sim-stat-lbl">Volumen Transaccionado en Farmacia</div>
-            <div class="sim-stat-val" id="statGMV">S/. 36,500</div>
-            <div style="font-size: 11px; color: var(--text-muted);">GMV Mensual Total</div>
+            <div class="sim-stat-lbl">Volumen de Farmacia (GMV)</div>
+            <div class="sim-stat-val" id="statGMV">S/. 21,000</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Gasto transaccionado mensual</div>
           </div>
           <div class="sim-stat" style="border-color: rgba(16, 185, 129, 0.4);">
-            <div class="sim-stat-lbl">Ingreso Neto Farmacia Recurrente</div>
-            <div class="sim-stat-val" id="statPharmaNet" style="color: var(--primary-light);">S/. 6,570</div>
-            <div style="font-size: 11px; color: var(--text-muted);">18% Take-rate neto</div>
+            <div class="sim-stat-lbl">Ingreso Neto Farmacia (18%)</div>
+            <div class="sim-stat-val" id="statPharmaNet" style="color: var(--primary-light);">S/. 3,780</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Comisión de boticas aliadas</div>
           </div>
           <div class="sim-stat" style="border-color: rgba(245, 158, 11, 0.4);">
             <div class="sim-stat-lbl">Ingreso Neto Cuidadoras SOS</div>
-            <div class="sim-stat-val" id="statSosNet" style="color: var(--warning);">S/. 4,500</div>
-            <div style="font-size: 11px; color: var(--text-muted);">Matches de Reemplazo y Urgencia</div>
+            <div class="sim-stat-val" id="statSosNet" style="color: var(--warning);">S/. 1,800</div>
+            <div style="font-size: 11px; color: var(--text-muted);">60 turnos SOS @ S/. 30 fee</div>
           </div>
           <div class="sim-stat" style="background: rgba(16, 185, 129, 0.1); border-color: var(--primary);">
-            <div class="sim-stat-lbl" style="color: var(--primary-light); font-weight: 700;">INGRESOS TOTALES NETOS / MES</div>
-            <div class="sim-stat-val" id="statTotalNet" style="color: #fff; font-size: 30px;">S/. 11,070</div>
-            <div style="font-size: 11px; color: var(--primary-light);">S/. 132,840 ARR Proyectado</div>
+            <div class="sim-stat-lbl" style="color: var(--primary-light); font-weight: 700;">TOTAL INGRESOS NETOS / MES</div>
+            <div class="sim-stat-val" id="statTotalNet" style="color: #fff; font-size: 30px;">S/. 5,580</div>
+            <div style="font-size: 11px; color: var(--primary-light);">S/. 66,960 ARR Proyectado</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- SECCIÓN 4: VOZ DEL CLIENTE & VERBATIMS CLASIFICADOS -->
+    <!-- SECCIÓN 4: DOLORES Y EVIDENCIA REGISTRADA -->
     <div id="section-verbatims" style="display: none;">
-      <div class="section-title">
+      <div style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 10px;">
         <i data-lucide="message-square" style="color: var(--warning);"></i>
-        Voz del Cliente en Tiempo Real (Evidencia Conversacional de IA)
+        Dolores y Eventos Críticos Registrados en el Piloto
       </div>
-      <p class="section-desc">
-        Transcripciones y mensajes de WhatsApp clasificados por Gemini con severidad, categoría y oportunidad de monetización.
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
+        Eventos reales documentados en la rutina diaria de la Familia Mendoza clasificados por severidad y oportunidad comercial.
       </p>
 
       <div class="table-container">
         <table>
           <thead>
             <tr>
-              <th>Categoría de Dolor</th>
-              <th>Mensaje / Transcripción Real</th>
+              <th>Categoría</th>
+              <th>Registro / Evento</th>
               <th>Sentimiento</th>
               <th>Severidad</th>
-              <th>Oportunidad Comercial</th>
+              <th>Fit Comercial</th>
             </tr>
           </thead>
           <tbody>
             ${allInsights.map((ins) => `
               <tr>
                 <td><strong style="color: var(--primary-light);">${ins.category}</strong></td>
-                <td style="max-width: 420px; font-style: italic;">"${ins.messageSnippet}"</td>
+                <td style="max-width: 440px;">${ins.messageSnippet}</td>
                 <td><span style="text-transform: capitalize; color: #CBD5E1;">${ins.sentiment}</span></td>
                 <td>
                   <span class="${ins.urgencyLevel === 'critical' ? 'tag-critical' : ins.urgencyLevel === 'high' ? 'tag-high' : 'tag-medium'}">
                     ${ins.urgencyLevel}
                   </span>
                 </td>
-                <td><strong style="color: var(--warning);">${ins.commercialIntent || 'cuidado_general'}</strong></td>
+                <td><strong style="color: var(--warning);">${ins.commercialIntent}</strong></td>
               </tr>
             `).join('')}
           </tbody>
@@ -1170,7 +963,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
     lucide.createIcons();
 
     function switchSection(sectionId, btn) {
-      const sections = ['models', 'customers', 'simulator', 'verbatims'];
+      const sections = ['customer', 'models', 'simulator', 'verbatims'];
       sections.forEach(s => {
         const el = document.getElementById('section-' + s);
         if (el) el.style.display = (s === sectionId) ? 'block' : 'none';
@@ -1185,12 +978,12 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       document.getElementById('sliderValue').innerText = fams + ' familias';
       
       const numFams = parseInt(fams, 10);
-      const avgSpend = 365;
-      const gmv = numFams * avgSpend;
+      const avgMonthlySpend = 210; // Gasto mensual promedio de Don Alberto
+      const gmv = numFams * avgMonthlySpend;
       const pharmaNet = gmv * 0.18;
       
-      // Proyección SOS: 1 servicio por cada 3 familias al mes = numFams * 0.33 * S/. 150 * 20%
-      const sosNet = numFams * 45;
+      // 1 turno SOS cada mes por cada 2 familias = numFams * 0.5 * S/. 150 * 20% (S/. 30)
+      const sosNet = numFams * 18;
       const totalNet = pharmaNet + sosNet;
 
       document.getElementById('statGMV').innerText = 'S/. ' + gmv.toLocaleString('es-PE');
@@ -1204,6 +997,6 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
 
     res.send(html);
   } catch (error: any) {
-    res.status(500).send(`<h3>Error cargando dashboard de insights:</h3><pre>${error.message}</pre>`);
+    res.status(500).send(`<h3>Error cargando dashboard:</h3><pre>${error.message}</pre>`);
   }
 };

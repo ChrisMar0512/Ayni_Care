@@ -7,6 +7,134 @@ const getLimaDateString = (date: Date): string => {
   return temp.toISOString().split('T')[0]!;
 };
 
+// Datos oficiales de demostración y prueba: Familia Mendoza
+export const sampleMendozaData = {
+  summary: {
+    totalUsers: 3,
+    totalFamilies: 1,
+    totalElderly: 1,
+    totalActivities: 3,
+    totalActivityLogs: 1,
+    totalMedications: 3,
+    totalMedLogs: 2,
+    totalAppointments: 2,
+    totalExpenses: 2,
+    totalNotes: 2,
+  },
+  users: [
+    {
+      id: 'dev-member-id',
+      userId: 'dev-user-id',
+      name: 'Carlos Mendoza',
+      email: 'carlos@aynicare.com',
+      phone: '+51999999999',
+      role: 'primary_caregiver',
+      isActive: true,
+      createdAt: new Date('2026-01-15'),
+      familyName: 'Familia Mendoza',
+      elderlyName: 'Don Alberto Mendoza',
+      activityScore: 12,
+    },
+    {
+      id: 'demo-member-2',
+      userId: 'user-sofia',
+      name: 'Sofía Mendoza',
+      email: 'sofia@aynicare.com',
+      phone: '+51988888888',
+      role: 'remote_family',
+      isActive: true,
+      createdAt: new Date('2026-01-16'),
+      familyName: 'Familia Mendoza',
+      elderlyName: 'Don Alberto Mendoza',
+      activityScore: 4,
+    },
+    {
+      id: 'demo-member-3',
+      userId: 'user-elena',
+      name: 'Elena Ramos',
+      email: 'elena@aynicare.com',
+      phone: '+51977777777',
+      role: 'weekend_helper',
+      isActive: true,
+      createdAt: new Date('2026-01-20'),
+      familyName: 'Familia Mendoza',
+      elderlyName: 'Don Alberto Mendoza',
+      activityScore: 2,
+    },
+  ],
+  families: [
+    {
+      id: 'demo-family-id',
+      name: 'Familia Mendoza',
+      createdAt: new Date('2026-01-15'),
+      elderlyName: 'Don Alberto Mendoza',
+      elderlyConditions: ['Hipertensión arterial', 'Diabetes tipo 2'],
+      memberCount: 3,
+      activityCount: 3,
+      medicationCount: 3,
+      appointmentCount: 2,
+      expenseCount: 2,
+      noteCount: 2,
+    },
+  ],
+  recentActivity: [
+    {
+      id: 'med-log-1',
+      type: 'medication',
+      title: 'Administró medicamento: Losartán 50mg',
+      description: 'Dosis tomada puntualmente con el desayuno (14 pastillas restantes)',
+      user: 'Carlos Mendoza',
+      userRole: 'primary_caregiver',
+      family: 'Familia Mendoza',
+      timestamp: new Date(Date.now() - 3600000),
+    },
+    {
+      id: 'act-log-1',
+      type: 'activity',
+      title: 'Completó actividad: Controlar presión arterial matutina',
+      description: 'Presión: 125/80 mmHg - Estado estable y buen apetito',
+      user: 'Carlos Mendoza',
+      userRole: 'primary_caregiver',
+      family: 'Familia Mendoza',
+      timestamp: new Date(Date.now() - 7200000),
+    },
+    {
+      id: 'exp-log-1',
+      type: 'expense',
+      title: 'Registró gasto compartido: Inkafarma - Losartán y Metformina',
+      description: 'Monto: PEN 60.00 | Dividido en partes iguales con Sofía Mendoza',
+      user: 'Carlos Mendoza',
+      userRole: 'primary_caregiver',
+      family: 'Familia Mendoza',
+      timestamp: new Date(Date.now() - 86400000),
+    },
+    {
+      id: 'exp-log-2',
+      type: 'expense',
+      title: 'Registró gasto compartido: Pañales para adulto mayor (Plenitud x 30)',
+      description: 'Monto: PEN 45.00 | Higiene y cuidado personal',
+      user: 'Carlos Mendoza',
+      userRole: 'primary_caregiver',
+      family: 'Familia Mendoza',
+      timestamp: new Date(Date.now() - 2 * 86400000),
+    },
+  ],
+  timeline: [
+    { date: '2026-10-01', activities: 1, medications: 2 },
+    { date: '2026-10-02', activities: 2, medications: 2 },
+    { date: '2026-10-03', activities: 1, medications: 2 },
+    { date: '2026-10-04', activities: 2, medications: 3 },
+    { date: '2026-10-05', activities: 2, medications: 2 },
+    { date: '2026-10-06', activities: 2, medications: 2 },
+    { date: '2026-10-07', activities: 3, medications: 3 },
+  ],
+  roleDistribution: {
+    primary_caregiver: 1,
+    remote_family: 1,
+    weekend_helper: 1,
+  },
+};
+
 export const getAdminStats = async (
   req: Request,
   res: Response,
@@ -26,16 +154,16 @@ export const getAdminStats = async (
       totalExpenses,
       totalNotes,
     ] = await Promise.all([
-      prisma.familyMember.count(),
-      prisma.family.count(),
-      prisma.elderlyPerson.count(),
-      prisma.activity.count(),
-      prisma.activityLog.count(),
-      prisma.medication.count(),
-      prisma.medLog.count(),
-      prisma.appointment.count(),
-      prisma.expense.count(),
-      prisma.note.count(),
+      prisma.familyMember.count().catch(() => 0),
+      prisma.family.count().catch(() => 0),
+      prisma.elderlyPerson.count().catch(() => 0),
+      prisma.activity.count().catch(() => 0),
+      prisma.activityLog.count().catch(() => 0),
+      prisma.medication.count().catch(() => 0),
+      prisma.medLog.count().catch(() => 0),
+      prisma.appointment.count().catch(() => 0),
+      prisma.expense.count().catch(() => 0),
+      prisma.note.count().catch(() => 0),
     ]);
 
     // 2. Directorio de Usuarios
@@ -63,7 +191,16 @@ export const getAdminStats = async (
       orderBy: {
         createdAt: 'desc',
       },
-    });
+    }).catch(() => []);
+
+    // Si la BD no tiene usuarios registrados aún, devolver los datos limpios del usuario de prueba
+    if (rawUsers.length === 0) {
+      res.json({
+        success: true,
+        data: sampleMendozaData,
+      });
+      return;
+    }
 
     const users = rawUsers.map(user => {
       const logsCount =
@@ -111,7 +248,7 @@ export const getAdminStats = async (
       orderBy: {
         createdAt: 'desc',
       },
-    });
+    }).catch(() => []);
 
     const families = rawFamilies.map(fam => ({
       id: fam.id,
@@ -127,7 +264,7 @@ export const getAdminStats = async (
       noteCount: fam._count.notes,
     }));
 
-    // 4. Actividad Reciente (Últimos 20 de cada tipo, luego unificados y ordenados)
+    // 4. Actividad Reciente
     const [recentActLogs, recentMedLogs, recentExpenses, recentNotes] = await Promise.all([
       prisma.activityLog.findMany({
         take: 20,
@@ -142,7 +279,7 @@ export const getAdminStats = async (
             },
           },
         },
-      }),
+      }).catch(() => []),
       prisma.medLog.findMany({
         take: 20,
         orderBy: { givenAt: 'desc' },
@@ -156,10 +293,11 @@ export const getAdminStats = async (
             },
           },
         },
-      }),
+      }).catch(() => []),
       prisma.expense.findMany({
         take: 20,
         orderBy: { createdAt: 'desc' },
+        where: { deletedAt: null },
         include: {
           paidBy: {
             select: {
@@ -169,10 +307,11 @@ export const getAdminStats = async (
             },
           },
         },
-      }),
+      }).catch(() => []),
       prisma.note.findMany({
         take: 20,
         orderBy: { createdAt: 'desc' },
+        where: { deletedAt: null },
         include: {
           author: {
             select: {
@@ -182,7 +321,7 @@ export const getAdminStats = async (
             },
           },
         },
-      }),
+      }).catch(() => []),
     ]);
 
     const events: any[] = [];
@@ -241,32 +380,30 @@ export const getAdminStats = async (
       });
     });
 
-    // Ordenar eventos por fecha descendente y tomar los mejores 30
     const sortedEvents = events
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 30);
 
-    // 5. Historial de actividad (últimos 14 días para el gráfico)
-    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    fourteenDaysAgo.setUTCHours(0, 0, 0, 0);
+    // 5. Historial de actividad (últimos 7 días)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    sevenDaysAgo.setUTCHours(0, 0, 0, 0);
 
     const [dailyActLogs, dailyMedLogs] = await Promise.all([
       prisma.activityLog.findMany({
-        where: { completedAt: { gte: fourteenDaysAgo } },
+        where: { completedAt: { gte: sevenDaysAgo } },
         select: { completedAt: true },
-      }),
+      }).catch(() => []),
       prisma.medLog.findMany({
-        where: { givenAt: { gte: fourteenDaysAgo } },
+        where: { givenAt: { gte: sevenDaysAgo } },
         select: { givenAt: true },
-      }),
+      }).catch(() => []),
     ]);
 
-    // Agrupar por fecha local
     const timelineData: Record<string, { activities: number; medications: number }> = {};
-    for (let i = 13; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-      const dateStr = getLimaDateString(d);
-      timelineData[dateStr] = { activities: 0, medications: 0 };
+      const str = getLimaDateString(d);
+      timelineData[str] = { activities: 0, medications: 0 };
     }
 
     dailyActLogs.forEach(log => {
@@ -318,45 +455,10 @@ export const getAdminStats = async (
       },
     });
   } catch (err) {
-    console.warn('[Admin Stats] Error accediendo a BD, usando datos de demostración...');
+    console.warn('[Admin Stats] Usando datos de la Familia Mendoza...');
     res.json({
       success: true,
-      data: {
-        summary: {
-          totalUsers: 8,
-          totalFamilies: 3,
-          totalElderly: 3,
-          totalActivities: 14,
-          totalActivityLogs: 32,
-          totalMedications: 9,
-          totalMedLogs: 48,
-          totalAppointments: 6,
-          totalExpenses: 8,
-          totalNotes: 11,
-        },
-        users: [
-          { id: '1', name: 'Carlos Mendoza', role: 'primary_caregiver', familyName: 'Familia Mendoza', elderlyName: 'Don Alberto Mendoza', stats: { activities: 12, medications: 24, expenses: 4, notes: 5 } },
-          { id: '2', name: 'Sofía Mendoza', role: 'remote_family', familyName: 'Familia Mendoza', elderlyName: 'Don Alberto Mendoza', stats: { activities: 2, medications: 0, expenses: 2, notes: 1 } },
-        ],
-        families: [
-          { id: 'demo-family-id', name: 'Familia Mendoza', elderlyName: 'Don Alberto Mendoza', memberCount: 3, activeCount: 3 },
-        ],
-        recentActivity: [
-          { type: 'medication', description: 'Carlos administró Losartán 50mg', time: new Date() },
-          { type: 'activity', description: 'Carlos midió presión arterial (125/80)', time: new Date() },
-          { type: 'expense', description: 'Carlos registró gasto Farmacia S/. 60.00', time: new Date() },
-        ],
-        timeline: [
-          { date: '2026-10-05', activities: 6, medications: 8 },
-          { date: '2026-10-06', activities: 7, medications: 8 },
-          { date: '2026-10-07', activities: 8, medications: 6 },
-        ],
-        roleDistribution: {
-          primary_caregiver: 3,
-          remote_family: 4,
-          weekend_helper: 1,
-        },
-      },
+      data: sampleMendozaData,
     });
   }
 };
