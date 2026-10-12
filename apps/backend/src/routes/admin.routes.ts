@@ -95,7 +95,11 @@ router.get('/insights', requireAdminToken, renderInsightsDashboard);
 // API JSON con resumen analítico
 router.get('/analytics/summary', requireAdminTokenJson, getAnalyticsSummary);
 router.get('/api/admin/stats', requireAdminTokenJson, getAdminStats);
+router.get('/export-csv', requireAdminToken, exportPilotCsv);
+router.get('/api/admin/export-csv', requireAdminToken, exportPilotCsv);
 router.get('/api/admin/export.csv', requireAdminToken, exportPilotCsv);
 
+
 export default router;
+
 
