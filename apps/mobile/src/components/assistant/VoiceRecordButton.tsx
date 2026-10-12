@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 
 interface Props {
   onSendAudio: (base64Audio: string, mimeType: string) => void;
@@ -9,14 +15,14 @@ interface Props {
 }
 
 export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) => {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) {
         Alert.alert(
           'Permiso Requerido',
           'Ayni Care necesita acceso al micrófono para que puedas registrar actividades con tu voz.'
@@ -24,33 +30,24 @@ export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) =>
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
+      await recorder.prepareToRecordAsync();
+      recorder.record();
     } catch (err) {
       console.error('Error al iniciar grabación:', err);
-      setIsRecording(false);
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
-
-    setIsRecording(false);
     setIsProcessing(true);
 
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecording(null);
+      await recorder.stop();
+      const uri = recorder.uri;
 
       if (uri) {
         const response = await fetch(uri);
@@ -87,6 +84,8 @@ export const VoiceRecordButton: React.FC<Props> = ({ onSendAudio, disabled }) =>
       </View>
     );
   }
+
+  const isRecording = recorderState.isRecording;
 
   return (
     <TouchableOpacity
