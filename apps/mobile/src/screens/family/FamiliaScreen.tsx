@@ -1,17 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as WebBrowser from 'expo-web-browser';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FamiliaStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../stores/authStore';
+import api from '../../services/api';
 import type { MemberRole } from '@ayni-care/shared';
 
 const ROLE_LABELS: Record<MemberRole, string> = {
@@ -54,6 +58,49 @@ function SectionCard({ icon, title, description, color, bgColor, onPress }: Sect
 export function FamiliaScreen() {
   const navigation = useNavigation<NavProp>();
   const { member, logout } = useAuthStore();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://ayni-care-backend.vercel.app/privacy-policy');
+    } catch {
+      Alert.alert('Aviso', 'Puedes consultar la política en https://ayni-care-backend.vercel.app/privacy-policy');
+    }
+  };
+
+  const handleOpenTerms = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://ayni-care-backend.vercel.app/terminos');
+    } catch {
+      Alert.alert('Aviso', 'Puedes consultar los términos en https://ayni-care-backend.vercel.app/terminos');
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '¿Eliminar tu cuenta definitivamente?',
+      'Esta acción es permanente e irreversible. Se eliminará tu acceso, tus credenciales y tu vinculación familiar en Ayni Care.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, eliminar cuenta',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await api.delete('/api/auth/delete-account');
+            } catch (err: any) {
+              console.warn('[FamiliaScreen] Error al eliminar en backend:', err?.message);
+            } finally {
+              setIsDeleting(false);
+              await logout();
+              Alert.alert('Cuenta Eliminada', 'Tu cuenta y datos personales han sido eliminados.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -121,10 +168,53 @@ export function FamiliaScreen() {
             </View>
           </View>
 
-          <Pressable style={styles.logoutButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            <Text style={styles.logoutText}>Cerrar sesión</Text>
-          </Pressable>
+          {/* Enlaces legales para Store Compliance */}
+          <View style={styles.legalLinksContainer}>
+            <Pressable style={styles.legalLinkRow} onPress={handleOpenPrivacyPolicy}>
+              <View style={styles.legalLinkLeft}>
+                <Ionicons name="shield-checkmark-outline" size={18} color="#6B7280" />
+                <Text style={styles.legalLinkText}>Política de Privacidad</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color="#9CA3AF" />
+            </Pressable>
+
+            <Pressable style={styles.legalLinkRow} onPress={handleOpenTerms}>
+              <View style={styles.legalLinkLeft}>
+                <Ionicons name="document-text-outline" size={18} color="#6B7280" />
+                <Text style={styles.legalLinkText}>Términos y Condiciones</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color="#9CA3AF" />
+            </Pressable>
+          </View>
+
+          {/* Acciones de cuenta */}
+          <View style={styles.accountActions}>
+            <Pressable style={styles.logoutButton} onPress={logout}>
+              <Ionicons name="log-out-outline" size={20} color="#6B7280" />
+              <Text style={styles.logoutText}>Cerrar sesión</Text>
+            </Pressable>
+
+            <Pressable 
+              style={styles.deleteButton} 
+              onPress={handleDeleteAccount}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  <Text style={styles.deleteText}>Eliminar mi cuenta</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Versión de la app */}
+        <View style={styles.versionFooter}>
+          <Text style={styles.versionText}>Ayni Care v1.0.0 (Build 1)</Text>
+          <Text style={styles.versionSub}>Hecho para el cuidado familiar en Latinoamérica</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -276,20 +366,76 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
+  legalLinksContainer: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F3F4F6',
+    paddingVertical: 4,
+  },
+  legalLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  legalLinkLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  legalLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  accountActions: {
+    gap: 10,
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     height: 48,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 15,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: '#FEE2E2',
     backgroundColor: '#FEF2F2',
     gap: 8,
   },
-  logoutText: {
-    fontSize: 16,
+  deleteText: {
+    fontSize: 14,
     color: '#EF4444',
     fontWeight: '600',
+  },
+  versionFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 4,
+  },
+  versionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  versionSub: {
+    fontSize: 11,
+    color: '#D1D5DB',
   },
 });
