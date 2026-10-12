@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { getAdminStats } from '../controllers/admin.controller';
+import { getAdminStats, exportPilotCsv } from '../controllers/admin.controller';
 import { adminDashboardHtml } from '../views/admin_dashboard';
 import {
   getAnalyticsSummary,
@@ -7,6 +7,7 @@ import {
 } from '../controllers/admin-analytics.controller';
 
 const router = Router();
+
 
 // Middleware to check admin token and render an access page on failure
 const requireAdminToken = (req: Request, res: Response, next: NextFunction): void => {
@@ -94,5 +95,7 @@ router.get('/insights', requireAdminToken, renderInsightsDashboard);
 // API JSON con resumen analítico
 router.get('/analytics/summary', requireAdminTokenJson, getAnalyticsSummary);
 router.get('/api/admin/stats', requireAdminTokenJson, getAdminStats);
+router.get('/api/admin/export.csv', requireAdminToken, exportPilotCsv);
 
 export default router;
+

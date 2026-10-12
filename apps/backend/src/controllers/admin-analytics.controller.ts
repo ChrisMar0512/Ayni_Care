@@ -690,6 +690,10 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       <div class="badge-live" style="margin-left: 10px;">Piloto ${pilotCase.familyName} Conectado</div>
     </div>
     <div class="nav-actions">
+      <a href="/admin/api/admin/export.csv?token=aynicare-admin-2026" class="btn-nav" style="border-color: rgba(52, 211, 153, 0.5); color: var(--primary-light);">
+        <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+        Descargar CSV (.xlsx)
+      </a>
       <a href="/admin?token=aynicare-admin-2026" class="btn-nav">
         <i data-lucide="layout-grid" style="width: 15px; height: 15px;"></i>
         Panel Operativo (/admin)

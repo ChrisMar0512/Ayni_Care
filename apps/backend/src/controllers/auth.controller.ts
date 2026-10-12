@@ -119,6 +119,42 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
+export const syncOAuthUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { userId, email } = req.body;
+
+    if (!userId) {
+      res.status(400).json({ success: false, data: null, error: 'Falta userId' });
+      return;
+    }
+
+    // Buscar si ya tiene membresía familiar asociada en la BD
+    let member = await prisma.familyMember.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        familyId: true,
+        role: true,
+        name: true,
+        family: { select: { name: true } },
+      },
+    }).catch(() => null);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: userId,
+          email: email || '',
+        },
+        member,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user.id;
@@ -133,3 +169,5 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
     next(err);
   }
 };
+
+

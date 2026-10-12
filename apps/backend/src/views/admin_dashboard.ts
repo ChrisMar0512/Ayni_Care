@@ -103,8 +103,15 @@ export const adminDashboardHtml = `
           <span>📊 Tesis de Negocio & Discovery</span>
         </a>
 
+        <!-- BOTÓN EXPORTAR CSV PARA ASESORES -->
+        <a id="exportCsvBtn" href="/admin/api/admin/export.csv?token=aynicare-admin-2026" class="inline-flex items-center space-x-2 bg-white text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-all duration-200">
+          <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+          <span>📥 Exportar CSV</span>
+        </a>
+
         <!-- SERVER STATUS INDICATOR -->
         <div class="flex items-center bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-100">
+
           <span class="relative flex h-2.5 w-2.5 mr-2">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -421,6 +428,8 @@ export const adminDashboardHtml = `
     if (token) {
       const insEl = document.getElementById('insightsLink');
       if (insEl) insEl.href = \`/admin/insights?token=\${encodeURIComponent(token)}\`;
+      const expEl = document.getElementById('exportCsvBtn');
+      if (expEl) expEl.href = \`/admin/api/admin/export.csv?token=\${encodeURIComponent(token)}\`;
     }
 
     // Humanize user roles helper
