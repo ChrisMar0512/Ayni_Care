@@ -101,30 +101,59 @@ export function TabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: TERRACOTA,
         tabBarInactiveTintColor: GRIS,
+        tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
           backgroundColor: FONDO,
           borderTopColor: '#E5E7EB',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 72,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+          height: Platform.OS === 'ios' ? 84 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           paddingTop: 8,
+        },
+        tabBarItemStyle: {
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 2,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: '600',
+          marginTop: 2,
+          letterSpacing: -0.2,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           const icons = TAB_ICONS[route.name as keyof TabParamList];
           const iconName = focused ? icons.focused : icons.default;
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={22} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Asistente" component={ChatAssistantScreen} />
-      <Tab.Screen name="Inicio" component={ActivitiesNavigator} />
-      <Tab.Screen name="Medicamentos" component={MedicationsNavigator} />
-      <Tab.Screen name="Agenda" component={AppointmentsNavigator} />
-      <Tab.Screen name="Familia" component={FamiliaNavigator} />
+      <Tab.Screen 
+        name="Asistente" 
+        component={ChatAssistantScreen} 
+        options={{ tabBarLabel: 'Asistente' }}
+      />
+      <Tab.Screen 
+        name="Inicio" 
+        component={ActivitiesNavigator} 
+        options={{ tabBarLabel: 'Inicio' }}
+      />
+      <Tab.Screen 
+        name="Medicamentos" 
+        component={MedicationsNavigator} 
+        options={{ tabBarLabel: 'Medicina' }}
+      />
+      <Tab.Screen 
+        name="Agenda" 
+        component={AppointmentsNavigator} 
+        options={{ tabBarLabel: 'Agenda' }}
+      />
+      <Tab.Screen 
+        name="Familia" 
+        component={FamiliaNavigator} 
+        options={{ tabBarLabel: 'Familia' }}
+      />
     </Tab.Navigator>
   );
 }
