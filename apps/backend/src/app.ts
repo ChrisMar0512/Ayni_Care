@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin.routes';
 import assistantRoutes from './routes/assistant.routes';
 import whatsappRoutes from './routes/meta-whatsapp.routes';
 import telegramRoutes from './routes/telegram.routes';
+import legalRoutes from './routes/legal.routes';
 
 const app = express();
 
@@ -108,6 +109,7 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/', legalRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────
 app.use(errorHandler);

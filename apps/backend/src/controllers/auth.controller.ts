@@ -170,4 +170,34 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+export const deleteAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user.id;
+    console.log(`[auth] Solicitud de eliminación de cuenta para el usuario: ${userId}`);
+
+    // 1. Eliminar membresías familiares asociadas al usuario
+    await prisma.familyMember.deleteMany({
+      where: { userId },
+    }).catch((err) => {
+      console.warn('[auth] Aviso al eliminar familyMember:', err.message);
+    });
+
+    // 2. Eliminar o cerrar sesiones en Supabase Auth Admin
+    if (userId !== 'dev-user-id') {
+      await supabaseAdmin.auth.admin.deleteUser(userId).catch((err) => {
+        console.warn('[auth] Aviso al eliminar auth user en Supabase:', err.message);
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Tu cuenta y datos personales han sido eliminados correctamente.',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 

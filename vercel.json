@@ -33,6 +33,22 @@
       "destination": "/api"
     },
     {
+      "source": "/privacy-policy",
+      "destination": "/api"
+    },
+    {
+      "source": "/politica-de-privacidad",
+      "destination": "/api"
+    },
+    {
+      "source": "/terminos",
+      "destination": "/api"
+    },
+    {
+      "source": "/delete-account",
+      "destination": "/api"
+    },
+    {
       "source": "/api/:match*",
       "destination": "/api"
     }
