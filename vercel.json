@@ -17,6 +17,18 @@
       "destination": "/api"
     },
     {
+      "source": "/admin",
+      "destination": "/api"
+    },
+    {
+      "source": "/admin/insights",
+      "destination": "/api"
+    },
+    {
+      "source": "/admin/export-csv",
+      "destination": "/api"
+    },
+    {
       "source": "/admin/:match*",
       "destination": "/api"
     },
