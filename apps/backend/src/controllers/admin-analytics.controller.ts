@@ -10,6 +10,8 @@ export interface CustomerCaseStudy {
   elderlyName: string;
   elderlyAge: number;
   conditions: string[];
+  membersList?: { name: string; role: string }[];
+  medicationsList?: string[];
   monthlyPharmaSpend: number;
   hasExternalCaregiver: boolean;
   caregiverBudget: number;
@@ -19,22 +21,29 @@ export interface CustomerCaseStudy {
   status: 'Piloto Activo (Prueba)';
 }
 
-// Caso real del usuario y familia de prueba: Familia Mendoza
+// Caso real del usuario y familia de prueba: Familia Carrillo (Christian Carrillo & Abuelo Lucho)
 export const mendozaCaseStudy: CustomerCaseStudy = {
-  id: 'demo-family-id',
-  familyName: 'Familia Mendoza',
-  location: 'San Miguel, Lima (Piloto Activo)',
-  primaryCaregiver: 'Carlos Mendoza (+51 999 999 999)',
+  id: '94f95608-8736-4461-b6f3-3ae174e9ef84',
+  familyName: 'Familia Carrillo',
+  location: 'Lima Metropolitana (Piloto Activo)',
+  primaryCaregiver: 'Christian Carrillo (+51 939 959 366)',
   caregiverRole: 'Hijo principal (Cuidador en casa)',
-  elderlyName: 'Don Alberto Mendoza',
+  elderlyName: 'Abuelo Lucho (Luis Carrillo)',
   elderlyAge: 78,
-  conditions: ['Hipertensión arterial', 'Diabetes tipo 2', 'Alergia a Penicilina'],
-  monthlyPharmaSpend: 105.00,
+  conditions: ['Hipertensión arterial', 'Diabetes tipo 2', 'Artrosis leve de rodilla'],
+  membersList: [
+    { name: 'Christian Carrillo', role: 'Cuidador Principal' },
+    { name: 'María Carrillo', role: 'Familiar a Distancia' },
+    { name: 'Carlos Carrillo', role: 'Apoyo Fin de Semana' },
+    { name: 'Rosa Mendoza', role: 'Cuidadora Contratada' },
+  ],
+  medicationsList: ['Losartán 50mg', 'Metformina 850mg', 'Omeprazol 20mg'],
+  monthlyPharmaSpend: 180.00,
   hasExternalCaregiver: true,
-  caregiverBudget: 450.00, // Apoyo por turnos fin de semana
-  topPainPoint: 'Riesgo de desabastecimiento de Losartán los fines de semana y falta de reemplazo de emergencia cuando Elena (apoyo) no puede asistir.',
+  caregiverBudget: 450.00,
+  topPainPoint: 'Coordinación entre hermanos y abastecimiento continuo de recetas.',
   businessFit: 'Ambos Modelos',
-  quote: 'Don Alberto toma Losartán cada 12 horas y Metformina en las mañanas. Si se nos acaba el blíster un domingo en la noche, se descompensa con la presión alta y no podemos salir a buscar boticas abiertas. Además, si la persona de apoyo nos falla, colapsamos.',
+  quote: 'La app nos permite a los 4 familiares estar al tanto del Abuelo Lucho en tiempo real sin tener que llamarnos a cada rato por las pastillas o los gastos.',
   status: 'Piloto Activo (Prueba)',
 };
 
@@ -48,7 +57,7 @@ const sampleDiscoveryData = {
     {
       id: 'ins-1',
       category: 'medication',
-      messageSnippet: 'Don Alberto toma Losartán 50mg cada 12 horas. Quedan 14 pastillas y debemos reponer antes del domingo para evitar descompensación.',
+      messageSnippet: 'Abuelo Lucho toma Losartán 50mg y Metformina 850mg. Es vital reponer antes del fin de semana para evitar descompensación.',
       sentiment: 'stressed',
       urgencyLevel: 'critical',
       painPointSummary: 'Riesgo de quiebre de stock de antihipertensivo crítico',
@@ -59,7 +68,7 @@ const sampleDiscoveryData = {
     {
       id: 'ins-2',
       category: 'emergency_night',
-      messageSnippet: 'Don Alberto se levantó al baño a oscuras a las 3am y casi se resbala. Carlos necesita relevo nocturno cuando trabaja.',
+      messageSnippet: 'Abuelo Lucho se levantó al baño a oscuras a las 3am y casi se resbala. Christian necesita relevo nocturno para evitar caídas.',
       sentiment: 'urgent',
       urgencyLevel: 'critical',
       painPointSummary: 'Riesgo de caídas nocturnas y sobrecarga del cuidador',
@@ -70,7 +79,7 @@ const sampleDiscoveryData = {
     {
       id: 'ins-3',
       category: 'caregiver_friction',
-      messageSnippet: 'Elena Ramos (apoyo FDS) solo viene sábados. Si tiene una emergencia, no hay plan de reemplazo en la familia.',
+      messageSnippet: 'Rosa Mendoza (cuidadora de apoyo) se encarga de turnos específicos. Si tiene una emergencia, se requiere un reemplazo ágil.',
       sentiment: 'frustrated',
       urgencyLevel: 'high',
       painPointSummary: 'Falta de cuidadora de respaldo garantizada ante ausencias',
@@ -81,7 +90,7 @@ const sampleDiscoveryData = {
     {
       id: 'ins-4',
       category: 'expense',
-      messageSnippet: 'Compramos Losartán, Metformina y pañales en Inkafarma por S/. 105.00 y dividimos la mitad con Sofía Mendoza directamente.',
+      messageSnippet: 'Compramos Losartán, Metformina y pañales en farmacia por S/. 180.00 y dividimos los gastos entre hermanos de forma transparente.',
       sentiment: 'satisfied',
       urgencyLevel: 'medium',
       painPointSummary: 'Transparencia y reparto de gastos médicos entre hermanos',
@@ -92,10 +101,10 @@ const sampleDiscoveryData = {
     {
       id: 'ins-5',
       category: 'clinical_report',
-      messageSnippet: 'Control de presión matutina: 125/80 mmHg. Historial guardado para la consulta con el Dr. Carlos Benavides en la Clínica San Felipe.',
+      messageSnippet: 'Control de glucosa y signos vitales matutinos registrados con éxito para el reporte geriátrico.',
       sentiment: 'calm',
       urgencyLevel: 'medium',
-      painPointSummary: 'Consolidación de signos vitales para cita con cardiólogo',
+      painPointSummary: 'Consolidación de signos vitales para cita geriátrica',
       isUnmetNeed: false,
       commercialIntent: 'clinical_report',
       createdAt: new Date(Date.now() - 1000 * 60 * 720),
@@ -103,12 +112,13 @@ const sampleDiscoveryData = {
   ],
   allPulseResponses: [
     { topFriction: 'medication_procurement', rawAnswer: 'Estar pendiente de si alcanza el Losartán antes de que cierre la botica.', details: 'Falta de stock y reposición manual', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12) },
-    { topFriction: 'caregiver_fatigue', rawAnswer: 'Vigilancia nocturna continua cuando Don Alberto se levanta desorientado.', details: 'Agotamiento físico nocturno', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36) },
-    { topFriction: 'family_finances', rawAnswer: 'Coordinar con Sofía que vive lejos para que transfiera su parte del gasto de farmacia.', details: 'Repartición de gastos familiares', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 60) },
+    { topFriction: 'caregiver_fatigue', rawAnswer: 'Vigilancia nocturna continua cuando el abuelo se levanta desorientado.', details: 'Agotamiento físico nocturno', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36) },
+    { topFriction: 'family_finances', rawAnswer: 'Coordinar con familiares a distancia para que transfieran su parte del gasto de farmacia.', details: 'Repartición de gastos familiares', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 60) },
   ],
   expenses: [
-    { amount: 60.00, category: 'medications', title: 'Inkafarma - Losartán 50mg y Metformina 850mg' },
-    { amount: 45.00, category: 'hygiene', title: 'Pañales para adulto mayor (Plenitud x 30)' },
+    { amount: 180.00, category: 'medications', title: 'Farmacia Mensual (Losartán y Metformina)' },
+    { amount: 120.00, category: 'hygiene', title: 'Pañales para adultos y apósitos (Pack x3)' },
+    { amount: 94.00, category: 'food', title: 'Ensure clínico' },
   ],
 };
 
@@ -127,30 +137,45 @@ async function fetchDiscoveryData() {
     // Si existen familias reales en la base de datos, usarlas
     if (rawFamilies.length > 0) {
       const realCaseStudies: CustomerCaseStudy[] = rawFamilies.map((fam) => {
-        const caregiver = fam.members.find(m => m.role === 'primary_caregiver' || m.role === 'weekend_helper') || fam.members[0];
+        const caregiver = fam.members.find(m => m.role === 'primary_caregiver') || fam.members[0];
         const pharmaExpense = fam.expenses
           .filter(e => e.category === 'medications')
           .reduce((sum, e) => sum + Number(e.amount), 0);
+
+        const totalExpenseAll = fam.expenses
+          .reduce((sum, e) => sum + Number(e.amount), 0);
+
+        const membersList = fam.members.map(m => ({
+          name: m.name,
+          role: m.role === 'primary_caregiver' ? 'Cuidador Principal' :
+                m.role === 'remote_family' ? 'Familiar a Distancia' :
+                m.role === 'weekend_helper' ? 'Apoyo Fin de Semana' :
+                m.role === 'paid_caregiver' ? 'Cuidadora Contratada' : m.role,
+        }));
+
+        const medicationsList = fam.medications.map(med => `${med.name} ${med.dosage || ''}`.trim());
 
         return {
           id: fam.id,
           familyName: fam.name,
           location: 'Lima Metropolitana (Registrado en App)',
-          primaryCaregiver: caregiver ? `${caregiver.name} (${caregiver.phone || caregiver.email || 'App'})` : 'Carlos Mendoza',
+          primaryCaregiver: caregiver ? `${caregiver.name} (${caregiver.phone || caregiver.email || 'App'})` : 'Christian Carrillo',
           caregiverRole: caregiver ? caregiver.role.replace('_', ' ') : 'Cuidador Principal',
-          elderlyName: fam.elderly?.name || 'Don Alberto Mendoza',
+          elderlyName: fam.elderly?.name || 'Abuelo Lucho (Luis Carrillo)',
           elderlyAge: fam.elderly?.birthDate
             ? Math.floor((Date.now() - new Date(fam.elderly.birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
             : 78,
           conditions: fam.elderly?.conditions && fam.elderly.conditions.length > 0
             ? fam.elderly.conditions
-            : ['Hipertensión arterial', 'Diabetes tipo 2'],
-          monthlyPharmaSpend: pharmaExpense > 0 ? pharmaExpense : 105.00,
+            : ['Hipertensión arterial', 'Diabetes tipo 2', 'Artrosis leve de rodilla'],
+          membersList,
+          medicationsList,
+          monthlyPharmaSpend: pharmaExpense > 0 ? pharmaExpense : (totalExpenseAll > 0 ? totalExpenseAll : 180.00),
           hasExternalCaregiver: fam.members.some(m => m.role === 'paid_caregiver'),
           caregiverBudget: fam.members.some(m => m.role === 'paid_caregiver') ? 450.00 : 0,
-          topPainPoint: 'Gestión diaria de recetas, stock de farmacia y relevo de cuidado.',
+          topPainPoint: 'Gestión diaria de recetas, stock de farmacia y relevo de cuidado coordinado.',
           businessFit: 'Ambos Modelos',
-          quote: 'Usuario activo interactuando con la aplicación y bitácora clínica.',
+          quote: 'Los 4 miembros de la familia nos coordinamos mediante la bitácora clínica y gastos compartidos para la atención del abuelo.',
           status: 'Piloto Activo (Prueba)',
         };
       });
@@ -662,7 +687,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
         <div class="brand-title">Ayni Care</div>
         <div style="font-size: 11px; color: var(--text-muted);">Tesis de Negocio & Discovery</div>
       </div>
-      <div class="badge-live" style="margin-left: 10px;">Piloto Mendoza Conectado</div>
+      <div class="badge-live" style="margin-left: 10px;">Piloto ${pilotCase.familyName} Conectado</div>
     </div>
     <div class="nav-actions">
       <a href="/admin?token=aynicare-admin-2026" class="btn-nav">
@@ -685,13 +710,13 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
           <span class="badge-live" style="margin-bottom: 12px;">Validación de Tesis Comercial 2026</span>
           <h1 class="hero-title">Monetización en Cuidado Geriátrico Familiar</h1>
           <p class="hero-subtitle">
-            Validación de hipótesis y economía unitaria con nuestra <strong>Familia Piloto de Prueba (Familia Mendoza)</strong>. Evidencia real de gasto inelástico mensual en recetas crónicas y necesidad de reemplazo de emergencia para cuidadores.
+            Validación de hipótesis y economía unitaria con nuestra <strong>Familia Piloto de Prueba (${pilotCase.familyName})</strong>. Evidencia real de gasto inelástico mensual en recetas crónicas y necesidad de reemplazo de emergencia para cuidadores.
           </p>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 14px 20px; border-radius: 12px; border: 1px solid var(--border);">
           <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Gasto Registrado en Piloto</div>
           <div style="font-size: 24px; font-weight: 800; color: var(--primary-light);">S/. ${totalExpense.toFixed(2)}</div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Inkafarma + Pañales (Quincena)</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Inkafarma + Pañales + Nutrición</div>
         </div>
       </div>
     </div>
@@ -701,17 +726,17 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       <div class="kpi-card">
         <div class="kpi-label"><i data-lucide="users" style="width: 16px; height: 16px;"></i> Familia Piloto en Seguimiento</div>
         <div class="kpi-number">${activeFamiliesCount}</div>
-        <div class="kpi-meta"><i data-lucide="check-circle" style="width: 13px; height: 13px;"></i> Familia Mendoza (San Miguel)</div>
+        <div class="kpi-meta"><i data-lucide="check-circle" style="width: 13px; height: 13px;"></i> ${pilotCase.familyName} (Lima)</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label"><i data-lucide="pill" style="width: 16px; height: 16px;"></i> Medicamentos Crónicos Activos</div>
-        <div class="kpi-number">3</div>
-        <div class="kpi-meta"><i data-lucide="check" style="width: 13px; height: 13px;"></i> Losartán, Metformina, Atorvastatina</div>
+        <div class="kpi-number">${(pilotCase.medicationsList && pilotCase.medicationsList.length) ? pilotCase.medicationsList.length : 5}</div>
+        <div class="kpi-meta"><i data-lucide="check" style="width: 13px; height: 13px;"></i> ${(pilotCase.medicationsList && pilotCase.medicationsList.length > 0) ? pilotCase.medicationsList.slice(0, 3).join(', ') : 'Losartán 50mg, Metformina 850mg'}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label"><i data-lucide="receipt" style="width: 16px; height: 16px;"></i> Gasto Real Farmacia / Quincena</div>
         <div class="kpi-number">S/. ${totalExpense.toFixed(0)}</div>
-        <div class="kpi-meta"><i data-lucide="trending-up" style="width: 13px; height: 13px;"></i> ~S/. 210 - S/. 320 al mes</div>
+        <div class="kpi-meta"><i data-lucide="trending-up" style="width: 13px; height: 13px;"></i> ~S/. 210 - S/. 390 al mes</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label"><i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Margen Neto Estimado (18%)</div>
@@ -723,7 +748,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
     <!-- Filtro de Vistas -->
     <div class="tab-bar">
       <button class="tab-btn active" onclick="switchSection('customer', this)">
-        <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 1. Familia de Prueba (Don Alberto & Carlos)
+        <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 1. Familia de Prueba (${pilotCase.elderlyName.split(' ')[0]} & ${pilotCase.primaryCaregiver.split(' ')[0]})
       </button>
       <button class="tab-btn" onclick="switchSection('models', this)">
         <i data-lucide="target" style="width: 15px; height: 15px;"></i> 2. Validación de los 2 Modelos
@@ -760,10 +785,9 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
 
           <div class="detail-item">
             <div class="detail-label">Red de Cuidado Familiar</div>
-            <div class="detail-value">Carlos Mendoza (Hijo principal)</div>
+            <div class="detail-value">${pilotCase.primaryCaregiver}</div>
             <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
-              • Sofía Mendoza (Hija a distancia)<br>
-              • Elena Ramos (Apoyo fin de semana)
+              ${(pilotCase.membersList || []).filter(m => !pilotCase.primaryCaregiver.includes(m.name)).map(m => `• ${m.name} (${m.role})`).join('<br>')}
             </div>
           </div>
 
@@ -771,8 +795,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
             <div class="detail-label">Gasto Real Registrado en Farmacia</div>
             <div class="detail-value" style="color: var(--primary-light);">S/. ${totalExpense.toFixed(2)}</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-              • Inkafarma (Losartán + Metformina): S/. 60.00<br>
-              • Pañales Plenitud x 30: S/. 45.00
+              ${expenses.slice(0, 3).map(e => `• ${e.title}: S/. ${Number(e.amount).toFixed(2)}`).join('<br>')}
             </div>
           </div>
 
@@ -786,7 +809,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
         </div>
 
         <div class="quote-box">
-          <div style="font-weight: 700; color: var(--warning); margin-bottom: 6px;">💬 Voz del Cuidador (Carlos Mendoza):</div>
+          <div style="font-weight: 700; color: var(--warning); margin-bottom: 6px;">💬 Voz del Cuidador (${pilotCase.primaryCaregiver.split(' (')[0]}):</div>
           "${pilotCase.quote}"
         </div>
       </div>
@@ -803,12 +826,12 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
             <h3 class="model-title" style="margin-top: 10px;">💊 Modelo 1: Farmacia Recurrente a Domicilio</h3>
           </div>
           <p class="model-desc">
-            Despacho mensual garantizado en casa de Losartán 50mg, Metformina 850mg y pañales antes de que se acabe el blíster. Don Alberto nunca puede suspender la toma.
+            Despacho mensual garantizado en casa de Losartán 50mg, Metformina 850mg y pañales antes de que se acabe el blíster. El abuelo nunca puede suspender la toma.
           </p>
 
           <div class="unit-economics">
             <div class="ue-item">
-              <div class="ue-val" style="color: var(--primary-light);">S/. 105 - 210</div>
+              <div class="ue-val" style="color: var(--primary-light);">S/. 120 - 240</div>
               <div class="ue-lbl">Gasto Mensual Botica</div>
             </div>
             <div class="ue-item">
@@ -824,11 +847,11 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
           <div style="margin-top: 16px;">
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Dolor Validado en Familia Mendoza:</strong> Tienen 14 pastillas de Losartán; si no compran a tiempo, el domingo se quedan sin pastillas.</span>
+              <span><strong>Dolor Validado en ${pilotCase.familyName}:</strong> Recetas crónicas permanentes; si no se compran a tiempo, el adulto mayor se descompensa.</span>
             </div>
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Ventaja de Ayni Care:</strong> La app sabe la fecha exacta de agotamiento porque Carlos marca cada dosis diaria tomada.</span>
+              <span><strong>Ventaja de Ayni Care:</strong> La app sabe la fecha exacta de agotamiento porque el cuidador marca cada dosis diaria tomada.</span>
             </div>
           </div>
         </div>
@@ -840,7 +863,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
             <h3 class="model-title" style="margin-top: 10px;">👩‍⚕️ Modelo 2: Cuidadoras SOS & Reemplazo</h3>
           </div>
           <p class="model-desc">
-            Servicio de match y reemplazo de emergencia cuando Elena (apoyo de fin de semana) se enferma o cuando Carlos necesita relevo nocturno para evitar caídas.
+            Servicio de match y reemplazo de emergencia cuando la persona de apoyo se enferma o cuando la familia necesita relevo nocturno para evitar caídas.
           </p>
 
           <div class="unit-economics">
@@ -861,7 +884,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
           <div style="margin-top: 16px;">
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Dolor Validado en Familia Mendoza:</strong> Don Alberto se levantó a las 3am desorientado y casi se cae. Carlos no puede pasar la noche en vela si trabaja temprano.</span>
+              <span><strong>Dolor Validado en ${pilotCase.familyName}:</strong> El adulto mayor requiere vigilancia nocturna o acompañamiento. La familia necesita relevos confiables.</span>
             </div>
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
@@ -881,12 +904,12 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
           Simulador Financiero de Escala para Asesor / Inversionistas
         </div>
         <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px;">
-          Partiendo del comportamiento validado en la Familia Mendoza (S/. 210/mes en recetas crónicas y 1.2 necesidades de relevo SOS por trimestre), proyecta los ingresos al escalar:
+          Partiendo del comportamiento validado en la ${pilotCase.familyName} (S/. 210/mes en recetas crónicas y necesidades de relevo SOS), proyecta los ingresos al escalar:
         </p>
 
         <div style="margin: 24px 0;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-weight: 600; font-size: 15px;">Familias Similares a Familia Mendoza:</span>
+            <span style="font-weight: 600; font-size: 15px;">Familias Similares a ${pilotCase.familyName}:</span>
             <span id="sliderValue" style="font-size: 26px; font-weight: 800; color: var(--primary-light);">100 familias</span>
           </div>
           <input type="range" min="10" max="500" step="10" value="100" class="slider-range" id="famSlider" oninput="updateSimulation(this.value)">
