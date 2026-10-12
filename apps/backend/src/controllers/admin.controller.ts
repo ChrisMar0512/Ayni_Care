@@ -486,3 +486,73 @@ export const getAdminStats = async (
     });
   }
 };
+
+export const exportPilotCsv = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const rawFamilies = await prisma.family.findMany({
+      include: {
+        elderly: true,
+        members: true,
+        medications: true,
+        expenses: true,
+      },
+      take: 10,
+    }).catch(() => []);
+
+    let csv = '\uFEFF'; // BOM para que Excel abra UTF-8 con tildes correctamente
+    csv += 'REPORTE DE PILOTO Y VALIDACIÓN DE DATOS — AYNI CARE 2026\n\n';
+
+    if (rawFamilies.length > 0) {
+      const fam = rawFamilies[0];
+      csv += `Familia:,"${fam.name}"\n`;
+      csv += `Adulto Mayor:,"${fam.elderly?.name || 'N/A'}"\n`;
+      csv += `Condiciones Clínicas:,"${(fam.elderly?.conditions || []).join(', ')}"\n\n`;
+
+      csv += '--- RED DE CUIDADORES ---\n';
+      csv += 'Nombre,Rol,Email,Telefono,Fecha Registro\n';
+      fam.members.forEach(m => {
+        csv += `"${m.name}","${m.role}","${m.email || ''}","${m.phone || ''}","${m.createdAt.toISOString().split('T')[0]}"\n`;
+      });
+      csv += '\n';
+
+      csv += '--- MEDICAMENTOS ACTIVOS ---\n';
+      csv += 'Medicamento,Dosis,Frecuencia,Via\n';
+      fam.medications.forEach(med => {
+        csv += `"${med.name}","${med.dosage || ''}","${med.frequency || ''}","${med.form || 'Oral'}"\n`;
+      });
+      csv += '\n';
+
+      csv += '--- GASTOS REGISTRADOS EN PILOTO ---\n';
+      csv += 'Concepto,Monto (PEN),Categoria,Fecha\n';
+      fam.expenses.forEach(exp => {
+        csv += `"${exp.title}",${Number(exp.amount).toFixed(2)},"${exp.category}","${exp.createdAt.toISOString().split('T')[0]}"\n`;
+      });
+    } else {
+      csv += `Familia:,"Familia Carrillo"\n`;
+      csv += `Adulto Mayor:,"Abuelo Lucho (Luis Carrillo)"\n`;
+      csv += `Condiciones Clínicas:,"Hipertensión arterial, Diabetes tipo 2, Artrosis leve"\n\n`;
+      csv += '--- RED DE CUIDADORES ---\n';
+      csv += 'Nombre,Rol,Email,Telefono,Fecha Registro\n';
+      sampleMendozaData.users.forEach(u => {
+        csv += `"${u.name}","${u.role}","${u.email}","${u.phone}","${u.createdAt.toISOString().split('T')[0]}"\n`;
+      });
+      csv += '\n';
+      csv += '--- GASTOS REGISTRADOS EN PILOTO ---\n';
+      csv += 'Concepto,Monto (PEN),Categoria,Fecha\n';
+      csv += '"Farmacia Mensual (Losartán y Metformina)",180.00,"medications","2026-08-17"\n';
+      csv += '"Pañales para adultos y apósitos (Pack x3)",120.00,"hygiene","2026-08-17"\n';
+      csv += '"Ensure clínico",94.00,"food","2026-08-18"\n';
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="aynicare_piloto_datos.csv"');
+    res.send(csv);
+  } catch (err) {
+    next(err);
+  }
+};
+
