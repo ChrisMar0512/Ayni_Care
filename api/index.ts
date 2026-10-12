@@ -11,7 +11,12 @@ export default function handler(req: any, res: any) {
     if (typeof matchedPath === 'string' && (req.url === '/api' || req.url === '/api/' || req.url.startsWith('/api?'))) {
       const queryIdx = req.url.indexOf('?');
       const query = queryIdx !== -1 ? req.url.substring(queryIdx) : '';
-      req.url = matchedPath.includes('?') ? matchedPath : `${matchedPath}${query}`;
+      let restored = matchedPath;
+      if (restored.includes(':match*')) {
+        const matchVal = req.query?.match || '';
+        restored = restored.replace(':match*', Array.isArray(matchVal) ? matchVal.join('/') : String(matchVal));
+      }
+      req.url = restored.includes('?') ? restored : `${restored}${query}`;
     }
 
     return app(req, res);
