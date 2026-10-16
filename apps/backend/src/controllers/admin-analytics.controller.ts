@@ -16,7 +16,7 @@ export interface CustomerCaseStudy {
   hasExternalCaregiver: boolean;
   caregiverBudget: number;
   topPainPoint: string;
-  businessFit: 'Modelo 1: Farmacia Recurrente' | 'Modelo 2: Cuidadoras SOS' | 'Ambos Modelos';
+  businessFit: 'Modelo 1: Farmacia Recurrente' | 'Modelo 2: Agencias de Cuidadores' | 'Ambos Modelos';
   quote: string;
   status: 'Piloto Activo (Prueba)';
 }
@@ -863,36 +863,40 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
         <!-- Modelo 2 -->
         <div class="model-card" style="border-color: rgba(245, 158, 11, 0.4);">
           <div style="margin-bottom: 16px;">
-            <span class="model-tag tag-sos">Alta Urgencia Emocional</span>
-            <h3 class="model-title" style="margin-top: 10px;">👩‍⚕️ Modelo 2: Cuidadoras SOS & Reemplazo</h3>
+            <span class="model-tag tag-sos">B2B2C / Colocación & SaaS</span>
+            <h3 class="model-title" style="margin-top: 10px;">🏢 Modelo 2: Agencias de Cuidadores Geriátricos</h3>
           </div>
           <p class="model-desc">
-            Servicio de match y reemplazo de emergencia cuando la persona de apoyo se enferma o cuando la familia necesita relevo nocturno para evitar caídas.
+            Canal de derivación de familias que necesitan cuidado formal (turnos 12h / cama adentro S/. 1,800 - S/. 3,200/mes) + software de supervisión en tiempo real para que la agencia audite a su personal enviado (rol paid_caregiver).
           </p>
 
           <div class="unit-economics">
             <div class="ue-item">
-              <div class="ue-val" style="color: var(--warning);">S/. 150</div>
-              <div class="ue-lbl">Tarifa Turno SOS (12h)</div>
+              <div class="ue-val" style="color: var(--warning);">S/. 1,800 - 3,200</div>
+              <div class="ue-lbl">Servicio Mensual Agencia</div>
             </div>
             <div class="ue-item">
-              <div class="ue-val" style="color: var(--primary-light);">20%</div>
-              <div class="ue-lbl">Take Rate por Match</div>
+              <div class="ue-val" style="color: var(--primary-light);">S/. 250 - 350</div>
+              <div class="ue-lbl">Fee Colocación / Contrato</div>
             </div>
             <div class="ue-item">
-              <div class="ue-val" style="color: #fff;">S/. 30.00</div>
-              <div class="ue-lbl">Ganancia Neta por Turno</div>
+              <div class="ue-val" style="color: #fff;">S/. 35 / mes</div>
+              <div class="ue-lbl">SaaS Supervisión / Paciente</div>
             </div>
           </div>
 
           <div style="margin-top: 16px;">
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Dolor Validado en ${pilotCase.familyName}:</strong> El adulto mayor requiere vigilancia nocturna o acompañamiento. La familia necesita relevos confiables.</span>
+              <span><strong>Dolor de la Familia (${pilotCase.familyName}):</strong> Cuando el cuidado sobrepasa a los hijos, necesitan personal formal certificado y con relevo garantizado ante ausencias de la cuidadora.</span>
             </div>
             <div class="validation-bullet">
               <i data-lucide="check-circle-2"></i>
-              <span><strong>Propuesta de Valor:</strong> Colocación garantizada de cuidadora verificada en menos de 2 horas.</span>
+              <span><strong>Dolor de las Agencias:</strong> Adquirir clientes calificados y auditar en tiempo real si su personal cumple con la toma de pastillas y asistencia en la casa del paciente.</span>
+            </div>
+            <div class="validation-bullet">
+              <i data-lucide="check-circle-2"></i>
+              <span><strong>Solución Ya Construida en App:</strong> El rol <code>paid_caregiver</code> ya está integrado en Ayni Care con RBAC (reporta dosis y notas clínicas en vivo, sin acceso a los gastos de los hermanos).</span>
             </div>
           </div>
         </div>
@@ -905,10 +909,10 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       <div class="sim-card">
         <div style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; display: flex; align-items: center; gap: 10px;">
           <i data-lucide="trending-up" style="color: var(--primary-light);"></i>
-          Simulador Financiero de Escala para Asesor / Inversionistas
+          Simulador Financiero de Escala para Asesores e Inversionistas
         </div>
         <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px;">
-          Partiendo del comportamiento validado en la ${pilotCase.familyName} (S/. 210/mes en recetas crónicas y necesidades de relevo SOS), proyecta los ingresos al escalar:
+          Proyección de ingresos comparativa partiendo del comportamiento de la ${pilotCase.familyName}: Gasto inelástico en medicamentos crónicos + derivación y supervisión de agencias de cuidadores:
         </p>
 
         <div style="margin: 24px 0;">
@@ -921,24 +925,24 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
 
         <div class="sim-result-grid">
           <div class="sim-stat">
-            <div class="sim-stat-lbl">Volumen de Farmacia (GMV)</div>
+            <div class="sim-stat-lbl">Volumen Farmacia (GMV)</div>
             <div class="sim-stat-val" id="statGMV">S/. 21,000</div>
-            <div style="font-size: 11px; color: var(--text-muted);">Gasto transaccionado mensual</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Gasto mensual en recetas</div>
           </div>
           <div class="sim-stat" style="border-color: rgba(16, 185, 129, 0.4);">
             <div class="sim-stat-lbl">Ingreso Neto Farmacia (18%)</div>
             <div class="sim-stat-val" id="statPharmaNet" style="color: var(--primary-light);">S/. 3,780</div>
-            <div style="font-size: 11px; color: var(--text-muted);">Comisión de boticas aliadas</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Comisión mensual recurrente</div>
           </div>
           <div class="sim-stat" style="border-color: rgba(245, 158, 11, 0.4);">
-            <div class="sim-stat-lbl">Ingreso Neto Cuidadoras SOS</div>
-            <div class="sim-stat-val" id="statSosNet" style="color: var(--warning);">S/. 1,800</div>
-            <div style="font-size: 11px; color: var(--text-muted);">60 turnos SOS @ S/. 30 fee</div>
+            <div class="sim-stat-lbl">Ingreso Agencias de Cuidadores</div>
+            <div class="sim-stat-val" id="statSosNet" style="color: var(--warning);">S/. 2,500</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Colocación + SaaS Supervisión</div>
           </div>
           <div class="sim-stat" style="background: rgba(16, 185, 129, 0.1); border-color: var(--primary);">
             <div class="sim-stat-lbl" style="color: var(--primary-light); font-weight: 700;">TOTAL INGRESOS NETOS / MES</div>
-            <div class="sim-stat-val" id="statTotalNet" style="color: #fff; font-size: 30px;">S/. 5,580</div>
-            <div style="font-size: 11px; color: var(--primary-light);">S/. 66,960 ARR Proyectado</div>
+            <div class="sim-stat-val" id="statTotalNet" style="color: #fff; font-size: 30px;">S/. 6,280</div>
+            <div style="font-size: 11px; color: var(--primary-light);">S/. 75,360 ARR Proyectado</div>
           </div>
         </div>
       </div>
@@ -951,7 +955,7 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
         Dolores y Eventos Críticos Registrados en el Piloto
       </div>
       <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
-        Eventos reales documentados en la rutina diaria de la Familia Mendoza clasificados por severidad y oportunidad comercial.
+        Eventos reales documentados en la rutina diaria de la ${pilotCase.familyName} (${pilotCase.elderlyName}) clasificados por severidad y oportunidad comercial.
       </p>
 
       <div class="table-container">
@@ -1005,17 +1009,17 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       document.getElementById('sliderValue').innerText = fams + ' familias';
       
       const numFams = parseInt(fams, 10);
-      const avgMonthlySpend = 210; // Gasto mensual promedio de Don Alberto
+      const avgMonthlySpend = 210; // Gasto mensual promedio en medicamentos y suministros
       const gmv = numFams * avgMonthlySpend;
       const pharmaNet = gmv * 0.18;
       
-      // 1 turno SOS cada mes por cada 2 familias = numFams * 0.5 * S/. 150 * 20% (S/. 30)
-      const sosNet = numFams * 18;
-      const totalNet = pharmaNet + sosNet;
+      // Agencias: ~8% de familias contratan servicio formal con agencia aliada (S/. 250 fee) + S/. 35 SaaS supervisión = ~S/. 25 por familia promedio
+      const agencyNet = numFams * 25;
+      const totalNet = pharmaNet + agencyNet;
 
       document.getElementById('statGMV').innerText = 'S/. ' + gmv.toLocaleString('es-PE');
       document.getElementById('statPharmaNet').innerText = 'S/. ' + Math.round(pharmaNet).toLocaleString('es-PE');
-      document.getElementById('statSosNet').innerText = 'S/. ' + Math.round(sosNet).toLocaleString('es-PE');
+      document.getElementById('statSosNet').innerText = 'S/. ' + Math.round(agencyNet).toLocaleString('es-PE');
       document.getElementById('statTotalNet').innerText = 'S/. ' + Math.round(totalNet).toLocaleString('es-PE');
     }
   </script>
