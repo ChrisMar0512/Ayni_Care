@@ -26,23 +26,28 @@ export function DashboardItemCard({
   const isCompleted = item.status === 'completed';
   const isSkipped = item.status === 'skipped';
 
-  // Determinar icono del tipo de ítem
-  let typeIcon: keyof typeof Ionicons.glyphMap = 'checkbox-outline';
-  let typeColor = '#2D6A4F';
+  // Configuración visual según el tipo de ítem
+  let typeIcon: keyof typeof Ionicons.glyphMap = 'checkmark-circle-outline';
+  let typeBadgeBg = '#F3F4F6';
+  let typeBadgeColor = '#4B5563';
+  let typeLabel = 'Actividad';
 
   if (item.type === 'medication') {
-    typeIcon = 'medkit-outline';
-    typeColor = '#D4856A'; // Naranja/café cálido para medicamentos
+    typeIcon = 'medical';
+    typeBadgeBg = '#FDF0EB';
+    typeBadgeColor = '#D4856A';
+    typeLabel = 'Medicina';
   } else if (item.type === 'appointment') {
-    typeIcon = 'calendar-outline';
-    typeColor = '#4A90E2'; // Azul para citas médicas
+    typeIcon = 'calendar';
+    typeBadgeBg = '#EFF6FF';
+    typeBadgeColor = '#3B82F6';
+    typeLabel = 'Cita médica';
   }
 
-  // Manejar el clic en el botón de completar
   const handleCheckPress = () => {
-    if (!isPending) return;
+    if (!isPending || isActionPending) return;
     if (item.type === 'medication') {
-      onCompleteMedication(item.originalId, item.time);
+      onCompleteMedication(item.originalId, item.time || '');
     } else {
       onCompleteActivity(item.originalId);
     }
@@ -52,94 +57,98 @@ export function DashboardItemCard({
     <View
       style={[
         styles.card,
-        !isPending && styles.cardCompleted,
-        item.priority === 'urgent' && styles.cardUrgent,
+        isCompleted && styles.cardCompleted,
+        isSkipped && styles.cardSkipped,
+        item.priority === 'urgent' && isPending && styles.cardUrgent,
       ]}
     >
-      <View style={styles.row}>
-        {/* Botón de Checkmark */}
+      <View style={styles.cardMain}>
+        {/* Botón táctil grande de completar (mínimo 48x48px accesible) */}
         <Pressable
           style={({ pressed }) => [
             styles.checkButton,
-            isPending ? styles.checkPending : isSkipped ? styles.checkSkipped : styles.checkDone,
+            isPending ? styles.checkPending : isSkipped ? styles.checkSkippedBtn : styles.checkDoneBtn,
             pressed && styles.checkPressed,
           ]}
           onPress={handleCheckPress}
           disabled={!isPending || isActionPending}
-          accessibilityLabel={isPending ? 'Marcar completado' : 'Completado'}
-          hitSlop={8}
+          accessibilityLabel={isPending ? `Marcar ${item.title} como completado` : `Tarea completada: ${item.title}`}
+          hitSlop={6}
         >
           {isActionPending ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={isPending ? '#D4856A' : '#FFFFFF'} />
+          ) : isPending ? (
+            <View style={styles.ringUnchecked} />
+          ) : isSkipped ? (
+            <Ionicons name="close" size={22} color="#FFFFFF" />
           ) : (
-            <Ionicons
-              name={isPending ? 'checkmark' : isSkipped ? 'close' : 'checkmark'}
-              size={20}
-              color={isPending ? '#9CA3AF' : '#fff'}
-            />
+            <Ionicons name="checkmark" size={24} color="#FFFFFF" />
           )}
         </Pressable>
 
-        {/* Contenido Principal */}
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <View style={styles.iconWrapper}>
-              <Ionicons name={typeIcon} size={15} color={typeColor} />
+        {/* Información de la actividad */}
+        <View style={styles.infoContainer}>
+          {/* Fila de tipo y hora */}
+          <View style={styles.topRow}>
+            <View style={[styles.typeBadge, { backgroundColor: typeBadgeBg }]}>
+              <Ionicons name={typeIcon} size={13} color={typeBadgeColor} />
+              <Text style={[styles.typeBadgeText, { color: typeBadgeColor }]}>{typeLabel}</Text>
             </View>
-            <Text
-              style={[
-                styles.title,
-                !isPending && styles.titleCompleted,
-              ]}
-              numberOfLines={2}
-            >
-              {item.title}
-            </Text>
+
+            <View style={styles.timeBadge}>
+              <Ionicons name="time-outline" size={14} color="#6B7280" />
+              <Text style={styles.timeBadgeText}>
+                {item.time ? item.time : 'Durante el día'}
+              </Text>
+            </View>
+
+            {item.priority === 'urgent' && isPending && (
+              <View style={styles.urgentBadge}>
+                <Ionicons name="alert-circle" size={12} color="#DC2626" />
+                <Text style={styles.urgentText}>Urgente</Text>
+              </View>
+            )}
           </View>
 
-          {/* Subtítulo descriptivo */}
+          {/* Título de la tarea */}
+          <Text
+            style={[
+              styles.title,
+              !isPending && styles.titleCompleted,
+            ]}
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+
+          {/* Subtítulo / dosis / notas */}
           {item.subtitle ? (
-            <Text style={[styles.subtitle, !isPending && styles.titleCompleted]} numberOfLines={2}>
+            <Text style={[styles.subtitle, !isPending && styles.textMuted]} numberOfLines={2}>
               {item.subtitle}
             </Text>
           ) : null}
 
-          {/* Fila de metadatos (Hora, Prioridad, etc.) */}
-          <View style={styles.meta}>
-            {item.time ? (
-              <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-                <Text style={styles.metaText}>{item.time}</Text>
-              </View>
-            ) : (
-              <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-                <Text style={styles.metaText}>Todo el día</Text>
-              </View>
-            )}
-
-            {item.priority === 'urgent' ? (
-              <View style={styles.urgentBadge}>
-                <Text style={styles.urgentText}>Urgente</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Estado de finalización */}
-          {!isPending && (item.completedBy || item.completedAt) ? (
-            <Text style={isSkipped ? styles.skippedBy : styles.completedBy} numberOfLines={1}>
-              {isSkipped ? 'Omitido' : 'Completado'}
-              {item.completedBy ? ` por ${item.completedBy.name}` : ''}
-              {item.completedAt
-                ? ` a las ${new Date(item.completedAt).toLocaleTimeString('es-PE', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                    timeZone: 'America/Lima',
-                  })}`
-                : ''}
-            </Text>
-          ) : null}
+          {/* Estado de completado con autor y hora */}
+          {!isPending && (
+            <View style={styles.completedStatusRow}>
+              <Ionicons
+                name={isSkipped ? 'alert-circle' : 'checkmark-circle'}
+                size={14}
+                color={isSkipped ? '#EF4444' : '#87A96B'}
+              />
+              <Text style={[styles.completedStatusText, isSkipped && styles.skippedStatusText]}>
+                {isSkipped ? 'Omitido' : 'Completado'}
+                {item.completedBy ? ` por ${item.completedBy.name}` : ''}
+                {item.completedAt
+                  ? ` · ${new Date(item.completedAt).toLocaleTimeString('es-PE', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true,
+                    })}`
+                  : ''}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -148,30 +157,35 @@ export function DashboardItemCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
     elevation: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#EAE6DF',
   },
   cardCompleted: {
-    backgroundColor: '#FAFAF9',
-    opacity: 0.85,
-    borderLeftColor: '#95D5B2',
+    backgroundColor: '#FAF9F6',
+    borderColor: '#E5E7EB',
+    opacity: 0.88,
+  },
+  cardSkipped: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
   cardUrgent: {
+    borderLeftWidth: 5,
     borderLeftColor: '#EF4444',
   },
-  row: {
+  cardMain: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 14,
   },
   checkButton: {
     width: 48,
@@ -180,92 +194,120 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    borderWidth: 2,
+    marginTop: 2,
   },
   checkPending: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
     borderColor: '#D1D5DB',
   },
-  checkDone: {
-    backgroundColor: '#2D6A4F',
-    borderColor: '#2D6A4F',
+  ringUnchecked: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#D4856A',
   },
-  checkSkipped: {
+  checkDoneBtn: {
+    backgroundColor: '#87A96B',
+    borderWidth: 0,
+  },
+  checkSkippedBtn: {
     backgroundColor: '#EF4444',
-    borderColor: '#EF4444',
+    borderWidth: 0,
   },
   checkPressed: {
     opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
-  content: {
+  infoContainer: {
     flex: 1,
-    paddingTop: 2,
+    gap: 4,
   },
-  titleRow: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 2,
   },
-  iconWrapper: {
-    padding: 2,
-    borderRadius: 4,
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  typeBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  timeBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  urgentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  urgentText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
+    textTransform: 'uppercase',
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A2B1A',
-    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
+    lineHeight: 22,
   },
   titleCompleted: {
     color: '#9CA3AF',
     textDecorationLine: 'line-through',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6B7C6B',
-    marginBottom: 6,
-    paddingLeft: 23,
+    fontSize: 15,
+    color: '#4B5563',
+    lineHeight: 20,
+    marginTop: 1,
   },
-  meta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    paddingLeft: 23,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 13,
+  textMuted: {
     color: '#9CA3AF',
   },
-  urgentBadge: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 1,
-    borderRadius: 6,
+  completedStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
-  urgentText: {
-    fontSize: 11,
-    color: '#EF4444',
+  completedStatusText: {
+    fontSize: 13,
     fontWeight: '600',
+    color: '#87A96B',
   },
-  completedBy: {
-    fontSize: 12,
-    color: '#2D6A4F',
-    marginTop: 6,
-    paddingLeft: 23,
-    fontWeight: '500',
-  },
-  skippedBy: {
-    fontSize: 12,
+  skippedStatusText: {
     color: '#EF4444',
-    marginTop: 6,
-    paddingLeft: 23,
-    fontWeight: '500',
   },
 });
