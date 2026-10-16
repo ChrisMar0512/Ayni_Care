@@ -134,6 +134,23 @@ async function fetchDiscoveryData() {
       take: 10,
     }).catch(() => []);
 
+    const realInsights = await prisma.conversationInsight.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    }).catch(() => []);
+
+    const pharmaCount = await prisma.conversationInsight.count({
+      where: { commercialIntent: 'pharma_subscription' }
+    }).catch(() => 0);
+
+    const agencyCount = await prisma.conversationInsight.count({
+      where: { commercialIntent: 'caregiver_hire' }
+    }).catch(() => 0);
+
+    const mergedInsights = realInsights.length > 0
+      ? [...realInsights, ...sampleDiscoveryData.allInsights]
+      : sampleDiscoveryData.allInsights;
+
     // Si existen familias reales en la base de datos, usarlas
     if (rawFamilies.length > 0) {
       const realCaseStudies: CustomerCaseStudy[] = rawFamilies.map((fam) => {
@@ -183,18 +200,29 @@ async function fetchDiscoveryData() {
       return {
         activeFamiliesCount: rawFamilies.length,
         totalEvents: sampleDiscoveryData.totalEvents,
-        totalInsights: sampleDiscoveryData.totalInsights,
+        totalInsights: realInsights.length > 0 ? realInsights.length : sampleDiscoveryData.totalInsights,
         totalPulseResponses: sampleDiscoveryData.totalPulseResponses,
         caseStudies: realCaseStudies,
-        allInsights: sampleDiscoveryData.allInsights,
+        allInsights: mergedInsights,
         allPulseResponses: sampleDiscoveryData.allPulseResponses,
         expenses: rawFamilies[0].expenses.length > 0 ? rawFamilies[0].expenses : sampleDiscoveryData.expenses,
+        pharmaCount,
+        agencyCount,
       };
     }
 
-    return sampleDiscoveryData;
+    return {
+      ...sampleDiscoveryData,
+      allInsights: mergedInsights,
+      pharmaCount,
+      agencyCount,
+    };
   } catch (err) {
-    return sampleDiscoveryData;
+    return {
+      ...sampleDiscoveryData,
+      pharmaCount: 0,
+      agencyCount: 0,
+    };
   }
 }
 
@@ -220,6 +248,8 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
       caseStudies,
       allInsights,
       expenses,
+      pharmaCount,
+      agencyCount,
     } = await fetchDiscoveryData();
 
     let totalExpense = 0;
@@ -821,6 +851,61 @@ export const renderInsightsDashboard = async (_req: Request, res: Response): Pro
 
     <!-- SECCIÓN 2: VALIDACIÓN DE LOS 2 MODELOS DE NEGOCIO -->
     <div id="section-models" style="display: none;">
+      
+      <!-- TERMÓMETRO EN VIVO: VALIDACIÓN DE DEMANDA REAL -->
+      <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 24px; margin-bottom: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="badge-live" style="background: rgba(16, 185, 129, 0.15); color: #34D399; font-size: 11px;">Telemetría Activa en App</span>
+              <span style="font-size: 12px; color: var(--text-muted);">• Actualizado en tiempo real</span>
+            </div>
+            <h2 style="font-size: 20px; font-weight: 800; color: #FFFFFF; margin-top: 6px;">
+              🔥 Termómetro de Demanda Real (Fake Door Tests en Vivo)
+            </h2>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);">
+            Intenciones capturadas vía botón reposición farmacia & solicitud agencia
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <!-- Card Farmacia Telemetría -->
+          <div style="background: rgba(18, 26, 22, 0.85); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 14px; padding: 18px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-weight: 700; color: #34D399; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="package" style="width: 18px; height: 18px;"></i>
+                Farmacia Recurrente a Domicilio
+              </span>
+              <span style="font-size: 28px; font-weight: 800; color: #FFFFFF;">${pharmaCount}</span>
+            </div>
+            <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 8px;">
+              Solicitudes de cotización con boticas aliadas al registrarse stock bajo de pastillas o desde el banner mensual.
+            </p>
+            <div style="font-size: 11.5px; font-weight: 600; color: #34D399; display: flex; align-items: center; gap: 4px;">
+              <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i> Señal de alta recurrencia (necesidad fija mensual)
+            </div>
+          </div>
+
+          <!-- Card Agencias Telemetría -->
+          <div style="background: rgba(26, 18, 38, 0.85); border: 1px solid rgba(124, 58, 237, 0.35); border-radius: 14px; padding: 18px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-weight: 700; color: #C4B5FD; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
+                Agencias de Cuidadores
+              </span>
+              <span style="font-size: 28px; font-weight: 800; color: #FFFFFF;">${agencyCount}</span>
+            </div>
+            <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 8px;">
+              Solicitudes formales de familias buscando turnos (noche, 12h, cama adentro) con agencias verificadas.
+            </p>
+            <div style="font-size: 11.5px; font-weight: 600; color: #C4B5FD; display: flex; align-items: center; gap: 4px;">
+              <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i> Señal de alto ticket (S/. 250 fee + S/. 35 SaaS)
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="model-grid">
         
         <!-- Modelo 1 -->

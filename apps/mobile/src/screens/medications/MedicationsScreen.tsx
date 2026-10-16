@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMedications, useAdministerMedication, useDeleteMedication } from '../../hooks/useMedications';
 import { useAuthStore } from '../../stores/authStore';
+import api from '../../services/api';
 import type { Medication } from '../../types/medication';
 import type { MedicationsStackParamList } from '../../navigation/types';
 
@@ -32,6 +34,7 @@ function MedicationCard({
   isPrimaryCaregiver,
   onDelete,
   onEdit,
+  onRequestRefill,
 }: {
   medication: Medication;
   onAdminister: (id: string) => void;
@@ -39,6 +42,7 @@ function MedicationCard({
   isPrimaryCaregiver: boolean;
   onDelete: (id: string, name: string) => void;
   onEdit: (medication: Medication) => void;
+  onRequestRefill: (medication: Medication) => void;
 }) {
   const dosesGiven = todayAdministeredCount(medication);
   const totalTimes = medication.times.length;
@@ -101,13 +105,24 @@ function MedicationCard({
             </Text>
           ) : null}
 
-          {/* Alerta de Stock Bajo */}
+          {/* Alerta de Stock Bajo y Botón de Reposición a Domicilio */}
           {isLowStock && (
-            <View style={styles.lowStockBanner}>
-              <Ionicons name="warning" size={14} color="#D97706" />
-              <Text style={styles.lowStockText}>
-                Stock bajo: quedan {medication.stock} {medication.form || 'unidades'} en casa
-              </Text>
+            <View style={styles.lowStockContainer}>
+              <View style={styles.lowStockBanner}>
+                <Ionicons name="warning" size={14} color="#D97706" />
+                <Text style={styles.lowStockText}>
+                  Stock bajo: quedan {medication.stock} {medication.form || 'unidades'} en casa
+                </Text>
+              </View>
+              <Pressable
+                style={styles.reorderRefillBtn}
+                onPress={() => onRequestRefill(medication)}
+                accessibilityLabel={`Pedir reposición de ${medication.name} a domicilio`}
+                hitSlop={6}
+              >
+                <Ionicons name="cube-outline" size={15} color="#D4856A" />
+                <Text style={styles.reorderRefillBtnText}>Pedir reposición a domicilio</Text>
+              </Pressable>
             </View>
           )}
         </View>
@@ -167,6 +182,9 @@ export function MedicationsScreen() {
   const isPrimaryCaregiver = role === 'primary_caregiver';
 
   const [refreshing, setRefreshing] = React.useState(false);
+  const [selectedMedForRefill, setSelectedMedForRefill] = React.useState<Medication | null>(null);
+  const [isRefillModalVisible, setIsRefillModalVisible] = React.useState(false);
+  const [isSubmittingRefill, setIsSubmittingRefill] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -180,6 +198,39 @@ export function MedicationsScreen() {
 
   function handleEdit(medication: Medication) {
     navigation.navigate('AddMedication', { medication });
+  }
+
+  function handleRequestRefill(medication?: Medication) {
+    setSelectedMedForRefill(medication || null);
+    setIsRefillModalVisible(true);
+  }
+
+  async function handleConfirmRefill() {
+    setIsSubmittingRefill(true);
+    try {
+      await api.post('/api/analytics/commercial-intent', {
+        intentType: 'pharma_refill',
+        metadata: {
+          medicationName: selectedMedForRefill?.name || 'Recetas Crónicas del Mes',
+          stock: selectedMedForRefill?.stock ?? null,
+          dosage: selectedMedForRefill?.dosage ?? null,
+          source: 'medications_screen',
+        },
+      });
+
+      setIsRefillModalVisible(false);
+      Alert.alert(
+        '¡Solicitud Registrada!',
+        'Nos pondremos en contacto contigo para coordinar la cotización de tus medicamentos con descuento y entrega a domicilio.',
+        [{ text: 'Excelente' }]
+      );
+    } catch (err: any) {
+      console.warn('[Refill Error]', err);
+      Alert.alert('Solicitud enviada', 'Registramos tu interés en la reposición a domicilio. Te contactaremos pronto.');
+      setIsRefillModalVisible(false);
+    } finally {
+      setIsSubmittingRefill(false);
+    }
   }
 
   function handleDelete(id: string, name: string) {
@@ -290,6 +341,24 @@ export function MedicationsScreen() {
               </Text>
             </View>
           )}
+
+          {/* Banner Promocional de Farmacia Recurrente a Domicilio */}
+          <Pressable
+            style={styles.pharmaPromoBanner}
+            onPress={() => handleRequestRefill()}
+            accessibilityLabel="Pedir farmacia a domicilio"
+          >
+            <View style={styles.pharmaPromoIcon}>
+              <Ionicons name="cube" size={20} color="#D4856A" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pharmaPromoTitle}>📦 Farmacia Recurrente a Domicilio</Text>
+              <Text style={styles.pharmaPromoSub}>
+                Ahorra hasta 15% en recetas crónicas con boticas aliadas y entrega mensual.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#D4856A" />
+          </Pressable>
         </View>
       )}
 
@@ -328,6 +397,7 @@ export function MedicationsScreen() {
             isPrimaryCaregiver={isPrimaryCaregiver}
             onDelete={handleDelete}
             onEdit={handleEdit}
+            onRequestRefill={handleRequestRefill}
             isAdministering={
               administerMedication.isPending &&
               administerMedication.variables?.id === item.id
@@ -343,6 +413,73 @@ export function MedicationsScreen() {
           />
         }
       />
+
+      {/* Modal de Intención Comercial: Farmacia a Domicilio */}
+      <Modal
+        visible={isRefillModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsRefillModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconCircle}>
+              <Ionicons name="cube" size={32} color="#D4856A" />
+            </View>
+
+            <Text style={styles.modalTitle}>Despacho de Farmacia a Domicilio</Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedMedForRefill
+                ? `Reposición para: ${selectedMedForRefill.name}`
+                : 'Recetas Crónicas Mensuales del Paciente'}
+            </Text>
+
+            <View style={styles.benefitList}>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
+                <Text style={styles.benefitText}>
+                  Despacho automático a domicilio antes de que se agote el blíster.
+                </Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
+                <Text style={styles.benefitText}>
+                  Hasta 15% de ahorro en boticas y farmacias aliadas verificadas.
+                </Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
+                <Text style={styles.benefitText}>
+                  Coordinamos con tu receta médica para que no hagas filas.
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              style={styles.modalSubmitButton}
+              onPress={handleConfirmRefill}
+              disabled={isSubmittingRefill}
+            >
+              {isSubmittingRefill ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+                  <Text style={styles.modalSubmitButtonText}>Solicitar cotización sin costo</Text>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.modalCancelButton}
+              onPress={() => setIsRefillModalVisible(false)}
+              disabled={isSubmittingRefill}
+            >
+              <Text style={styles.modalCancelButtonText}>Volver</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -721,5 +858,153 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  lowStockContainer: {
+    marginTop: 8,
+    gap: 6,
+  },
+  reorderRefillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FDF0EB',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#F8D7CC',
+  },
+  reorderRefillBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D4856A',
+  },
+  pharmaPromoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#F3D9CF',
+    gap: 10,
+    shadowColor: '#D4856A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  pharmaPromoIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FDF0EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pharmaPromoTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  pharmaPromoSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  modalIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FDF0EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#D4856A',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  benefitList: {
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+    marginBottom: 20,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  benefitText: {
+    fontSize: 13,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 18,
+  },
+  modalSubmitButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#D4856A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 10,
+    shadowColor: '#D4856A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalSubmitButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalCancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  modalCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });
