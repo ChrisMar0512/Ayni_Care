@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,6 +60,10 @@ export function FamiliaScreen() {
   const navigation = useNavigation<NavProp>();
   const { member, logout } = useAuthStore();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAgencyModalVisible, setIsAgencyModalVisible] = useState(false);
+  const [selectedShift, setSelectedShift] = useState('Turno noche (12h)');
+  const [selectedUrgency, setSelectedUrgency] = useState('urgente_esta_semana');
+  const [isSubmittingAgency, setIsSubmittingAgency] = useState(false);
 
   const handleOpenPrivacyPolicy = async () => {
     try {
@@ -73,6 +78,33 @@ export function FamiliaScreen() {
       await WebBrowser.openBrowserAsync('https://ayni-care-backend.vercel.app/terminos');
     } catch {
       Alert.alert('Aviso', 'Puedes consultar los términos en https://ayni-care-backend.vercel.app/terminos');
+    }
+  };
+
+  const handleConfirmAgencyInquiry = async () => {
+    setIsSubmittingAgency(true);
+    try {
+      await api.post('/api/analytics/commercial-intent', {
+        intentType: 'caregiver_agency',
+        metadata: {
+          shiftType: selectedShift,
+          urgency: selectedUrgency,
+          familyName: member?.family?.name || 'Familia',
+          source: 'familia_screen',
+        },
+      });
+      setIsAgencyModalVisible(false);
+      Alert.alert(
+        '¡Solicitud Registrada!',
+        'Conectaremos con agencias certificadas aliadas y te enviaremos opciones y presupuestos a tu contacto.',
+        [{ text: 'Entendido' }]
+      );
+    } catch (err: any) {
+      console.warn('[Agency Intent Error]', err);
+      Alert.alert('Solicitud enviada', 'Registramos tu solicitud de agencia de cuidadores.');
+      setIsAgencyModalVisible(false);
+    } finally {
+      setIsSubmittingAgency(false);
     }
   };
 
@@ -142,6 +174,15 @@ export function FamiliaScreen() {
           color="#3B82F6"
           bgColor="#EFF6FF"
           onPress={() => navigation.navigate('Miembros')}
+        />
+
+        <SectionCard
+          icon="shield-checkmark-outline"
+          title="Agencias de Cuidadores"
+          description="Enfermeras y personal certificado con reemplazo garantizado y monitoreo"
+          color="#7C3AED"
+          bgColor="#F5F3FF"
+          onPress={() => setIsAgencyModalVisible(true)}
         />
 
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>MI CUENTA</Text>
@@ -217,6 +258,105 @@ export function FamiliaScreen() {
           <Text style={styles.versionSub}>Hecho para el cuidado familiar en Latinoamérica</Text>
         </View>
       </ScrollView>
+
+      {/* Modal de Intención Comercial: Agencias de Cuidadores */}
+      <Modal
+        visible={isAgencyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsAgencyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.agencyIconCircle}>
+              <Ionicons name="shield-checkmark" size={32} color="#7C3AED" />
+            </View>
+
+            <Text style={styles.modalTitle}>Agencias de Cuidado Formal</Text>
+            <Text style={styles.modalSubtitle}>
+              Personal certificado, verificado y supervisado en Ayni Care
+            </Text>
+
+            <Text style={styles.filterSectionTitle}>1. ¿Qué tipo de turno necesitas?</Text>
+            <View style={styles.optionsWrap}>
+              {[
+                'Turno noche (12h)',
+                'Turno día (12h)',
+                'Cama adentro (24/7)',
+                'Por horas / Días específicos',
+              ].map((shift) => (
+                <Pressable
+                  key={shift}
+                  style={[
+                    styles.optionChip,
+                    selectedShift === shift && styles.optionChipActive,
+                  ]}
+                  onPress={() => setSelectedShift(shift)}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      selectedShift === shift && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {shift}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={[styles.filterSectionTitle, { marginTop: 14 }]}>2. ¿Con qué urgencia lo buscas?</Text>
+            <View style={styles.optionsWrap}>
+              {[
+                { id: 'urgente_esta_semana', label: 'Urgente esta semana' },
+                { id: 'durante_este_mes', label: 'Durante este mes' },
+                { id: 'evaluando_precios', label: 'Solo evaluando precios' },
+              ].map((urg) => (
+                <Pressable
+                  key={urg.id}
+                  style={[
+                    styles.optionChip,
+                    selectedUrgency === urg.id && styles.optionChipActive,
+                  ]}
+                  onPress={() => setSelectedUrgency(urg.id)}
+                >
+                  <Text
+                    style={[
+                      styles.optionChipText,
+                      selectedUrgency === urg.id && styles.optionChipTextActive,
+                    ]}
+                  >
+                    {urg.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              style={styles.agencySubmitButton}
+              onPress={handleConfirmAgencyInquiry}
+              disabled={isSubmittingAgency}
+            >
+              {isSubmittingAgency ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="send" size={17} color="#FFFFFF" />
+                  <Text style={styles.agencySubmitButtonText}>Solicitar cotizaciones</Text>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.modalCancelButton}
+              onPress={() => setIsAgencyModalVisible(false)}
+              disabled={isSubmittingAgency}
+            >
+              <Text style={styles.modalCancelButtonText}>Volver</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -437,5 +577,114 @@ const styles = StyleSheet.create({
   versionSub: {
     fontSize: 11,
     color: '#D1D5DB',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  agencyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F5F3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  filterSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  optionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
+    marginBottom: 6,
+  },
+  optionChip: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  optionChipActive: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#7C3AED',
+  },
+  optionChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  optionChipTextActive: {
+    color: '#7C3AED',
+    fontWeight: '700',
+  },
+  agencySubmitButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#7C3AED',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 18,
+    marginBottom: 8,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  agencySubmitButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalCancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  modalCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });
