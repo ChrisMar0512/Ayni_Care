@@ -257,20 +257,22 @@ export function LoginScreen({ navigation }: Props) {
             )}
           </Pressable>
 
-          {/* Acceso Rápido de Prueba (1-Clic) */}
-          <View style={styles.demoSection}>
-            <View style={styles.demoDivider} />
-            <Pressable
-              style={styles.demoButton}
-              onPress={handleQuickDemoLogin}
-              disabled={isLoading || socialLoading !== null}
-            >
-              <Ionicons name="flash" size={18} color="#D4856A" />
-              <Text style={styles.demoButtonText}>
-                Entrar con perfil de prueba (Familia Carrillo)
-              </Text>
-            </Pressable>
-          </View>
+          {/* Acceso Rápido de Prueba (1-Clic) — Solo visible en entorno de desarrollo */}
+          {__DEV__ && (
+            <View style={styles.demoSection}>
+              <View style={styles.demoDivider} />
+              <Pressable
+                style={styles.demoButton}
+                onPress={handleQuickDemoLogin}
+                disabled={isLoading || socialLoading !== null}
+              >
+                <Ionicons name="flash" size={18} color="#D4856A" />
+                <Text style={styles.demoButtonText}>
+                  Entrar con perfil de prueba (Solo Desarrollo)
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {/* Pie de pantalla */}
