@@ -8,9 +8,10 @@ export const chatAssistantSchema = z.object({
     .array(
       z.object({
         role: z.enum(['user', 'assistant']),
-        content: z.string(),
+        content: z.string().max(2000),
       })
     )
+    .max(30)
     .optional()
     .default([]),
 }).refine((data) => data.message || data.audioBase64, {
