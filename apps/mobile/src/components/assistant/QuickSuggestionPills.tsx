@@ -7,12 +7,12 @@ interface Props {
 }
 
 const SUGGESTIONS = [
-  { label: '💊 Ya tomó su medicina', prompt: 'Ya le di a papá su medicamento de la mañana' },
+  { label: '➕ Quiero agregar algo', prompt: 'Quiero agregar algo' },
+  { label: '💊 Registrar medicamento', prompt: 'Quiero agregar Losartán 50mg a las 8am y 8pm' },
   { label: '📋 ¿Qué toca hoy?', prompt: '¿Cuál es el resumen de lo que le toca a papá hoy?' },
-  { label: '💰 Registrar un gasto', prompt: 'Compré pañales y medicinas por 50 soles' },
+  { label: '💊 Ya tomó su medicina', prompt: 'Ya le di a papá su medicamento de la mañana' },
   { label: '🩺 Agendar cita médica', prompt: 'Agenda una cita con el geriatra para el próximo martes a las 4pm' },
-  { label: '🎙️ ¿Cómo va el día? / Desahogo', prompt: 'Quiero contarte cómo me siento hoy y cómo va el cuidado de mi familiar' },
-  { label: '⚠️ Dificultad con mi familia', prompt: 'Tengo algunas dificultades para coordinar los gastos y el cuidado con mis hermanos' },
+  { label: '💰 Registrar un gasto', prompt: 'Compré pañales y medicinas por 50 soles' },
   { label: '📝 Nota en bitácora', prompt: 'Anota que papá durmió muy bien y amaneció de buen ánimo' },
 ];
 
