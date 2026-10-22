@@ -64,6 +64,7 @@ export function FamiliaScreen() {
   const [selectedShift, setSelectedShift] = useState('Turno noche (12h)');
   const [selectedUrgency, setSelectedUrgency] = useState('urgente_esta_semana');
   const [isSubmittingAgency, setIsSubmittingAgency] = useState(false);
+  const [isAgencySubmitted, setIsAgencySubmitted] = useState(false);
 
   const handleOpenPrivacyPolicy = async () => {
     try {
@@ -93,16 +94,10 @@ export function FamiliaScreen() {
           source: 'familia_screen',
         },
       });
-      setIsAgencyModalVisible(false);
-      Alert.alert(
-        '¡Solicitud Registrada!',
-        'Conectaremos con agencias certificadas aliadas y te enviaremos opciones y presupuestos a tu contacto.',
-        [{ text: 'Entendido' }]
-      );
+      setIsAgencySubmitted(true);
     } catch (err: any) {
       console.warn('[Agency Intent Error]', err);
-      Alert.alert('Solicitud enviada', 'Registramos tu solicitud de agencia de cuidadores.');
-      setIsAgencyModalVisible(false);
+      setIsAgencySubmitted(true);
     } finally {
       setIsSubmittingAgency(false);
     }
@@ -182,7 +177,10 @@ export function FamiliaScreen() {
           description="Enfermeras y personal certificado con reemplazo garantizado y monitoreo"
           color="#7C3AED"
           bgColor="#F5F3FF"
-          onPress={() => setIsAgencyModalVisible(true)}
+          onPress={() => {
+            setIsAgencySubmitted(false);
+            setIsAgencyModalVisible(true);
+          }}
         />
 
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>MI CUENTA</Text>
@@ -264,96 +262,137 @@ export function FamiliaScreen() {
         visible={isAgencyModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsAgencyModalVisible(false)}
+        onRequestClose={() => {
+          setIsAgencyModalVisible(false);
+          setIsAgencySubmitted(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.agencyIconCircle}>
-              <Ionicons name="shield-checkmark" size={32} color="#7C3AED" />
-            </View>
+            {isAgencySubmitted ? (
+              <View style={{ alignItems: 'center', width: '100%', paddingVertical: 10 }}>
+                <View style={[styles.agencyIconCircle, { backgroundColor: '#F5F3FF', width: 72, height: 72, borderRadius: 36 }]}>
+                  <Ionicons name="checkmark-circle" size={44} color="#7C3AED" />
+                </View>
 
-            <Text style={styles.modalTitle}>Agencias de Cuidado Formal</Text>
-            <Text style={styles.modalSubtitle}>
-              Personal certificado, verificado y supervisado en Ayni Care
-            </Text>
+                <Text style={[styles.modalTitle, { color: '#7C3AED', marginTop: 8 }]}>
+                  ¡Solicitud Registrada!
+                </Text>
 
-            <Text style={styles.filterSectionTitle}>1. ¿Qué tipo de turno necesitas?</Text>
-            <View style={styles.optionsWrap}>
-              {[
-                'Turno noche (12h)',
-                'Turno día (12h)',
-                'Cama adentro (24/7)',
-                'Por horas / Días específicos',
-              ].map((shift) => (
-                <Pressable
-                  key={shift}
-                  style={[
-                    styles.optionChip,
-                    selectedShift === shift && styles.optionChipActive,
-                  ]}
-                  onPress={() => setSelectedShift(shift)}
-                >
-                  <Text
-                    style={[
-                      styles.optionChipText,
-                      selectedShift === shift && styles.optionChipTextActive,
-                    ]}
-                  >
-                    {shift}
+                <Text style={[styles.modalSubtitle, { color: '#374151', fontSize: 14, lineHeight: 20, marginVertical: 12 }]}>
+                  Hemos registrado tu solicitud para{' '}
+                  <Text style={{ fontWeight: '700', color: '#1F2937' }}>
+                    {selectedShift}
                   </Text>
-                </Pressable>
-              ))}
-            </View>
+                  . Conectaremos con agencias certificadas aliadas y te enviaremos opciones y presupuestos a tu contacto.
+                </Text>
 
-            <Text style={[styles.filterSectionTitle, { marginTop: 14 }]}>2. ¿Con qué urgencia lo buscas?</Text>
-            <View style={styles.optionsWrap}>
-              {[
-                { id: 'urgente_esta_semana', label: 'Urgente esta semana' },
-                { id: 'durante_este_mes', label: 'Durante este mes' },
-                { id: 'evaluando_precios', label: 'Solo evaluando precios' },
-              ].map((urg) => (
-                <Pressable
-                  key={urg.id}
-                  style={[
-                    styles.optionChip,
-                    selectedUrgency === urg.id && styles.optionChipActive,
-                  ]}
-                  onPress={() => setSelectedUrgency(urg.id)}
-                >
-                  <Text
-                    style={[
-                      styles.optionChipText,
-                      selectedUrgency === urg.id && styles.optionChipTextActive,
-                    ]}
-                  >
-                    {urg.label}
+                <View style={{ backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', borderWidth: 1, padding: 10, borderRadius: 10, width: '100%', marginBottom: 18 }}>
+                  <Text style={{ fontSize: 13, color: '#6D28D9', textAlign: 'center', fontWeight: '600' }}>
+                    ✅ Solicitud vinculada a tu familia
                   </Text>
+                </View>
+
+                <Pressable
+                  style={styles.agencySubmitButton}
+                  onPress={() => {
+                    setIsAgencyModalVisible(false);
+                    setIsAgencySubmitted(false);
+                  }}
+                >
+                  <Text style={styles.agencySubmitButtonText}>Entendido</Text>
                 </Pressable>
-              ))}
-            </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.agencyIconCircle}>
+                  <Ionicons name="shield-checkmark" size={32} color="#7C3AED" />
+                </View>
 
-            <Pressable
-              style={styles.agencySubmitButton}
-              onPress={handleConfirmAgencyInquiry}
-              disabled={isSubmittingAgency}
-            >
-              {isSubmittingAgency ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="send" size={17} color="#FFFFFF" />
-                  <Text style={styles.agencySubmitButtonText}>Solicitar cotizaciones</Text>
-                </>
-              )}
-            </Pressable>
+                <Text style={styles.modalTitle}>Agencias de Cuidado Formal</Text>
+                <Text style={styles.modalSubtitle}>
+                  Personal certificado, verificado y supervisado en Ayni Care
+                </Text>
 
-            <Pressable
-              style={styles.modalCancelButton}
-              onPress={() => setIsAgencyModalVisible(false)}
-              disabled={isSubmittingAgency}
-            >
-              <Text style={styles.modalCancelButtonText}>Volver</Text>
-            </Pressable>
+                <Text style={styles.filterSectionTitle}>1. ¿Qué tipo de turno necesitas?</Text>
+                <View style={styles.optionsWrap}>
+                  {[
+                    'Turno noche (12h)',
+                    'Turno día (12h)',
+                    'Cama adentro (24/7)',
+                    'Por horas / Días específicos',
+                  ].map((shift) => (
+                    <Pressable
+                      key={shift}
+                      style={[
+                        styles.optionChip,
+                        selectedShift === shift && styles.optionChipActive,
+                      ]}
+                      onPress={() => setSelectedShift(shift)}
+                    >
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          selectedShift === shift && styles.optionChipTextActive,
+                        ]}
+                      >
+                        {shift}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={[styles.filterSectionTitle, { marginTop: 14 }]}>2. ¿Con qué urgencia lo buscas?</Text>
+                <View style={styles.optionsWrap}>
+                  {[
+                    { id: 'urgente_esta_semana', label: 'Urgente esta semana' },
+                    { id: 'durante_este_mes', label: 'Durante este mes' },
+                    { id: 'evaluando_precios', label: 'Solo evaluando precios' },
+                  ].map((urg) => (
+                    <Pressable
+                      key={urg.id}
+                      style={[
+                        styles.optionChip,
+                        selectedUrgency === urg.id && styles.optionChipActive,
+                      ]}
+                      onPress={() => setSelectedUrgency(urg.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          selectedUrgency === urg.id && styles.optionChipTextActive,
+                        ]}
+                      >
+                        {urg.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Pressable
+                  style={styles.agencySubmitButton}
+                  onPress={handleConfirmAgencyInquiry}
+                  disabled={isSubmittingAgency}
+                >
+                  {isSubmittingAgency ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="send" size={17} color="#FFFFFF" />
+                      <Text style={styles.agencySubmitButtonText}>Solicitar cotizaciones</Text>
+                    </>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={styles.modalCancelButton}
+                  onPress={() => setIsAgencyModalVisible(false)}
+                  disabled={isSubmittingAgency}
+                >
+                  <Text style={styles.modalCancelButtonText}>Volver</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
       </Modal>

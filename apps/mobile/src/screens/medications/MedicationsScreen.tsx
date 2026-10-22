@@ -185,6 +185,7 @@ export function MedicationsScreen() {
   const [selectedMedForRefill, setSelectedMedForRefill] = React.useState<Medication | null>(null);
   const [isRefillModalVisible, setIsRefillModalVisible] = React.useState(false);
   const [isSubmittingRefill, setIsSubmittingRefill] = React.useState(false);
+  const [isRefillSubmitted, setIsRefillSubmitted] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -202,6 +203,7 @@ export function MedicationsScreen() {
 
   function handleRequestRefill(medication?: Medication) {
     setSelectedMedForRefill(medication || null);
+    setIsRefillSubmitted(false);
     setIsRefillModalVisible(true);
   }
 
@@ -218,16 +220,10 @@ export function MedicationsScreen() {
         },
       });
 
-      setIsRefillModalVisible(false);
-      Alert.alert(
-        '¡Solicitud Registrada!',
-        'Nos pondremos en contacto contigo para coordinar la cotización de tus medicamentos con descuento y entrega a domicilio.',
-        [{ text: 'Excelente' }]
-      );
+      setIsRefillSubmitted(true);
     } catch (err: any) {
       console.warn('[Refill Error]', err);
-      Alert.alert('Solicitud enviada', 'Registramos tu interés en la reposición a domicilio. Te contactaremos pronto.');
-      setIsRefillModalVisible(false);
+      setIsRefillSubmitted(true);
     } finally {
       setIsSubmittingRefill(false);
     }
@@ -423,60 +419,98 @@ export function MedicationsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalIconCircle}>
-              <Ionicons name="cube" size={32} color="#D4856A" />
-            </View>
+            {isRefillSubmitted ? (
+              <View style={{ alignItems: 'center', width: '100%', paddingVertical: 10 }}>
+                <View style={[styles.modalIconCircle, { backgroundColor: '#E8F5E9', width: 72, height: 72, borderRadius: 36 }]}>
+                  <Ionicons name="checkmark-circle" size={44} color="#2D6A4F" />
+                </View>
 
-            <Text style={styles.modalTitle}>Despacho de Farmacia a Domicilio</Text>
-            <Text style={styles.modalSubtitle}>
-              {selectedMedForRefill
-                ? `Reposición para: ${selectedMedForRefill.name}`
-                : 'Recetas Crónicas Mensuales del Paciente'}
-            </Text>
-
-            <View style={styles.benefitList}>
-              <View style={styles.benefitItem}>
-                <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
-                <Text style={styles.benefitText}>
-                  Despacho automático a domicilio antes de que se agote el blíster.
+                <Text style={[styles.modalTitle, { color: '#2D6A4F', marginTop: 8 }]}>
+                  ¡Solicitud Registrada!
                 </Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
-                <Text style={styles.benefitText}>
-                  Hasta 15% de ahorro en boticas y farmacias aliadas verificadas.
-                </Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
-                <Text style={styles.benefitText}>
-                  Coordinamos con tu receta médica para que no hagas filas.
-                </Text>
-              </View>
-            </View>
 
-            <Pressable
-              style={styles.modalSubmitButton}
-              onPress={handleConfirmRefill}
-              disabled={isSubmittingRefill}
-            >
-              {isSubmittingRefill ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
-                  <Text style={styles.modalSubmitButtonText}>Solicitar cotización sin costo</Text>
-                </>
-              )}
-            </Pressable>
+                <Text style={[styles.modalSubtitle, { color: '#374151', fontSize: 14, lineHeight: 20, marginVertical: 12 }]}>
+                  Hemos registrado tu solicitud para{' '}
+                  <Text style={{ fontWeight: '700', color: '#1F2937' }}>
+                    {selectedMedForRefill?.name || 'tus medicamentos'}
+                  </Text>
+                  . Nos pondremos en contacto contigo para coordinar la cotización con descuento y entrega programada a domicilio.
+                </Text>
 
-            <Pressable
-              style={styles.modalCancelButton}
-              onPress={() => setIsRefillModalVisible(false)}
-              disabled={isSubmittingRefill}
-            >
-              <Text style={styles.modalCancelButtonText}>Volver</Text>
-            </Pressable>
+                <View style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1, padding: 10, borderRadius: 10, width: '100%', marginBottom: 18 }}>
+                  <Text style={{ fontSize: 13, color: '#166534', textAlign: 'center', fontWeight: '600' }}>
+                    ✅ Registrado en tu panel familiar
+                  </Text>
+                </View>
+
+                <Pressable
+                  style={styles.modalSubmitButton}
+                  onPress={() => {
+                    setIsRefillModalVisible(false);
+                    setIsRefillSubmitted(false);
+                  }}
+                >
+                  <Text style={styles.modalSubmitButtonText}>Entendido</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <View style={styles.modalIconCircle}>
+                  <Ionicons name="cube" size={32} color="#D4856A" />
+                </View>
+
+                <Text style={styles.modalTitle}>Despacho de Farmacia a Domicilio</Text>
+                <Text style={styles.modalSubtitle}>
+                  {selectedMedForRefill
+                    ? `Reposición para: ${selectedMedForRefill.name}`
+                    : 'Recetas Crónicas Mensuales del Paciente'}
+                </Text>
+
+                <View style={styles.benefitList}>
+                  <View style={styles.benefitItem}>
+                    <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
+                    <Text style={styles.benefitText}>
+                      Despacho automático a domicilio antes de que se agote el blíster.
+                    </Text>
+                  </View>
+                  <View style={styles.benefitItem}>
+                    <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
+                    <Text style={styles.benefitText}>
+                      Hasta 15% de ahorro en boticas y farmacias aliadas verificadas.
+                    </Text>
+                  </View>
+                  <View style={styles.benefitItem}>
+                    <Ionicons name="checkmark-circle" size={18} color="#2D6A4F" />
+                    <Text style={styles.benefitText}>
+                      Coordinamos con tu receta médica para que no hagas filas.
+                    </Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  style={styles.modalSubmitButton}
+                  onPress={handleConfirmRefill}
+                  disabled={isSubmittingRefill}
+                >
+                  {isSubmittingRefill ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+                      <Text style={styles.modalSubmitButtonText}>Solicitar cotización sin costo</Text>
+                    </>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={styles.modalCancelButton}
+                  onPress={() => setIsRefillModalVisible(false)}
+                  disabled={isSubmittingRefill}
+                >
+                  <Text style={styles.modalCancelButtonText}>Volver</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
       </Modal>
