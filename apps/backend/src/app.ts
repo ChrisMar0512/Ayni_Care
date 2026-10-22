@@ -28,9 +28,7 @@ app.set('trust proxy', 1);
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://aynicare.com', 'https://ayni-care.vercel.app', /\.vercel\.app$/]
-    : '*',
+  origin: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
