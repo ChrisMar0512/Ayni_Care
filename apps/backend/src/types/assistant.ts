@@ -1,6 +1,7 @@
 import { MemberRole } from '@prisma/client';
 
 export type AssistantWidgetType =
+  | 'draft_preview'
   | 'medication_dose_logged'
   | 'medication_created'
   | 'activity_created'

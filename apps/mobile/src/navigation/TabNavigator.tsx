@@ -88,7 +88,7 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<keyof TabParamList, { focused: IconName; default: IconName }> = {
   Asistente: { focused: 'sparkles', default: 'sparkles-outline' },
-  Inicio: { focused: 'home', default: 'home-outline' },
+  Resumen: { focused: 'today', default: 'today-outline' },
   Medicamentos: { focused: 'medical', default: 'medical-outline' },
   Agenda: { focused: 'calendar', default: 'calendar-outline' },
   Familia: { focused: 'people', default: 'people-outline' },
@@ -135,9 +135,9 @@ export function TabNavigator() {
         options={{ tabBarLabel: 'Asistente' }}
       />
       <Tab.Screen 
-        name="Inicio" 
+        name="Resumen" 
         component={ActivitiesNavigator} 
-        options={{ tabBarLabel: 'Inicio' }}
+        options={{ tabBarLabel: 'Resumen' }}
       />
       <Tab.Screen 
         name="Medicamentos" 

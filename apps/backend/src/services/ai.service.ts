@@ -2,6 +2,7 @@ import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import { MemberRole } from '@prisma/client';
 import { prisma } from '../prisma/client';
 import { broadcast } from './realtime.service';
+import { demoStore, DEMO_FAMILY_ID } from '../lib/demo-data';
 import { AssistantChatResponse, AssistantWidget } from '../types/assistant';
 
 // Helper to initialize Gemini client safely
@@ -22,18 +23,20 @@ export const getGeminiClient = () => {
 
 // Cascada de modelos disponibles para máxima resiliencia ante alta demanda (503 / 429)
 export const MODEL_CANDIDATES = [
-  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
+  'gemini-3.6-flash',
   'gemini-3.1-flash-lite',
   'gemini-flash-latest',
-  'gemini-3.6-flash',
   'gemini-3.7-flash',
 ];
 
 export const TRANSCRIBE_CANDIDATES = [
   'gemini-3.5-flash-lite',
-  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
   'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
   'gemini-flash-latest',
 ];
 
@@ -373,7 +376,7 @@ const tools: FunctionDeclaration[] = [
 
 // ─── Tool Execution Handlers ──────────────────────────────────────────────────
 
-interface UserContext {
+export interface UserContext {
   userId: string;
   familyId: string;
   memberId: string;
@@ -527,13 +530,20 @@ class AssistantToolExecutor {
 
     const {
       name,
-      dosage = '1 dosis',
+      dosage,
       frequency = 'Todos los días',
       times = ['08:00'],
       form = 'pastilla',
       instructions,
       stock,
     } = args;
+
+    if (!name || !name.trim()) {
+      return {
+        result: { error: 'Falta el nombre del medicamento. Pregúntale amablemente al usuario qué medicina desea registrar.' },
+        actionName: 'missing_medication_name',
+      };
+    }
 
     // Formatear horas a HH:mm
     const formattedTimes: string[] = (Array.isArray(times) ? times : [times]).map((t: string) => {
@@ -544,50 +554,48 @@ class AssistantToolExecutor {
       return String(t);
     });
 
-    const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    const displayDosage = dosage && dosage.trim() ? dosage.trim() : '1 dosis';
 
-    const medication = await prisma.medication.create({
-      data: {
-        familyId: this.user.familyId,
-        name,
-        dosage,
-        frequency,
-        times: formattedTimes,
-        form: form || null,
-        instructions: instructions || null,
-        stock: stock !== undefined && stock !== null ? Number(stock) : null,
-        startDate: startOfToday,
-        isActive: true,
-      },
-    });
+    const fields = [
+      { label: 'Medicamento', value: name },
+      { label: 'Dosis', value: displayDosage },
+      { label: 'Frecuencia', value: frequency },
+      { label: 'Horarios', value: formattedTimes.join(', ') },
+    ];
+    if (instructions) fields.push({ label: 'Indicaciones', value: instructions });
+    if (stock) fields.push({ label: 'Stock inicial', value: `${stock} pastillas/unidades` });
 
-    await broadcast(this.user.familyId, 'medication:created', medication);
+    const draftPayload = {
+      name,
+      dosage: displayDosage,
+      frequency,
+      times: formattedTimes,
+      form: form || 'pastilla',
+      instructions: instructions || null,
+      stock: stock !== undefined && stock !== null ? Number(stock) : null,
+    };
 
     const widget: AssistantWidget = {
-      type: 'medication_created',
-      title: 'Medicamento Agregado al Horario',
+      type: 'draft_preview',
+      title: 'Confirmar Nuevo Medicamento',
       data: {
-        id: medication.id,
-        name: medication.name,
-        dosage: medication.dosage,
-        frequency: medication.frequency,
-        times: medication.times,
-        instructions: medication.instructions,
+        actionType: 'create_medication',
+        entityTitle: `💊 ${name} ${displayDosage}`,
+        summary: `${name} ${displayDosage} - ${frequency} (${formattedTimes.join(', ')})`,
+        fields,
+        draftPayload,
+        status: 'pending',
       },
     };
 
     return {
       result: {
         success: true,
-        name: medication.name,
-        dosage: medication.dosage,
-        frequency: medication.frequency,
-        times: medication.times,
+        status: 'preview_ready',
+        message: `He preparado la ficha para ${name} ${displayDosage} (${formattedTimes.join(', ')}). Por favor revisa la tarjeta de previsualización y presiona "Confirmar y Guardar" para agregarlo a la app.`,
       },
       widget,
-      actionName: 'create_medication',
+      actionName: 'propose_medication_draft',
     };
   }
 
@@ -600,62 +608,52 @@ class AssistantToolExecutor {
       };
     }
 
-    const { title, scheduledTime, priority = 'normal', assignedToName } = args;
+    const { title, scheduledTime = '09:00', priority = 'normal', assignedToName } = args;
 
-    let assignedToId: string | undefined = undefined;
-    if (assignedToName) {
-      const members = await prisma.familyMember.findMany({
-        where: { familyId: this.user.familyId, isActive: true },
-      });
-      const memberMatch = members.find((m) =>
-        m.name.toLowerCase().includes(assignedToName.toLowerCase())
-      );
-      if (memberMatch) {
-        assignedToId = memberMatch.id;
-      }
+    if (!title || !title.trim()) {
+      return {
+        result: { error: 'Falta el título de la actividad. Pregúntale al usuario qué tarea desea agendar.' },
+        actionName: 'missing_activity_title',
+      };
     }
 
-    let scheduledAt: Date | undefined = undefined;
-    if (scheduledTime) {
-      scheduledAt = parsePeruTimeToUTC(scheduledTime);
-    }
+    const priorityLabel = priority === 'urgent' ? 'Urgente' : priority === 'low' ? 'Baja' : 'Normal';
 
-    const activity = await prisma.activity.create({
-      data: {
-        familyId: this.user.familyId,
-        title,
-        priority,
-        scheduledAt,
-        assignedToId,
-      },
-      include: {
-        assignedTo: { select: { id: true, name: true } },
-      },
-    });
+    const fields = [
+      { label: 'Actividad', value: title },
+      { label: 'Hora programada', value: scheduledTime || '09:00' },
+      { label: 'Prioridad', value: priorityLabel },
+    ];
+    if (assignedToName) fields.push({ label: 'Asignado a', value: assignedToName });
 
-    await broadcast(this.user.familyId, 'activity:created', activity);
+    const draftPayload = {
+      title,
+      scheduledTime: scheduledTime || '09:00',
+      priority,
+      assignedToName,
+    };
 
     const widget: AssistantWidget = {
-      type: 'activity_created',
-      title: 'Actividad Creada',
+      type: 'draft_preview',
+      title: 'Confirmar Tarea de Cuidado',
       data: {
-        id: activity.id,
-        title: activity.title,
-        priority: activity.priority,
-        scheduledAt: activity.scheduledAt?.toISOString(),
-        assignedTo: activity.assignedTo?.name,
+        actionType: 'create_activity',
+        entityTitle: `📋 ${title}`,
+        summary: `${title} a las ${scheduledTime || '09:00'}`,
+        fields,
+        draftPayload,
+        status: 'pending',
       },
     };
 
     return {
       result: {
         success: true,
-        id: activity.id,
-        title: activity.title,
-        assignedTo: activity.assignedTo?.name || 'Cualquiera',
+        status: 'preview_ready',
+        message: `He preparado la actividad "${title}" para las ${scheduledTime || '09:00'}. Por favor revisa la tarjeta de previsualización y toca "Confirmar y Guardar" para añadirla al plan de cuidado.`,
       },
       widget,
-      actionName: 'create_activity',
+      actionName: 'propose_activity_draft',
     };
   }
 
@@ -868,43 +866,67 @@ class AssistantToolExecutor {
 
     const { title, doctorName, location, scheduledDate, type = 'medical', notes } = args;
 
-    const scheduledAt = parsePeruTimeToUTC(scheduledDate);
+    if (!title || !title.trim()) {
+      return {
+        result: { error: 'Falta el motivo o nombre de la consulta. Pregúntale al usuario para qué cita médica es.' },
+        actionName: 'missing_appointment_title',
+      };
+    }
 
-    const appointment = await prisma.appointment.create({
-      data: {
-        familyId: this.user.familyId,
-        title,
-        doctorName: doctorName || null,
-        location: location || null,
-        scheduledAt,
-        type,
-        notes: notes || null,
-      },
+    if (!scheduledDate) {
+      return {
+        result: { error: 'Falta la fecha u hora de la cita. Pregúntale al usuario para qué fecha y hora desea programarla.' },
+        actionName: 'missing_appointment_date',
+      };
+    }
+
+    const scheduledAt = parsePeruTimeToUTC(scheduledDate);
+    const dateFormatted = scheduledAt.toLocaleDateString('es-PE', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
     });
 
-    await broadcast(this.user.familyId, 'appointment:created', appointment);
+    const fields = [
+      { label: 'Cita Médica', value: title },
+      { label: 'Fecha y Hora', value: dateFormatted },
+    ];
+    if (doctorName) fields.push({ label: 'Doctor(a)', value: doctorName });
+    if (location) fields.push({ label: 'Lugar / Clínica', value: location });
+    if (notes) fields.push({ label: 'Indicaciones', value: notes });
+
+    const draftPayload = {
+      title,
+      doctorName: doctorName || null,
+      location: location || null,
+      scheduledAt: scheduledAt.toISOString(),
+      type: type || 'medical',
+      notes: notes || null,
+    };
 
     const widget: AssistantWidget = {
-      type: 'appointment_created',
-      title: 'Cita Agendada',
+      type: 'draft_preview',
+      title: 'Confirmar Cita Médica',
       data: {
-        id: appointment.id,
-        title: appointment.title,
-        doctorName: appointment.doctorName,
-        location: appointment.location,
-        scheduledAt: appointment.scheduledAt.toISOString(),
+        actionType: 'create_appointment',
+        entityTitle: `🗓️ ${title}`,
+        summary: `${title} el ${dateFormatted}`,
+        fields,
+        draftPayload,
+        status: 'pending',
       },
     };
 
     return {
       result: {
         success: true,
-        title: appointment.title,
-        scheduledAt: appointment.scheduledAt.toISOString(),
-        doctor: appointment.doctorName || 'No especificado',
+        status: 'preview_ready',
+        message: `He preparado la cita "${title}" para el ${dateFormatted}. Por favor revisa la tarjeta de previsualización y confirma para agendarla en la app.`,
       },
       widget,
-      actionName: 'create_appointment',
+      actionName: 'propose_appointment_draft',
     };
   }
 
@@ -1378,4 +1400,240 @@ REGLAS DE INTERACCIÓN:
     widget: finalWidget,
     actionsExecuted,
   };
+};
+
+
+// ─── Human-in-the-Loop Action Confirmation ──────────────────────────────────
+
+export const executeConfirmedAssistantAction = async (
+  user: UserContext,
+  actionType: string,
+  draftPayload: Record<string, any>
+): Promise<{ success: boolean; message: string; data?: any }> => {
+  if (actionType === 'create_medication') {
+    const { name, dosage, frequency, times, form, instructions, stock, startDate } = draftPayload;
+    if (!name || !dosage) {
+      throw new Error('Faltan datos obligatorios del medicamento (nombre y dosis).');
+    }
+
+    if (user.familyId === DEMO_FAMILY_ID) {
+      const newMed = {
+        id: `med-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        name,
+        dosage,
+        frequency: frequency || 'Diario',
+        times: Array.isArray(times) ? times : [times || '08:00'],
+        form: form || 'pastilla',
+        instructions: instructions || null,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        stock: stock !== undefined && stock !== null ? Number(stock) : null,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        logs: [],
+      };
+      demoStore.medications.unshift(newMed as any);
+      return {
+        success: true,
+        message: `El medicamento ${name} (${dosage}) ha sido guardado exitosamente en Ayni Care.`,
+        data: newMed,
+      };
+    }
+
+    const medication = await prisma.medication.create({
+      data: {
+        familyId: user.familyId,
+        name,
+        dosage,
+        frequency: frequency || 'Diario',
+        times: Array.isArray(times) ? times : [times || '08:00'],
+        form: form || 'pastilla',
+        instructions: instructions || null,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        stock: stock !== undefined && stock !== null ? Number(stock) : null,
+      },
+    });
+
+    await broadcast(user.familyId, 'medication:created', medication);
+
+    return {
+      success: true,
+      message: `El medicamento ${name} (${dosage}) ha sido guardado exitosamente en Ayni Care.`,
+      data: medication,
+    };
+  }
+
+  if (actionType === 'create_activity') {
+    const { title, scheduledTime, priority, assignedToName } = draftPayload;
+    if (!title || !title.trim()) {
+      throw new Error('Falta el título de la actividad.');
+    }
+
+    let assignedToId: string | null = null;
+    if (assignedToName && user.familyId !== DEMO_FAMILY_ID) {
+      const member = await prisma.familyMember.findFirst({
+        where: {
+          familyId: user.familyId,
+          name: { contains: assignedToName, mode: 'insensitive' },
+        },
+      });
+      if (member) assignedToId = member.id;
+    }
+
+    const timeStr = scheduledTime || '09:00';
+    const [hh, mm] = timeStr.split(':');
+    const scheduledAt = new Date();
+    scheduledAt.setHours(parseInt(hh, 10) || 9, parseInt(mm, 10) || 0, 0, 0);
+
+    if (user.familyId === DEMO_FAMILY_ID) {
+      const newAct = {
+        id: `act-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        title,
+        scheduledAt,
+        assignedToId: assignedToId || user.memberId,
+        recurrence: 'once',
+        priority: priority || 'normal',
+        status: 'pending',
+        assignedTo: { id: user.memberId, name: 'Familiar' },
+        logs: [],
+        createdAt: new Date(),
+      };
+      demoStore.activities.unshift(newAct as any);
+      return {
+        success: true,
+        message: `La tarea "${title}" ha sido programada con éxito en Ayni Care.`,
+        data: newAct,
+      };
+    }
+
+    const activity = await prisma.activity.create({
+      data: {
+        familyId: user.familyId,
+        title,
+        scheduledAt,
+        assignedToId: assignedToId || user.memberId,
+        recurrence: undefined,
+        priority: priority || 'normal',
+      },
+      include: {
+        assignedTo: { select: { id: true, name: true } },
+      },
+    });
+
+    await broadcast(user.familyId, 'activity:created', activity);
+
+    return {
+      success: true,
+      message: `La tarea "${title}" ha sido programada con éxito en Ayni Care.`,
+      data: activity,
+    };
+  }
+
+  if (actionType === 'create_appointment') {
+    const { title, doctorName, location, scheduledAt, type, notes } = draftPayload;
+    if (!title || !scheduledAt) {
+      throw new Error('Faltan datos obligatorios de la cita médica.');
+    }
+
+    const parsedDate = new Date(scheduledAt);
+
+    if (user.familyId === DEMO_FAMILY_ID) {
+      const newAppt = {
+        id: `appt-${Date.now()}`,
+        familyId: DEMO_FAMILY_ID,
+        title,
+        doctorName: doctorName || null,
+        location: location || null,
+        scheduledAt: parsedDate,
+        type: type || 'medical',
+        notes: notes || null,
+        status: 'scheduled',
+        createdAt: new Date(),
+      };
+      demoStore.appointments.unshift(newAppt as any);
+      return {
+        success: true,
+        message: `La cita "${title}" ha sido agendada con éxito.`,
+        data: newAppt,
+      };
+    }
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        familyId: user.familyId,
+        title,
+        doctorName: doctorName || null,
+        location: location || null,
+        scheduledAt: parsedDate,
+        type: type || 'medical',
+        notes: notes || null,
+      },
+    });
+
+    await broadcast(user.familyId, 'appointment:created', appointment);
+
+    return {
+      success: true,
+      message: `La cita "${title}" ha sido agendada con éxito.`,
+      data: appointment,
+    };
+  }
+
+  throw new Error(`Acción desconocida: ${actionType}`);
+};
+
+// ─── AI Form Autocomplete / Parsing ─────────────────────────────────────────
+
+export const parseFormInputWithAI = async (
+  type: 'medication' | 'activity',
+  text: string
+): Promise<Record<string, any>> => {
+  const gemini = getGeminiClient();
+
+  const prompt =
+    type === 'medication'
+      ? `Eres un asistente médico experto. Analiza la siguiente indicación, receta o texto del usuario y extrae los datos del medicamento.
+Texto: "${text}"
+
+Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato:
+{
+  "name": string (Nombre del medicamento),
+  "dosage": string (Dosis con concentración, ej. "500 mg" o "1 tableta"),
+  "frequency": string (Frecuencia, ej. "Cada 8 horas" o "Una vez al día"),
+  "times": string[] (Horarios en formato 24h ["HH:MM"], ej. ["08:00", "16:00", "00:00"]),
+  "form": string (Presentación: "pastilla", "cápsula", "jarabe", "gotas", "inyección", etc.),
+  "instructions": string | null (Indicaciones adicionales como "Tomar con alimentos", o null),
+  "stock": number | null (Cantidad de pastillas/unidades o null)
+}`
+      : `Eres un asistente de cuidado familiar. Analiza el siguiente texto y extrae la actividad o tarea de cuidado.
+Texto: "${text}"
+
+Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato:
+{
+  "title": string (Título conciso y claro de la actividad),
+  "scheduledTime": string (Hora aproximada en formato 24h "HH:MM", por defecto "09:00" si no se menciona),
+  "priority": "urgent" | "normal" | "low" (Prioridad según urgencia del texto),
+  "notes": string | null (Detalles o notas adicionales)
+}`;
+
+  const response = await callGeminiWithFallback(gemini, MODEL_CANDIDATES, {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: {
+      temperature: 0.1,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const rawJson =
+    response.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') || '{}';
+
+  try {
+    const cleaned = rawJson.replace(/```json/gi, '').replace(/```/gi, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error('[parseFormInputWithAI] Error parsing JSON:', rawJson, e);
+    return {};
+  }
 };
