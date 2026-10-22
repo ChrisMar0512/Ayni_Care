@@ -16,8 +16,6 @@ import jobsRoutes from './routes/jobs.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import adminRoutes from './routes/admin.routes';
 import assistantRoutes from './routes/assistant.routes';
-import whatsappRoutes from './routes/meta-whatsapp.routes';
-import telegramRoutes from './routes/telegram.routes';
 import legalRoutes from './routes/legal.routes';
 import analyticsRoutes from './routes/analytics.routes';
 
@@ -116,8 +114,6 @@ app.use('/api/notes', notesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/assistant', assistantRoutes);
-app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api/telegram', telegramRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);

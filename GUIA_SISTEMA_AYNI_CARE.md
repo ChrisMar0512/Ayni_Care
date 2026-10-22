@@ -16,7 +16,7 @@ En América Latina, más del **85% de los adultos mayores dependientes son cuida
 5. **Falta de Personal Calificado:** Dificultad para contratar cuidadores formales verificados con reemplazo garantizado ante emergencias.
 
 ### 💡 La Propuesta de Valor de Ayni Care
-Ayni Care centraliza la **salud, las rutinas diarias, los gastos compartidos y la comunicación** en una sola app colaborativa, complementada con un **Asistente Clínico Inteligente con IA** accesible por voz y texto, y canales omnicanal (WhatsApp y Telegram).
+Ayni Care centraliza la **salud, las rutinas diarias, los gastos compartidos y la comunicación** en una sola aplicación móvil colaborativa, complementada con un **Asistente Clínico Inteligente con IA** accesible por voz y texto directamente dentro de la app.
 
 ---
 
@@ -26,7 +26,6 @@ Ayni Care centraliza la **salud, las rutinas diarias, los gastos compartidos y l
 graph TD
     subgraph Clientes
         A["📱 App Móvil React Native / Expo"]
-        B["💬 WhatsApp Cloud API / Telegram"]
         C["💻 Panel Web Admin / Experimentos"]
     end
 
@@ -43,7 +42,6 @@ graph TD
     end
 
     A -->|HTTPS / JWT| D
-    B -->|Webhooks Seguros| D
     C -->|Autenticación Admin| D
     D --> E
     D --> F
@@ -52,10 +50,10 @@ graph TD
     D --> I
 ```
 
-- **Frontend Mobile:** React Native + Expo (SDK 52+), TypeScript estricto, NativeWind (Tailwind), Zustand (estado global de sesión), React Query (@tanstack/react-query para cache y sync), Expo SecureStore (almacenamiento encriptado de tokens), Expo Audio (grabación de voz para notas clínicas y chat).
-- **Backend Server:** Node.js, Express, TypeScript, Zod (validación estricta de esquemas), Prisma ORM con PostgreSQL en Supabase. Alojado con serverless architecture en Vercel.
+- **Frontend Mobile:** React Native + Expo (SDK 52+), TypeScript estricto, NativeWind (Tailwind), Zustand (estado global de sesión), React Query (@tanstack/react-query para cache y sync), Expo SecureStore (almacenamiento encriptado de tokens), Expo Audio (grabación de notas de voz en alta fidelidad).
+- **Backend Server:** Node.js, Express, TypeScript, Zod (validación estricta de esquemas), Prisma ORM con PostgreSQL en Supabase. Alojado con arquitectura serverless en Vercel.
 - **Inteligencia Artificial Multimodal:** `@google/genai` con cascada de modelos (`gemini-3.6-flash`, `gemini-flash-latest`, `gemini-3.5-flash`), Function Calling autónomo con confirmación *Human-in-the-Loop*, transcripción de notas de voz en base64 y reglas anti-jailbreak.
-- **Seguridad e Infraestructura:** Encriptación HTTPS de extremo a extremo, CORS restringido, rate limiting por IP/usuario para IA y endpoints generales, y RBAC (Control de Acceso Basado en Roles).
+- **Seguridad e Infraestructura:** Encriptación HTTPS de extremo a extremo, CORS controlado, rate limiting por IP/usuario para IA y endpoints generales, y RBAC (Control de Acceso Basado en Roles).
 
 ---
 
@@ -71,7 +69,7 @@ graph TD
 - **Ficha Farmacológica Completa:** Nombre, presentación (pastilla, jarabe, inyección, gotas), dosis precisa, frecuencia y múltiples horarios de toma (ej. 08:00 y 20:00).
 - **Registro de Administración en 1 Toque:** Al presionar "Dar dosis", se registra al instante el familiar que la suministró, la hora exacta y se descuenta el stock de manera atómica en la base de datos.
 - **Prevención de Sobredosis:** Si una dosis ya fue dada por otro familiar o cuidadora, el botón cambia a *"Listo por hoy"*, evitando confusiones.
-- **Validación Comercial Integrada:** Modal interactivo para solicitar *"Despacho de Farmacia a Domicilio"* con cotización programada antes de que se agote la receta mensual.
+- **Validación Comercial Integrada:** Modal interactivo con pantalla de confirmación para solicitar *"Despacho de Farmacia a Domicilio"* con cotización programada antes de que se agote la receta mensual.
 
 ### 📋 C. Módulo de Actividades y Tareas de Cuidado
 - **Organización de Rutinas:** Baño asistido, control de glucosa y signos vitales, cambio de pañales, curación de escaras o paseos terapéuticos.
@@ -91,29 +89,26 @@ graph TD
 - **Libro de Novedades Digital:** Registro de incidentes, observaciones de comportamiento o cambios de ánimo con fotos de recetas y comprobantes.
 
 ### 🤖 G. Asistente Clínico Inteligente con IA ("Ayni")
-- **Entrada Multimodal:** Admite mensajes escritos o notas de voz grabadas directamente desde el teléfono.
-- **Comprensión de Lenguaje Natural:** Interpreta frases cotidianas como:  
+- **Entrada Multimodal:** Admite mensajes escritos o notas de voz grabadas directamente desde el micrófono del teléfono.
+- **Comprensión de Lenguaje Natural:** Interpreta lenguaje cotidiano de cuidado familiar:  
   * *"Le acabo de dar su Losartán a papá"* ➔ Registra la dosis del medicamento.  
   * *"Gasté 140 soles en la farmacia comprando pañales"* ➔ Registra el gasto dividido.  
   * *"El geriatra programó control el próximo martes a las 11am en la Clínica San Felipe"* ➔ Prepara la cita médica.
 - **Protocolo Human-in-the-Loop (`draft_preview`):** Cuando el usuario pide agregar un nuevo evento o medicina, la IA **no lo graba a ciegas**; genera una tarjeta visual interactiva con los datos extraídos para que el usuario verifique y presione *"Confirmar y Guardar"*.
 - **Acompañamiento y Sondeo Empático:** Al confirmar una acción, el asistente formula preguntas de descubrimiento clínico y emocional (*"¿Cómo notaste a don Juan hoy?"*, *"Recuerda descansar un poco, ¿cómo te sientes de energía hoy?"*), permitiendo detectar sobrecarga familiar y validar nuevas necesidades.
-- **Seguridad y Resiliencia:** Cascada de 6 modelos con fallback automático ante errores 503/429, límite de tokens (`maxOutputTokens: 1200`) y directrices anti-jailbreak.
+- **Seguridad y Resiliencia:** Cascada de 6 modelos con fallback automático ante errores 503/429, límite de tokens (`maxOutputTokens: 1200`), rate limiter dedicado (40 consultas / 15 min) y directrices anti-jailbreak.
 
-### 💬 H. Omnicanalidad (WhatsApp y Telegram)
-- Para cuidadores que no dominan apps complejas o familiares mayores: pueden reportar actividades o recibir recordatorios directamente por WhatsApp o Telegram gracias a los webhooks del backend.
-
-### 👥 I. Gestión Familiar y Roles (RBAC)
+### 👥 H. Gestión Familiar y Roles (RBAC)
 - **Cuidador Principal (`primary_caregiver`):** Administrador del hogar, gestiona finanzas, medicamentos y miembros.
 - **Familiar Aportante (`family_member`):** Participa en actividades, visualiza bitácora y colabora en gastos.
 - **Cuidador Externo / Pagado (`paid_caregiver`):** Personal contratado; puede registrar signos vitales, actividades y dosis, pero tiene restringido el acceso a finanzas familiares y administración del paciente.
-- **Validación Comercial de Agencias:** Modal para cotizar *"Agencias de Cuidado Formal"* filtrando por turno (noche 12h, día 12h, cama adentro 24/7) y urgencia.
+- **Validación Comercial de Agencias:** Modal interactivo con confirmación in-modal para cotizar *"Agencias de Cuidado Formal"* filtrando por turno (noche 12h, día 12h, cama adentro 24/7) y urgencia.
 
 ---
 
 ## 📊 4. ¿Qué Mide la App y Cómo lo Mide?
 
-Ayni Care no es solo una agenda; es un **motor de métricas clínicas, operativas y de validación de negocio**.
+Ayni Care es un **motor de métricas clínicas, operativas y de validación de negocio**.
 
 ### 🩺 A. Métricas Clínicas y de Calidad del Cuidado
 | Métrica | ¿Qué Mide? | ¿Cómo se Mide Técnicamente? | Objetivo |
@@ -183,5 +178,5 @@ Ayni Care está concebido con un modelo híbrido de alto crecimiento:
 | **Aplicación Móvil (React Native Expo)** | 🟢 100% Lista | Flujos completos, confirmaciones visuales in-modal, audio y diseño nativo. |
 | **Backend API (Node.js + Supabase)** | 🟢 100% Listo | Rutas REST, RBAC, analítica comercial, endpoints de diagnóstico y rate limiting. |
 | **Asistente de IA (Gemini)** | 🟢 100% Listo | Function Calling, Human-in-the-Loop, reglas de seguridad y cascada multimodelo. |
-| **Configuración de Vercel** | 🟡 Requiere 30s | Solo falta agregar `GEMINI_API_KEY` en el panel de Vercel para producción. |
+| **Servidor en Vercel (Producción)** | 🟢 100% Verificado | Clave `GEMINI_API_KEY` activa y verificada en vivo (`has_gemini: true`). |
 | **Compilación para Tiendas (EAS Build)** | 🟢 Configurado | [eas.json](file:///c:/Ayni%20Care/Ayni%20Care%20Github/apps/mobile/eas.json) apunta a producción con bundle optimizado para Android y iOS. |
