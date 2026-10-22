@@ -21,7 +21,7 @@ export type OnboardingStackParamList = {
 
 export type TabParamList = {
   Asistente: undefined;
-  Inicio: undefined;
+  Resumen: undefined;
   Medicamentos: undefined;
   Agenda: undefined;
   Familia: undefined;

@@ -8,6 +8,7 @@ import { ExpenseWidgetCard } from './ExpenseWidgetCard';
 import { AppointmentWidgetCard } from './AppointmentWidgetCard';
 import { NoteWidgetCard } from './NoteWidgetCard';
 import { DailySummaryWidgetCard } from './DailySummaryWidgetCard';
+import { DraftPreviewWidgetCard } from './DraftPreviewWidgetCard';
 
 interface Props {
   message: AssistantChatMessage;
@@ -83,6 +84,8 @@ export const ChatMessageBubble: React.FC<Props> = ({ message }) => {
         return <NoteWidgetCard widget={message.widget} />;
       case 'daily_summary':
         return <DailySummaryWidgetCard widget={message.widget} />;
+      case 'draft_preview':
+        return <DraftPreviewWidgetCard widget={message.widget} />;
       default:
         return null;
     }

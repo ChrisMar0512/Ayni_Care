@@ -11,18 +11,29 @@ import {
   Platform,
   SafeAreaView,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCreateMedication, useUpdateMedication } from '../../hooks/useMedications';
+import { useCreateActivity } from '../../hooks/useActivities';
+import { useFamilyMembers } from '../../hooks/useFamily';
+import type { ActivityPriority } from '../../types/activity';
 import type { MedicationsStackParamList } from '../../navigation/types';
+import { AiAutocompleteBox } from '../../components/forms/AiAutocompleteBox';
 
 type NavProp = NativeStackNavigationProp<MedicationsStackParamList, 'AddMedication'>;
 type RoutePropType = RouteProp<MedicationsStackParamList, 'AddMedication'>;
 
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const PRIORITIES: { value: ActivityPriority; label: string; color: string; bg: string }[] = [
+  { value: 'low', label: 'Baja', color: '#6B7280', bg: '#F3F4F6' },
+  { value: 'normal', label: 'Normal', color: '#3B82F6', bg: '#EFF6FF' },
+  { value: 'urgent', label: 'Urgente', color: '#EF4444', bg: '#FEF2F2' },
+];
 
 function formatISOToDDMMYYYY(iso: string): string {
   const d = new Date(iso);
@@ -44,6 +55,28 @@ function parseDateToISO(ddmmyyyy: string): string | null {
   return date.toISOString();
 }
 
+function parseDateTimeToISO(ddmmyyyy: string, hhmm: string): string | null {
+  const dateParts = ddmmyyyy.trim().split('/');
+  if (dateParts.length !== 3) return null;
+  const [day, month, year] = dateParts;
+  if (!day || !month || !year || year.length !== 4) return null;
+
+  const timeParts = hhmm.trim().split(':');
+  if (timeParts.length !== 2) return null;
+  const [hours, minutes] = timeParts;
+  if (!hours || !minutes) return null;
+
+  const numYear = Number(year);
+  const numMonth = Number(month) - 1;
+  const numDay = Number(day);
+  const numHours = Number(hours);
+  const numMinutes = Number(minutes);
+
+  const date = new Date(numYear, numMonth, numDay, numHours, numMinutes, 0, 0);
+  if (isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
 function todayDDMMYYYY(): string {
   const now = new Date();
   const d = String(now.getDate()).padStart(2, '0');
@@ -58,10 +91,19 @@ export function AddMedicationScreen() {
   const medication = route.params?.medication;
   const isEditing = !!medication;
 
+  // Modo unificado: 'medication' o 'activity'
+  const [itemType, setItemType] = useState<'medication' | 'activity'>('medication');
+
+  // Hooks de datos
   const createMedication = useCreateMedication();
   const updateMedication = useUpdateMedication();
-  const isPending = createMedication.isPending || updateMedication.isPending;
+  const createActivity = useCreateActivity();
+  const { data: members } = useFamilyMembers();
 
+  const isPending =
+    createMedication.isPending || updateMedication.isPending || createActivity.isPending;
+
+  // Estado Formulario Medicamento
   const [name, setName] = useState(medication?.name ?? '');
   const [dosage, setDosage] = useState(medication?.dosage ?? '');
   const [form, setForm] = useState(medication?.form ?? '');
@@ -74,6 +116,15 @@ export function AddMedicationScreen() {
   const [stock, setStock] = useState(
     medication?.stock !== undefined && medication.stock !== null ? String(medication.stock) : ''
   );
+
+  // Estado Formulario Actividad
+  const [actTitle, setActTitle] = useState('');
+  const [actDescription, setActDescription] = useState('');
+  const [actDate, setActDate] = useState(todayDDMMYYYY());
+  const [actTime, setActTime] = useState('09:00');
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(undefined);
+  const [priority, setPriority] = useState<ActivityPriority>('normal');
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function addTime() {
@@ -89,9 +140,32 @@ export function AddMedicationScreen() {
     setTimes((prev) => prev.map((t, i) => (i === index ? value : t)));
   }
 
-  function validate(): boolean {
-    const next: Record<string, string> = {};
+  // Manejo de autocompletado por IA
+  const handleAiParsed = (parsed: Record<string, any>) => {
+    if (itemType === 'medication') {
+      if (parsed.name) setName(parsed.name);
+      if (parsed.dosage) setDosage(parsed.dosage);
+      if (parsed.form) setForm(parsed.form);
+      if (parsed.frequency) setFrequency(parsed.frequency);
+      if (Array.isArray(parsed.times) && parsed.times.length > 0) {
+        setTimes(parsed.times);
+      }
+      if (parsed.instructions) setInstructions(parsed.instructions);
+      if (parsed.stock !== undefined && parsed.stock !== null) {
+        setStock(String(parsed.stock));
+      }
+    } else {
+      if (parsed.title) setActTitle(parsed.title);
+      if (parsed.notes) setActDescription(parsed.notes);
+      if (parsed.scheduledTime) setActTime(parsed.scheduledTime);
+      if (parsed.priority && ['low', 'normal', 'urgent'].includes(parsed.priority)) {
+        setPriority(parsed.priority as ActivityPriority);
+      }
+    }
+  };
 
+  function validateMedication(): boolean {
+    const next: Record<string, string> = {};
     if (!name.trim()) next.name = 'El nombre es obligatorio';
     if (!dosage.trim()) next.dosage = 'La dosis es obligatoria';
     if (!frequency.trim()) next.frequency = 'La frecuencia es obligatoria';
@@ -113,8 +187,18 @@ export function AddMedicationScreen() {
     return Object.keys(next).length === 0;
   }
 
-  async function handleSubmit() {
-    if (!validate()) return;
+  function validateActivity(): boolean {
+    const next: Record<string, string> = {};
+    if (!actTitle.trim()) next.actTitle = 'El título de la actividad es obligatorio';
+    if (actTime.trim() && !parseDateTimeToISO(actDate, actTime)) {
+      next.actDate = 'Fecha u hora inválida. Usa DD/MM/AAAA y HH:MM';
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  async function handleMedicationSubmit() {
+    if (!validateMedication()) return;
 
     const startDateISO = parseDateToISO(startDate)!;
     const payload = {
@@ -130,17 +214,10 @@ export function AddMedicationScreen() {
 
     if (isEditing && medication) {
       updateMedication.mutate(
+        { id: medication.id, input: payload },
         {
-          id: medication.id,
-          input: payload,
-        },
-        {
-          onSuccess: () => {
-            navigation.goBack();
-          },
-          onError: () => {
-            Alert.alert('Error', 'No se pudo actualizar el medicamento. Intenta de nuevo.');
-          },
+          onSuccess: () => navigation.goBack(),
+          onError: () => Alert.alert('Error', 'No se pudo actualizar el medicamento.'),
         }
       );
     } else {
@@ -152,15 +229,31 @@ export function AddMedicationScreen() {
           stock: stock ? Number(stock) : undefined,
         },
         {
-          onSuccess: () => {
-            navigation.goBack();
-          },
-          onError: () => {
-            Alert.alert('Error', 'No se pudo guardar el medicamento. Intenta de nuevo.');
-          },
+          onSuccess: () => navigation.goBack(),
+          onError: () => Alert.alert('Error', 'No se pudo guardar el medicamento.'),
         }
       );
     }
+  }
+
+  async function handleActivitySubmit() {
+    if (!validateActivity()) return;
+
+    const scheduledAt = parseDateTimeToISO(actDate, actTime.trim() || '09:00') ?? undefined;
+
+    createActivity.mutate(
+      {
+        title: actTitle.trim(),
+        description: actDescription.trim() || undefined,
+        scheduledAt,
+        assignedToId,
+        priority,
+      },
+      {
+        onSuccess: () => navigation.goBack(),
+        onError: () => Alert.alert('Error', 'No se pudo agendar la actividad.'),
+      }
+    );
   }
 
   return (
@@ -169,6 +262,7 @@ export function AddMedicationScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        {/* Header */}
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
@@ -179,7 +273,11 @@ export function AddMedicationScreen() {
             <Ionicons name="chevron-back" size={24} color="#2C2C2C" />
           </Pressable>
           <Text style={styles.headerTitle}>
-            {isEditing ? 'Editar medicamento' : 'Agregar medicamento'}
+            {isEditing
+              ? 'Editar medicamento'
+              : itemType === 'medication'
+              ? 'Agregar medicamento'
+              : 'Nueva actividad de cuidado'}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -189,162 +287,385 @@ export function AddMedicationScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Field label="Nombre del medicamento *" error={errors.name}>
-            <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
-              value={name}
-              onChangeText={setName}
-              placeholder="Ej. Metformina"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="words"
-            />
-          </Field>
-
-          <Field label="Dosis *" error={errors.dosage}>
-            <TextInput
-              style={[styles.input, errors.dosage && styles.inputError]}
-              value={dosage}
-              onChangeText={setDosage}
-              placeholder="Ej. 500mg"
-              placeholderTextColor="#9CA3AF"
-            />
-          </Field>
-
-          <Field label="Forma farmacéutica" error={errors.form}>
-            <TextInput
-              style={styles.input}
-              value={form}
-              onChangeText={setForm}
-              placeholder="Ej. Pastilla, Jarabe, Inyección"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="words"
-            />
-          </Field>
-
-          <Field label="Frecuencia *" error={errors.frequency}>
-            <TextInput
-              style={[styles.input, errors.frequency && styles.inputError]}
-              value={frequency}
-              onChangeText={setFrequency}
-              placeholder="Ej. Cada 8 horas, Diario"
-              placeholderTextColor="#9CA3AF"
-            />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {['Diario', 'Interdiario', 'Cada 8 horas', 'Cada 12 horas', 'Lunes, Miércoles, Viernes'].map((s) => (
-                <Pressable
-                  key={s}
-                  style={{
-                    backgroundColor: frequency === s ? '#D4856A' : '#fff',
-                    borderColor: '#E5E7EB',
-                    borderWidth: 1,
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 8,
-                  }}
-                  onPress={() => setFrequency(s)}
+          {/* Selector de Tipo (Medicamento vs Actividad) cuando no se está editando */}
+          {!isEditing && (
+            <View style={styles.switcherContainer}>
+              <Pressable
+                style={[styles.switcherBtn, itemType === 'medication' && styles.switcherBtnActive]}
+                onPress={() => {
+                  setItemType('medication');
+                  setErrors({});
+                }}
+              >
+                <Ionicons
+                  name="medical"
+                  size={18}
+                  color={itemType === 'medication' ? '#FFFFFF' : '#2D6A4F'}
+                />
+                <Text
+                  style={[
+                    styles.switcherBtnText,
+                    itemType === 'medication' && styles.switcherBtnTextActive,
+                  ]}
                 >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: frequency === s ? '#fff' : '#374151',
-                      fontWeight: '500',
-                    }}
-                  >
-                    {s}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </Field>
+                  Medicamento
+                </Text>
+              </Pressable>
 
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Horarios * (HH:MM)</Text>
-            {times.map((t, i) => (
-              <View key={i} style={styles.timeRow}>
+              <Pressable
+                style={[styles.switcherBtn, itemType === 'activity' && styles.switcherBtnActive]}
+                onPress={() => {
+                  setItemType('activity');
+                  setErrors({});
+                }}
+              >
+                <Ionicons
+                  name="checkbox"
+                  size={18}
+                  color={itemType === 'activity' ? '#FFFFFF' : '#2D6A4F'}
+                />
+                <Text
+                  style={[
+                    styles.switcherBtnText,
+                    itemType === 'activity' && styles.switcherBtnTextActive,
+                  ]}
+                >
+                  Actividad / Tarea
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Autocompletar con IA */}
+          <AiAutocompleteBox type={itemType} onParsed={handleAiParsed} />
+
+          {/* ─── FORMULARIO MEDICAMENTO ─── */}
+          {itemType === 'medication' ? (
+            <>
+              <Field label="Nombre del medicamento *" error={errors.name}>
                 <TextInput
-                  style={[styles.input, styles.timeInput, errors.times && styles.inputError]}
-                  value={t}
-                  onChangeText={(v) => updateTime(i, v)}
-                  placeholder="08:00"
+                  style={[styles.input, errors.name && styles.inputError]}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Ej. Metformina o Losartán"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="words"
+                />
+              </Field>
+
+              <Field label="Dosis *" error={errors.dosage}>
+                <TextInput
+                  style={[styles.input, errors.dosage && styles.inputError]}
+                  value={dosage}
+                  onChangeText={setDosage}
+                  placeholder="Ej. 500mg o 1 tableta"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </Field>
+
+              <Field label="Forma farmacéutica" error={errors.form}>
+                <TextInput
+                  style={styles.input}
+                  value={form}
+                  onChangeText={setForm}
+                  placeholder="Ej. Pastilla, Cápsula, Jarabe"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="words"
+                />
+              </Field>
+
+              <Field label="Frecuencia *" error={errors.frequency}>
+                <TextInput
+                  style={[styles.input, errors.frequency && styles.inputError]}
+                  value={frequency}
+                  onChangeText={setFrequency}
+                  placeholder="Ej. Cada 8 horas, Diario"
+                  placeholderTextColor="#9CA3AF"
+                />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {['Diario', 'Cada 8 horas', 'Cada 12 horas', 'Interdiario'].map((s) => (
+                    <Pressable
+                      key={s}
+                      style={{
+                        backgroundColor: frequency === s ? '#2D6A4F' : '#fff',
+                        borderColor: '#E5E7EB',
+                        borderWidth: 1,
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 8,
+                      }}
+                      onPress={() => setFrequency(s)}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: frequency === s ? '#fff' : '#374151',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {s}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Field>
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Horarios de toma * (HH:MM)</Text>
+                {times.map((t, i) => (
+                  <View key={i} style={styles.timeRow}>
+                    <TextInput
+                      style={[styles.input, styles.timeInput, errors.times && styles.inputError]}
+                      value={t}
+                      onChangeText={(v) => updateTime(i, v)}
+                      placeholder="08:00"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={5}
+                    />
+                    {times.length > 1 && (
+                      <Pressable
+                        style={styles.removeTimeButton}
+                        onPress={() => removeTime(i)}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="remove-circle" size={24} color="#EF4444" />
+                      </Pressable>
+                    )}
+                  </View>
+                ))}
+                {errors.times ? <Text style={styles.errorText}>{errors.times}</Text> : null}
+                <Pressable style={styles.addTimeButton} onPress={addTime}>
+                  <Ionicons name="add-circle-outline" size={18} color="#2D6A4F" />
+                  <Text style={styles.addTimeText}>Agregar otro horario</Text>
+                </Pressable>
+              </View>
+
+              <Field label="Fecha de inicio * (DD/MM/AAAA)" error={errors.startDate}>
+                <TextInput
+                  style={[styles.input, errors.startDate && styles.inputError]}
+                  value={startDate}
+                  onChangeText={setStartDate}
+                  placeholder="DD/MM/AAAA"
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numbers-and-punctuation"
-                  maxLength={5}
+                  maxLength={10}
                 />
-                {times.length > 1 && (
-                  <Pressable
-                    style={styles.removeTimeButton}
-                    onPress={() => removeTime(i)}
-                    accessibilityLabel="Eliminar horario"
-                    hitSlop={8}
-                  >
-                    <Ionicons name="remove-circle" size={24} color="#E57373" />
-                  </Pressable>
+              </Field>
+
+              <Field label="Stock actual en casa (unidades)" error={errors.stock}>
+                <TextInput
+                  style={[styles.input, errors.stock && styles.inputError]}
+                  value={stock}
+                  onChangeText={setStock}
+                  placeholder="Ej. 30 pastillas"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="number-pad"
+                />
+              </Field>
+
+              <Field label="Instrucciones adicionales" error={errors.instructions}>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={instructions}
+                  onChangeText={setInstructions}
+                  placeholder="Ej. Tomar después del desayuno con abundante agua..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </Field>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.submitButton,
+                  isPending && styles.submitButtonDisabled,
+                  pressed && styles.submitButtonPressed,
+                ]}
+                onPress={handleMedicationSubmit}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    {isEditing ? 'Guardar cambios' : 'Guardar medicamento'}
+                  </Text>
                 )}
+              </Pressable>
+            </>
+          ) : (
+            /* ─── FORMULARIO ACTIVIDAD ─── */
+            <>
+              <Field label="Título de la tarea o cuidado *" error={errors.actTitle}>
+                <TextInput
+                  style={[styles.input, errors.actTitle && styles.inputError]}
+                  value={actTitle}
+                  onChangeText={setActTitle}
+                  placeholder="Ej. Baño asistido o Caminata en el parque"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="sentences"
+                />
+              </Field>
+
+              <Field label="Detalles o descripción" error={errors.actDescription}>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={actDescription}
+                  onChangeText={setActDescription}
+                  placeholder="Ej. Usar silla de baño y agua tibia..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </Field>
+
+              <View style={styles.twoColumnRow}>
+                <View style={{ flex: 1 }}>
+                  <Field label="Fecha (DD/MM/AAAA)" error={errors.actDate}>
+                    <TextInput
+                      style={[styles.input, errors.actDate && styles.inputError]}
+                      value={actDate}
+                      onChangeText={setActDate}
+                      placeholder="DD/MM/AAAA"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={10}
+                    />
+                  </Field>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Field label="Hora (HH:MM)">
+                    <TextInput
+                      style={styles.input}
+                      value={actTime}
+                      onChangeText={setActTime}
+                      placeholder="09:00"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={5}
+                    />
+                  </Field>
+                </View>
               </View>
-            ))}
-            {errors.times ? (
-              <Text style={styles.errorText}>{errors.times}</Text>
-            ) : null}
-            <Pressable style={styles.addTimeButton} onPress={addTime}>
-              <Ionicons name="add-circle-outline" size={18} color="#D4856A" />
-              <Text style={styles.addTimeText}>Agregar otro horario</Text>
-            </Pressable>
-          </View>
 
-          <Field label="Fecha de inicio * (DD/MM/AAAA)" error={errors.startDate}>
-            <TextInput
-              style={[styles.input, errors.startDate && styles.inputError]}
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-            />
-          </Field>
+              {/* Botones rápidos de horario */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                {['08:00', '10:00', '13:00', '16:00', '20:00'].map((h) => (
+                  <TouchableOpacity
+                    key={h}
+                    style={[styles.timeChip, actTime === h && styles.timeChipActive]}
+                    onPress={() => setActTime(h)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.timeChipText,
+                        actTime === h && styles.timeChipTextActive,
+                      ]}
+                    >
+                      {h}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          <Field label="Stock actual (unidades)" error={errors.stock}>
-            <TextInput
-              style={[styles.input, errors.stock && styles.inputError]}
-              value={stock}
-              onChangeText={setStock}
-              placeholder="Ej. 30"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-            />
-          </Field>
+              {/* Prioridad */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Prioridad</Text>
+                <View style={styles.priorityRow}>
+                  {PRIORITIES.map((p) => {
+                    const isSelected = priority === p.value;
+                    return (
+                      <Pressable
+                        key={p.value}
+                        style={[
+                          styles.priorityButton,
+                          { borderColor: isSelected ? p.color : '#E5E7EB' },
+                          isSelected && { backgroundColor: p.bg },
+                        ]}
+                        onPress={() => setPriority(p.value)}
+                      >
+                        <Text
+                          style={[
+                            styles.priorityButtonText,
+                            { color: isSelected ? p.color : '#6B7280' },
+                            isSelected && { fontWeight: '700' },
+                          ]}
+                        >
+                          {p.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
-          <Field label="Instrucciones adicionales" error={errors.instructions}>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={instructions}
-              onChangeText={setInstructions}
-              placeholder="Ej. Tomar con alimentos, evitar alcohol..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </Field>
+              {/* Asignar a familiar */}
+              {members && members.length > 0 && (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Asignar a un cuidador o familiar</Text>
+                  <View style={styles.membersRow}>
+                    <Pressable
+                      style={[
+                        styles.memberChip,
+                        assignedToId === undefined && styles.memberChipSelected,
+                      ]}
+                      onPress={() => setAssignedToId(undefined)}
+                    >
+                      <Text
+                        style={[
+                          styles.memberChipText,
+                          assignedToId === undefined && styles.memberChipTextSelected,
+                        ]}
+                      >
+                        Sin asignar
+                      </Text>
+                    </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitButton,
-              isPending && styles.submitButtonDisabled,
-              pressed && styles.submitButtonPressed,
-            ]}
-            onPress={handleSubmit}
-            disabled={isPending}
-            accessibilityLabel="Guardar medicamento"
-          >
-            {isPending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>
-                {isEditing ? 'Guardar cambios' : 'Guardar medicamento'}
-              </Text>
-            )}
-          </Pressable>
+                    {members.map((m) => {
+                      const isSelected = assignedToId === m.id;
+                      return (
+                        <Pressable
+                          key={m.id}
+                          style={[styles.memberChip, isSelected && styles.memberChipSelected]}
+                          onPress={() => setAssignedToId(m.id)}
+                        >
+                          <Text
+                            style={[
+                              styles.memberChipText,
+                              isSelected && styles.memberChipTextSelected,
+                            ]}
+                          >
+                            {m.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.submitButton,
+                  isPending && styles.submitButtonDisabled,
+                  pressed && styles.submitButtonPressed,
+                ]}
+                onPress={handleActivitySubmit}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Guardar actividad</Text>
+                )}
+              </Pressable>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -372,7 +693,7 @@ function Field({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F5F0',
+    backgroundColor: '#F8FAF8',
   },
   header: {
     flexDirection: 'row',
@@ -392,13 +713,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: '#1A2B1A',
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 40,
-    gap: 4,
+  },
+  switcherContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E6EFEA',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  switcherBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+  },
+  switcherBtnActive: {
+    backgroundColor: '#2D6A4F',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  switcherBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2D6A4F',
+  },
+  switcherBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   fieldContainer: {
     marginBottom: 16,
@@ -417,7 +770,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     paddingHorizontal: 14,
     fontSize: 16,
-    color: '#2C2C2C',
+    color: '#1A2B1A',
   },
   inputError: {
     borderColor: '#EF4444',
@@ -454,16 +807,83 @@ const styles = StyleSheet.create({
   },
   addTimeText: {
     fontSize: 15,
-    color: '#D4856A',
+    color: '#2D6A4F',
+    fontWeight: '600',
+  },
+  twoColumnRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  timeChip: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  timeChipActive: {
+    backgroundColor: '#2D6A4F',
+    borderColor: '#2D6A4F',
+  },
+  timeChipText: {
+    fontSize: 13,
+    color: '#374151',
     fontWeight: '500',
+  },
+  timeChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  priorityButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  membersRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  memberChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#fff',
+  },
+  memberChipSelected: {
+    borderColor: '#2D6A4F',
+    backgroundColor: '#E8F5E9',
+  },
+  memberChipText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  memberChipTextSelected: {
+    color: '#2D6A4F',
+    fontWeight: '700',
   },
   submitButton: {
     height: 52,
-    backgroundColor: '#D4856A',
+    backgroundColor: '#2D6A4F',
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   submitButtonDisabled: {
     opacity: 0.7,
