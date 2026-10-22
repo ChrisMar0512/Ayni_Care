@@ -23,24 +23,22 @@ export const getGeminiClient = () => {
 
 // Cascada de modelos disponibles para máxima resiliencia ante alta demanda (503 / 429)
 export const MODEL_CANDIDATES = [
-  'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest',
-  'gemini-3.5-flash',
   'gemini-3.6-flash',
-  'gemini-3.1-flash-lite',
   'gemini-flash-latest',
-  'gemini-3.7-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest',
 ];
 
 export const TRANSCRIBE_CANDIDATES = [
-  'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
+  'gemini-3.6-flash',
   'gemini-flash-latest',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
 ];
 
-// Helper con reintentos automáticos y fallback de modelos
+// Helper con reintentos automáticos y fallback instantáneo de modelos
 export const callGeminiWithFallback = async (
   gemini: GoogleGenAI,
   candidates: string[],
@@ -49,32 +47,19 @@ export const callGeminiWithFallback = async (
   let lastError: any = null;
 
   for (const model of candidates) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await gemini.models.generateContent({
-          model,
-          ...payload,
-        });
-        return response;
-      } catch (err: any) {
-        lastError = err;
-        const status = err?.status || err?.code;
-        const errMsg = String(err?.message || '');
-        console.warn(`[AI] Intento ${attempt} con modelo '${model}' falló (Status ${status}):`, errMsg.slice(0, 150));
-
-        // Si es 429 (Cuota de este modelo agotada), pasar DIRECTO al siguiente modelo sin esperar
-        if (status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
-          console.warn(`[AI] ⚡ Cuota de '${model}' superada. Cambiando inmediatamente al siguiente modelo...`);
-          break;
-        }
-
-        // Si es 503 (servidor saturado temporalmente), reintentar tras breve pausa
-        if (status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
-          await new Promise((r) => setTimeout(r, 400 * attempt));
-        } else {
-          break;
-        }
-      }
+    try {
+      const response = await gemini.models.generateContent({
+        model,
+        ...payload,
+      });
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      const status = err?.status || err?.code;
+      const errMsg = String(err?.message || '');
+      console.warn(`[AI] Modelo '${model}' falló (Status ${status}):`, errMsg.slice(0, 150));
+      // Si falla cualquier modelo por 503 (alta demanda), 429 (cuota) o error, pasar DIRECTO al siguiente
+      continue;
     }
   }
 
@@ -1271,6 +1256,20 @@ REGLAS DE INTERACCIÓN:
      * Al registrar gasto: 'Quedó dividido con tus familiares. ¿Quién en la casa suele encargarse habitualmente de hacer estas compras?' o '¿Suelen tener dificultades para ponerse de acuerdo con estos gastos?'
      * Al completar o agendar actividad: '¡Excelente labor! Recuerda también tomar un respiro. ¿Cómo te sientes de energía hoy?'
    - Si el usuario te habla de sus sentimientos, quejas, dudas familiares o desahogo, escúchalo con calidez, haz preguntas suaves que le permitan desahogarse, y dile que su esfuerzo familiar es admirable.
+10. PROTOCOLO DE PREVISUALIZACIÓN Y CONFIRMACIÓN OBLIGATORIA (HUMAN-IN-THE-LOOP):
+    - Cuando el usuario solicite agregar un medicamento, una actividad o una cita médica y cuente con los datos (ej: "Quiero agregar Losartán 50mg a las 8am y 8pm"):
+      * DEBES invocar la herramienta correspondiente ('create_medication', 'create_activity', 'create_appointment').
+      * Estas herramientas generan una tarjeta interactiva de PREVISUALIZACIÓN ('draft_preview') en la pantalla del usuario.
+      * En tu respuesta textual NUNCA digas "Ya lo guardé en la base de datos". Di con claridad que has preparado la tarjeta de previsualización con los datos listos y que solo debe presionar "Confirmar y Guardar" para registrarlo en la app.
+11. MANEJO DE INTENCIÓN GENERAL "QUIERO AGREGAR ALGO":
+    - Si el usuario dice simplemente "Quiero agregar algo", "Deseo registrar algo", "Quiero añadir algo" sin especificar qué ni dar detalles:
+      * Responde con calidez y de manera concisa guiándolo exactamente con lo que necesita:
+        "¡Con gusto te ayudo! Dime qué te gustaría agregar:
+        • 💊 Un **medicamento** (indícame el nombre, dosis y horarios de toma).
+        • 📋 Una **tarea o actividad** (ej. baño asistido, paseo o cambio de vendas y hora).
+        • 🗓️ Una **cita médica** (médico, clínica, fecha y hora).
+
+        Escríbeme o envíame un audio con los datos y de inmediato te prepararé la tarjeta de previsualización para confirmarla."
 `.trim();
 
   const executor = new AssistantToolExecutor(user);

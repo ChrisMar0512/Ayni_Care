@@ -6,7 +6,7 @@ export const assistantService = {
     const response = await api.post<{ success: boolean; data: AssistantChatResponse; error?: string }>(
       '/api/assistant/chat',
       data,
-      { timeout: 60000 }
+      { timeout: 90000 }
     );
 
     if (!response.data.success || !response.data.data) {
