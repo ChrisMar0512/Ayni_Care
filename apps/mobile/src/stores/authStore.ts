@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
 import { MemberRole } from '@ayni-care/shared';
 
@@ -52,6 +53,27 @@ export const useAuthStore = create<AuthState>((set) => ({
           member,
           familyId: member?.familyId ?? null,
           role: member?.role ?? null,
+          isInitialized: true,
+        });
+      } else if (Platform.OS === 'web' || __DEV__) {
+        const demoUser: AuthUser = { id: 'dev-user-id', email: 'carlos@aynicare.com' };
+        const demoMember: AuthMember = {
+          id: 'dev-member-id',
+          familyId: 'demo-family-id',
+          role: 'primary_caregiver' as any,
+          name: 'Carlos Mendoza',
+          family: { name: 'Familia Mendoza' },
+        };
+        await Promise.all([
+          storage.setItem('access_token', 'demo-token'),
+          storage.setItem('auth_user', JSON.stringify(demoUser)),
+          storage.setItem('auth_member', JSON.stringify(demoMember)),
+        ]);
+        set({
+          user: demoUser,
+          member: demoMember,
+          familyId: 'demo-family-id',
+          role: 'primary_caregiver' as any,
           isInitialized: true,
         });
       } else {
