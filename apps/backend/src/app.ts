@@ -62,6 +62,17 @@ const authLimiter = rateLimit({
   message: { success: false, data: null, error: 'Demasiados intentos. Espera 15 minutos.' },
 });
 
+// Límite específico para llamadas al Asistente IA (costos y cuotas)
+const assistantLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req),
+  validate: false,
+  message: { success: false, data: null, error: 'Has alcanzado el límite de consultas al asistente de IA por ahora. Intenta de nuevo en unos minutos.' },
+});
+
 app.use((req, res, next) => {
   console.log(`[req] ${req.method} ${req.url}`);
   next();
@@ -69,6 +80,7 @@ app.use((req, res, next) => {
 
 app.use('/api/', generalLimiter);
 app.use('/api/auth/', authLimiter);
+app.use('/api/assistant/', assistantLimiter);
 
 // ── Body parsing (Permitir hasta 25MB para notas de voz en base64) ────────────
 app.use(express.json({ limit: '25mb' }));
