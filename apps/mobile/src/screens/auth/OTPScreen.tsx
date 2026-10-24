@@ -41,7 +41,7 @@ export function OTPScreen({ route, navigation }: Props) {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<any>(null);
 
   const displayIdentifier =
     type === 'email' ? identifier : identifier.replace(/(\+\d{2})(\d+)(\d{4})/, '$1***$3');

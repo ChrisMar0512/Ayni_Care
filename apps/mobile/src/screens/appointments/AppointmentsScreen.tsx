@@ -341,7 +341,6 @@ export function AppointmentsScreen() {
                   </View>
                 </View>
               ) : null}
-
               {upcoming.length > 0 ? (
                 <View style={styles.sectionHeaderRow}>
                   <Text style={styles.sectionTitle}>Próximas consultas</Text>
@@ -351,7 +350,7 @@ export function AppointmentsScreen() {
                 </View>
               ) : null}
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

@@ -342,7 +342,7 @@ export function ExpensesScreen() {
 
               <Text style={styles.listSectionTitle}>Historial de gastos</Text>
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
