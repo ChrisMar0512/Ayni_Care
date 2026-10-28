@@ -3,12 +3,16 @@ import { prisma } from '../prisma/client';
 import {
   analyzeCallTranscript,
   buildMicroContextForCall,
+  dispatchOutboundCall,
+  handleMissedCallAttempt,
+  processInductionConsent,
   triggerImmediateRedFlagAlert,
 } from '../services/yuyay-call.service';
 import {
   sendDailyNightReportForFamily,
   runDailyNightReportJob,
 } from '../services/yuyay-report.service';
+import { runSchedulerCycle } from '../services/yuyay-scheduler.service';
 import { sendMetaWhatsAppMessage } from '../services/meta-whatsapp.service';
 
 /**
@@ -87,6 +91,52 @@ export const registerLead = async (req: Request, res: Response) => {
 };
 
 /**
+ * POST /api/yuyay/trigger-call
+ * Inicia una llamada saliente (supervisión o inducción) al adulto mayor
+ */
+export const triggerCall = async (req: Request, res: Response) => {
+  try {
+    const {
+      elderlyId,
+      scheduledCallId,
+      timeSlot = 'mañana',
+      isInduction = false,
+      forceSimulate = false,
+    } = req.body;
+
+    const id = elderlyId || req.params.elderlyId;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: 'elderlyId es obligatorio para iniciar una llamada.',
+      });
+    }
+
+    const result = await dispatchOutboundCall({
+      elderlyId: id,
+      scheduledCallId,
+      timeSlot,
+      isInduction,
+      forceSimulate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (err: any) {
+    console.error('[Yuyay Controller] Error en triggerCall:', err.message || err);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: err.message || 'Error al iniciar llamada saliente.',
+    });
+  }
+};
+
+/**
  * POST /api/yuyay/voice-webhook
  * Webhook que recibe los datos y transcripción de una llamada de voz finalizada
  */
@@ -100,17 +150,30 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
       recordingUrl,
       externalCallId,
       scheduledCallId,
+      status = 'completed',
+      isInduction = false,
     } = req.body;
+
+    // 1. Si la llamada no fue contestada (no_answer, busy, machine)
+    if (status === 'no_answer' || status === 'busy' || status === 'machine' || status === 'failed') {
+      if (scheduledCallId) {
+        await handleMissedCallAttempt(scheduledCallId);
+      }
+      return res.status(200).json({
+        success: true,
+        message: `Estado de llamada '${status}' procesado con reintento.`,
+      });
+    }
 
     if (!transcript) {
       return res.status(400).json({
         success: false,
         data: null,
-        error: 'La transcripción (transcript) es obligatoria.',
+        error: 'La transcripción (transcript) es obligatoria para llamadas contestadas.',
       });
     }
 
-    // Buscar al adulto mayor por ID o por número de teléfono
+    // 2. Buscar al adulto mayor por ID o por número de teléfono
     let elderly = null;
     if (elderlyId) {
       elderly = await prisma.elderlyPerson.findUnique({
@@ -141,10 +204,20 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
       });
     }
 
-    // Analizar la transcripción con Gemini 2.0 Flash
-    const analysis = await analyzeCallTranscript(transcript);
+    // 3. Analizar la transcripción con Gemini 2.0 Flash
+    const analysis = await analyzeCallTranscript(transcript, [], isInduction);
 
-    // Guardar el registro de la llamada
+    // 4. Si fue llamada de inducción, registrar consentimiento informado (Ley 29733)
+    if (isInduction && elderly && analysis.consentGranted !== undefined) {
+      await processInductionConsent({
+        elderlyId: elderly.id,
+        consentGranted: Boolean(analysis.consentGranted),
+        recordingUrl,
+        consentNotes: analysis.consentNotes,
+      });
+    }
+
+    // 5. Guardar el registro de la llamada
     let callLog = null;
     if (elderly) {
       callLog = await prisma.callLog.create({
@@ -164,7 +237,15 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
         },
       });
 
-      // Si se detectó una bandera roja, alertar inmediatamente al hijo cuidador
+      // Si había una llamada programada pendiente, marcarla como completada
+      if (scheduledCallId) {
+        await prisma.scheduledCall.update({
+          where: { id: scheduledCallId },
+          data: { status: 'completed' },
+        });
+      }
+
+      // Si se detectó una bandera roja médica, alertar inmediatamente al hijo cuidador
       if (analysis.hasRedFlag) {
         const caregiver = elderly.family.members[0];
         if (caregiver && caregiver.phone) {
@@ -190,6 +271,7 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
         analysis,
         callLogId: callLog?.id || null,
         hasRedFlag: analysis.hasRedFlag,
+        consentGranted: analysis.consentGranted,
       },
     });
   } catch (err: any) {
@@ -210,8 +292,9 @@ export const getRuntimeContext = async (req: Request, res: Response) => {
   try {
     const { elderlyId } = req.params;
     const timeSlot = (req.query.timeSlot as 'mañana' | 'tarde' | 'noche') || 'mañana';
+    const isInduction = req.query.isInduction === 'true';
 
-    const context = await buildMicroContextForCall(elderlyId, timeSlot);
+    const context = await buildMicroContextForCall(elderlyId, timeSlot, isInduction);
     if (!context) {
       return res.status(404).json({
         success: false,
@@ -229,6 +312,26 @@ export const getRuntimeContext = async (req: Request, res: Response) => {
       success: false,
       data: null,
       error: err.message || 'Error obteniendo runtime context.',
+    });
+  }
+};
+
+/**
+ * POST /api/yuyay/cron y GET /api/yuyay/cron
+ * Disparador para cron jobs externos (Vercel Cron, Railway, cron-job.org)
+ */
+export const runSchedulerCron = async (req: Request, res: Response) => {
+  try {
+    const summary = await runSchedulerCycle();
+    return res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: err.message || 'Error ejecutando ciclo del scheduler.',
     });
   }
 };
@@ -259,6 +362,93 @@ export const triggerNightlyReport = async (req: Request, res: Response) => {
       success: false,
       data: null,
       error: err.message || 'Error disparando reportes nocturnos.',
+    });
+  }
+};
+
+/**
+ * POST /api/yuyay/test-scenario
+ * Endpoint interactivo para probar de inmediato los flujos clave del Investment Memo
+ */
+export const testScenario = async (req: Request, res: Response) => {
+  try {
+    const {
+      scenario = 'routine_success', // 'routine_success' | 'red_flag_alert' | 'missed_calls' | 'induction'
+      elderlyId,
+      seniorPhone,
+      childPhone,
+      childName = 'Hijo Cuidador',
+      seniorName = 'Don Carlos',
+    } = req.body;
+
+    if (scenario === 'red_flag_alert') {
+      const transcript =
+        'Yuyay: ¡Buenos días don Carlos! ¿Cómo amaneció hoy?\n' +
+        'Carlos: Ay señorita, la verdad me siento mal, tengo un dolor fuerte en el pecho que me aprieta y me siento mareado.\n' +
+        'Yuyay: Don Carlos, por favor tome asiento de inmediato. Le estamos avisando a su familia y le recomendamos descansar.';
+
+      const analysis = await analyzeCallTranscript(transcript);
+      if (childPhone) {
+        await triggerImmediateRedFlagAlert({
+          childPhone,
+          childName,
+          seniorName,
+          reason: analysis.redFlagReason || 'Dolor precordial intenso y mareo repentino',
+          transcriptSnippet: transcript,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        scenario: 'red_flag_alert',
+        analysis,
+        alertSentTo: childPhone || 'Simulado',
+      });
+    }
+
+    if (scenario === 'induction') {
+      const transcript =
+        'Yuyay: Buenas tardes don Carlos, le saluda Yuyay, el servicio de acompañamiento telefónico que coordinó su familia. ¿Estaría de acuerdo en recibir nuestras llamadas diarias para acompañarlo con sus medicamentos?\n' +
+        'Carlos: Sí señorita, me parece muy bien y me alegra su llamada, acepto con gusto.';
+
+      const analysis = await analyzeCallTranscript(transcript, [], true);
+      return res.status(200).json({
+        success: true,
+        scenario: 'induction',
+        analysis,
+        consentGranted: analysis.consentGranted,
+      });
+    }
+
+    if (scenario === 'nightly_report' && req.body.familyId) {
+      const ok = await sendDailyNightReportForFamily(req.body.familyId);
+      return res.status(200).json({
+        success: ok,
+        scenario: 'nightly_report',
+        sent: ok,
+      });
+    }
+
+    // Default: Routine success
+    const routineTranscript =
+      'Yuyay: ¡Buenos días don Carlos! ¿Cómo amaneció hoy?\n' +
+      'Carlos: Hola señorita, todo tranquilo, tomando desayuno.\n' +
+      'Yuyay: Le llamo para recordarle su Losartán y su Metformina. ¿Ya las tiene a la mano?\n' +
+      'Carlos: Sí, justo aquí las tengo y me las tomo con agua ahorita mismo.\n' +
+      'Yuyay: Excelente don Carlos, ¿alguna molestia hoy?\n' +
+      'Carlos: Ninguna, todo bien gracias a Dios.';
+
+    const routineAnalysis = await analyzeCallTranscript(routineTranscript, ['Losartán', 'Metformina']);
+    return res.status(200).json({
+      success: true,
+      scenario: 'routine_success',
+      analysis: routineAnalysis,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: err.message || 'Error ejecutando escenario de prueba.',
     });
   }
 };
