@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin.routes';
 import assistantRoutes from './routes/assistant.routes';
 import legalRoutes from './routes/legal.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import yuyayRoutes from './routes/yuyay.routes';
 
 const app = express();
 
@@ -117,6 +118,7 @@ app.use('/api/assistant', assistantRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/yuyay', yuyayRoutes);
 app.use('/', legalRoutes);
 
 // ── Error handler (must be last) ──────────────────────────────────────────────

@@ -69,17 +69,24 @@ model Invitation {
 // ─── ADULTO MAYOR ────────────────────────────────────
 
 model ElderlyPerson {
-  id         String    @id @default(uuid())
-  familyId   String    @unique
-  name       String
-  birthDate  DateTime?
-  conditions String[] // ["Alzheimer", "Diabetes tipo 2"]
-  allergies  String[]
-  bloodType  String?
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  family     Family    @relation(fields: [familyId], references: [id])
+  id                 String          @id @default(uuid())
+  familyId           String          @unique
+  name               String
+  birthDate          DateTime?
+  conditions         String[] // ["Hipertensión", "Diabetes tipo 2"]
+  allergies          String[]
+  bloodType          String?
+  notes              String?
+  phone              String?         // Teléfono al que llama el asistente de voz
+  preferredCallTimes String[]        @default(["08:00", "20:00"])
+  consentVerbal      Boolean         @default(false)
+  consentDate        DateTime?
+  consentAudioUrl    String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  family             Family          @relation(fields: [familyId], references: [id])
+  scheduledCalls     ScheduledCall[]
+  callLogs           CallLog[]
 }
 
 // ─── ACTIVIDADES (CHECKLIST) ─────────────────────────
@@ -330,5 +337,69 @@ model WeeklyPulseResponse {
   @@index([familyId])
   @@index([topFriction])
   @@index([createdAt])
+}
+
+// ─── YUYAY: TELEASISTENCIA POR VOZ Y LLAMADAS ────────
+
+model ScheduledCall {
+  id            String        @id @default(uuid())
+  elderlyId     String
+  elderly       ElderlyPerson @relation(fields: [elderlyId], references: [id], onDelete: Cascade)
+  scheduledTime String        // "08:00", "20:00"
+  timeSlot      String        @default("mañana") // "mañana", "noche"
+  status        String        @default("pending") // "pending", "calling", "completed", "no_answer", "failed"
+  retryCount    Int           @default(0)
+  lastCallAt    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  logs          CallLog[]
+
+  @@index([elderlyId])
+  @@index([status])
+}
+
+model CallLog {
+  id               String         @id @default(uuid())
+  scheduledCallId  String?
+  scheduledCall    ScheduledCall? @relation(fields: [scheduledCallId], references: [id], onDelete: SetNull)
+  elderlyId        String
+  elderly          ElderlyPerson  @relation(fields: [elderlyId], references: [id], onDelete: Cascade)
+  externalCallId   String?        // ID de llamada en proveedor (Plivo / Retell / Vapi / Twilio)
+  durationSeconds  Int            @default(0)
+  recordingUrl     String?
+  transcript       String?        @db.Text
+  medsConfirmed    Json?          // [{ name: "Losartán", taken: true, reason: null }]
+  mood             String?        // "animado", "tranquilo", "decaído", "agitado"
+  symptoms         String?
+  hasRedFlag       Boolean        @default(false)
+  redFlagReason    String?
+  alertSentAt      DateTime?
+  status           String         @default("completed") // "answered", "no_answer", "busy", "machine", "failed"
+  createdAt        DateTime       @default(now())
+
+  @@index([elderlyId])
+  @@index([hasRedFlag])
+  @@index([createdAt])
+}
+
+model YuyayLead {
+  id               String    @id @default(uuid())
+  childName        String
+  childPhone       String    // WhatsApp del hijo cuidador
+  childEmail       String?
+  country          String    @default("PE") // "PE", "US" para la diáspora
+  seniorName       String
+  seniorPhone      String    // Teléfono de la llamada al adulto mayor
+  seniorConditions String?
+  seniorMeds       String?
+  callPreferences  String?
+  planInterested   String    @default("tranquilidad_familiar") // plan único
+  status           String    @default("lead") // "lead", "contacted", "pilot_active", "churned"
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([childPhone])
 }
 
