@@ -8,6 +8,7 @@ import {
   runSchedulerCron,
   testScenario,
   setupTestPatient,
+  updateCallPreferences,
 } from '../controllers/yuyay.controller';
 
 const router = Router();
@@ -37,5 +38,8 @@ router.post('/test-scenario', testScenario);
 
 // Creación rápida de paciente de prueba en Supabase para llamadas personalizadas
 router.post('/setup-test-patient', setupTestPatient);
+
+// Actualizar horarios y frecuencia de llamadas (1, 2 o 3 llamadas al día)
+router.patch('/preferences/:elderlyId', updateCallPreferences);
 
 export default router;

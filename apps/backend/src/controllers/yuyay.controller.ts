@@ -470,7 +470,7 @@ export const setupTestPatient = async (req: Request, res: Response) => {
         { name: 'Losartán', dosage: '50mg', instructions: '1 tableta con el desayuno', frequency: 'una vez al día', times: ['08:00'] },
         { name: 'Metformina', dosage: '850mg', instructions: '1 tableta con el desayuno', frequency: 'una vez al día', times: ['08:00'] },
       ],
-      preferredCallTimes = ['08:00', '20:00'],
+      preferredCallTimes = ['08:00'], // Por defecto 1 llamada diaria de supervisión
     } = req.body;
 
     if (!seniorPhone) {
@@ -483,6 +483,14 @@ export const setupTestPatient = async (req: Request, res: Response) => {
 
     const cleanSeniorPhone = seniorPhone.replace(/\D/g, '');
     const cleanChildPhone = childPhone ? childPhone.replace(/\D/g, '') : cleanSeniorPhone;
+
+    // Helper para clasificar franja horaria automáticamente
+    const getTimeSlot = (time: string): 'mañana' | 'tarde' | 'noche' => {
+      const hour = parseInt(time.split(':')[0], 10);
+      if (hour < 12) return 'mañana';
+      if (hour < 18) return 'tarde';
+      return 'noche';
+    };
 
     // 1. Crear Familia de prueba
     const family = await prisma.family.create({
@@ -533,22 +541,16 @@ export const setupTestPatient = async (req: Request, res: Response) => {
       });
     }
 
-    // 5. Crear llamadas programadas (mañana y noche)
+    // 5. Crear llamadas programadas dinámicamente según la cantidad configurada (1, 2 o 3 llamadas al día)
+    const callsToCreate = preferredCallTimes.map((time: string) => ({
+      elderlyId: elderly.id,
+      scheduledTime: time,
+      timeSlot: getTimeSlot(time),
+      status: 'pending',
+    }));
+
     await prisma.scheduledCall.createMany({
-      data: [
-        {
-          elderlyId: elderly.id,
-          scheduledTime: preferredCallTimes[0] || '08:00',
-          timeSlot: 'mañana',
-          status: 'pending',
-        },
-        {
-          elderlyId: elderly.id,
-          scheduledTime: preferredCallTimes[1] || '20:00',
-          timeSlot: 'noche',
-          status: 'pending',
-        },
-      ],
+      data: callsToCreate,
     });
 
     return res.status(201).json({
@@ -570,6 +572,76 @@ export const setupTestPatient = async (req: Request, res: Response) => {
       success: false,
       data: null,
       error: err.message || 'Error al configurar paciente de prueba.',
+    });
+  }
+};
+
+/**
+ * PATCH /api/yuyay/preferences/:elderlyId
+ * Permite cambiar fácilmente la cantidad y horarios de llamada para un adulto mayor
+ * (ej. cambiar de 1 llamada al día a 2 o 3 llamadas: ["08:00", "13:00", "20:00"])
+ */
+export const updateCallPreferences = async (req: Request, res: Response) => {
+  try {
+    const { elderlyId } = req.params;
+    const { preferredCallTimes } = req.body; // array de strings: ej. ["08:30"] o ["08:00", "20:00"]
+
+    if (!preferredCallTimes || !Array.isArray(preferredCallTimes) || preferredCallTimes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: 'preferredCallTimes debe ser un arreglo de horas válido (ej. ["08:00"] o ["08:00", "20:00"]).',
+      });
+    }
+
+    const getTimeSlot = (time: string): 'mañana' | 'tarde' | 'noche' => {
+      const hour = parseInt(time.split(':')[0], 10);
+      if (hour < 12) return 'mañana';
+      if (hour < 18) return 'tarde';
+      return 'noche';
+    };
+
+    // 1. Actualizar las preferencias en el adulto mayor
+    const updatedElderly = await prisma.elderlyPerson.update({
+      where: { id: elderlyId },
+      data: { preferredCallTimes },
+    });
+
+    // 2. Limpiar llamadas pendientes anteriores y crear las nuevas
+    await prisma.scheduledCall.deleteMany({
+      where: {
+        elderlyId,
+        status: 'pending',
+      },
+    });
+
+    const callsToCreate = preferredCallTimes.map((time: string) => ({
+      elderlyId,
+      scheduledTime: time,
+      timeSlot: getTimeSlot(time),
+      status: 'pending',
+    }));
+
+    await prisma.scheduledCall.createMany({
+      data: callsToCreate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        elderlyId,
+        seniorName: updatedElderly.name,
+        preferredCallTimes: updatedElderly.preferredCallTimes,
+        callsPerDay: updatedElderly.preferredCallTimes.length,
+        message: `Horarios actualizados exitosamente a ${updatedElderly.preferredCallTimes.length} llamada(s) por día: ${updatedElderly.preferredCallTimes.join(', ')}`,
+      },
+    });
+  } catch (err: any) {
+    console.error('[Yuyay Controller] Error en updateCallPreferences:', err.message || err);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: err.message || 'Error al actualizar horarios de llamada.',
     });
   }
 };
