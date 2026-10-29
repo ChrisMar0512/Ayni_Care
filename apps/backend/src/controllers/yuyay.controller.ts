@@ -452,3 +452,125 @@ export const testScenario = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * POST /api/yuyay/setup-test-patient
+ * Crea un paciente de prueba completo en Supabase (Familia, Cuidador, Adulto Mayor y Medicinas)
+ * para realizar la prueba de llamada 100% personalizada.
+ */
+export const setupTestPatient = async (req: Request, res: Response) => {
+  try {
+    const {
+      seniorName = 'Don Carlos',
+      seniorPhone,
+      childName = 'Christian',
+      childPhone,
+      conditions = ['Hipertensión arterial', 'Diabetes tipo 2'],
+      medications = [
+        { name: 'Losartán', dosage: '50mg', instructions: '1 tableta con el desayuno', frequency: 'una vez al día', times: ['08:00'] },
+        { name: 'Metformina', dosage: '850mg', instructions: '1 tableta con el desayuno', frequency: 'una vez al día', times: ['08:00'] },
+      ],
+      preferredCallTimes = ['08:00', '20:00'],
+    } = req.body;
+
+    if (!seniorPhone) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: 'seniorPhone (número donde sonará la llamada) es obligatorio.',
+      });
+    }
+
+    const cleanSeniorPhone = seniorPhone.replace(/\D/g, '');
+    const cleanChildPhone = childPhone ? childPhone.replace(/\D/g, '') : cleanSeniorPhone;
+
+    // 1. Crear Familia de prueba
+    const family = await prisma.family.create({
+      data: {
+        name: `Familia de ${seniorName}`,
+      },
+    });
+
+    // 2. Crear Cuidador Principal (hijo)
+    const caregiver = await prisma.familyMember.create({
+      data: {
+        familyId: family.id,
+        userId: `test_user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: childName,
+        phone: cleanChildPhone,
+        role: 'primary_caregiver',
+        isActive: true,
+      },
+    });
+
+    // 3. Crear Adulto Mayor
+    const elderly = await prisma.elderlyPerson.create({
+      data: {
+        familyId: family.id,
+        name: seniorName,
+        phone: cleanSeniorPhone,
+        conditions,
+        allergies: [],
+        preferredCallTimes,
+        consentVerbal: true,
+        consentDate: new Date(),
+      },
+    });
+
+    // 4. Crear Medicamentos
+    for (const med of medications) {
+      await prisma.medication.create({
+        data: {
+          familyId: family.id,
+          name: med.name,
+          dosage: med.dosage || '1 dosis',
+          instructions: med.instructions || null,
+          frequency: med.frequency || 'una vez al día',
+          times: med.times || ['08:00'],
+          startDate: new Date(),
+          isActive: true,
+        },
+      });
+    }
+
+    // 5. Crear llamadas programadas (mañana y noche)
+    await prisma.scheduledCall.createMany({
+      data: [
+        {
+          elderlyId: elderly.id,
+          scheduledTime: preferredCallTimes[0] || '08:00',
+          timeSlot: 'mañana',
+          status: 'pending',
+        },
+        {
+          elderlyId: elderly.id,
+          scheduledTime: preferredCallTimes[1] || '20:00',
+          timeSlot: 'noche',
+          status: 'pending',
+        },
+      ],
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        familyId: family.id,
+        elderlyId: elderly.id,
+        seniorName: elderly.name,
+        seniorPhone: elderly.phone,
+        childName: caregiver.name,
+        childPhone: caregiver.phone,
+        medicationsCount: medications.length,
+        message: `Paciente de prueba '${seniorName}' configurado en Supabase con éxito.`,
+      },
+    });
+  } catch (err: any) {
+    console.error('[Yuyay Controller] Error en setupTestPatient:', err.message || err);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: err.message || 'Error al configurar paciente de prueba.',
+    });
+  }
+};
+

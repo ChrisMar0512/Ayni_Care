@@ -7,6 +7,7 @@ import {
   triggerNightlyReport,
   runSchedulerCron,
   testScenario,
+  setupTestPatient,
 } from '../controllers/yuyay.controller';
 
 const router = Router();
@@ -33,5 +34,8 @@ router.post('/send-nightly-report', triggerNightlyReport);
 
 // Pruebas rápidas de escenarios clínicos y alertas de WhatsApp
 router.post('/test-scenario', testScenario);
+
+// Creación rápida de paciente de prueba en Supabase para llamadas personalizadas
+router.post('/setup-test-patient', setupTestPatient);
 
 export default router;
