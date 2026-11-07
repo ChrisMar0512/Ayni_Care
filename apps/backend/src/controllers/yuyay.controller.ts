@@ -142,17 +142,63 @@ export const triggerCall = async (req: Request, res: Response) => {
  */
 export const handleVoiceWebhook = async (req: Request, res: Response) => {
   try {
-    const {
-      elderlyId,
-      seniorPhone,
-      transcript,
-      durationSeconds = 0,
-      recordingUrl,
-      externalCallId,
-      scheduledCallId,
-      status = 'completed',
-      isInduction = false,
-    } = req.body;
+    const body = req.body || {};
+
+    // Si es un mensaje intermedio de Vapi (status-update, conversation-update, speech-update, etc.)
+    if (body.message && body.message.type && body.message.type !== 'end-of-call-report') {
+      return res.status(200).json({
+        success: true,
+        message: `Vapi event '${body.message.type}' acknowledged.`,
+      });
+    }
+
+    // Extraer datos ya sea de payload directo o del end-of-call-report de Vapi
+    const vapiMessage = body.message || {};
+    const vapiCall = vapiMessage.call || {};
+    const vapiArtifact = vapiMessage.artifact || {};
+
+    const transcript =
+      body.transcript ||
+      vapiMessage.transcript ||
+      vapiArtifact.transcript ||
+      null;
+
+    const seniorPhone =
+      body.seniorPhone ||
+      vapiCall.customer?.number ||
+      null;
+
+    const elderlyId =
+      body.elderlyId ||
+      vapiCall.assistantOverrides?.variableValues?.elderlyId ||
+      null;
+
+    const scheduledCallId =
+      body.scheduledCallId ||
+      vapiCall.assistantOverrides?.variableValues?.scheduledCallId ||
+      null;
+
+    const durationSeconds =
+      body.durationSeconds ||
+      vapiMessage.durationSeconds ||
+      (vapiCall.duration ? Math.round(vapiCall.duration) : 0);
+
+    const recordingUrl =
+      body.recordingUrl ||
+      vapiMessage.recordingUrl ||
+      vapiArtifact.recordingUrl ||
+      null;
+
+    const externalCallId =
+      body.externalCallId ||
+      vapiCall.id ||
+      null;
+
+    const status = body.status || 'completed';
+    const isInduction =
+      body.isInduction ||
+      vapiCall.assistantOverrides?.variableValues?.isInduction ||
+      false;
 
     // 1. Si la llamada no fue contestada (no_answer, busy, machine)
     if (status === 'no_answer' || status === 'busy' || status === 'machine' || status === 'failed') {
@@ -173,7 +219,7 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Buscar al adulto mayor por ID o por número de teléfono
+    // 2. Buscar al adulto mayor por ID, teléfono o fallback al último registrado
     let elderly = null;
     if (elderlyId) {
       elderly = await prisma.elderlyPerson.findUnique({
@@ -192,6 +238,22 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
       const cleanPhone = seniorPhone.replace(/\D/g, '');
       elderly = await prisma.elderlyPerson.findFirst({
         where: { phone: { contains: cleanPhone } },
+        include: {
+          family: {
+            include: {
+              members: {
+                where: { role: 'primary_caregiver', isActive: true },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // Fallback: Si se probó desde el navegador web de Vapi (sin número de celular)
+    if (!elderly) {
+      elderly = await prisma.elderlyPerson.findFirst({
+        orderBy: { createdAt: 'desc' },
         include: {
           family: {
             include: {
