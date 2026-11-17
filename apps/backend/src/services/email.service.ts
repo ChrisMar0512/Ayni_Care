@@ -2,7 +2,13 @@ import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import { MemberRole } from '@prisma/client';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResendClient = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY no está configurado.');
+  }
+  return new Resend(apiKey);
+};
 
 const ROLE_LABELS: Record<MemberRole, string> = {
   primary_caregiver: 'Cuidador/a principal',
@@ -76,6 +82,7 @@ export const sendInvitationEmail = async (opts: {
       html: htmlContent,
     });
   } else {
+    const resend = getResendClient();
     await resend.emails.send({
       from: process.env.FROM_EMAIL!,
       to: opts.to,
