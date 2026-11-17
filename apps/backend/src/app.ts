@@ -92,6 +92,7 @@ app.get(['/', '/health', '/api', '/api/', '/api/health'], (_req, res) => {
     data: {
       status: 'ok',
       service: 'Ayni Care API',
+      version: '1.2.0-yuyay',
       time: new Date().toISOString(),
       env: {
         has_database: Boolean(process.env.DATABASE_URL),
