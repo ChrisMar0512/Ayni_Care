@@ -442,7 +442,7 @@ export const dispatchOutboundCall = async (
   if (!forceSimulate && vapiApiKey && vapiPhoneNumberId && vapiAssistantId) {
     try {
       const response = await axios.post(
-        'https://api.vapi.ai/call/phone',
+        'https://api.vapi.ai/call',
         {
           phoneNumberId: vapiPhoneNumberId,
           assistantId: vapiAssistantId,

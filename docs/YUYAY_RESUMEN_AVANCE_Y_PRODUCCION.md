@@ -116,3 +116,4 @@ Día 3: Conexión de la línea oficial de WhatsApp Business.
 Día 4-5: Pruebas con 5 familiares de confianza (validación del reporte nocturno durante un fin de semana).
 Semana 2: Integración de pasarela de cobro e incorporación escalonada de las 50 familias del piloto.
 ```
+

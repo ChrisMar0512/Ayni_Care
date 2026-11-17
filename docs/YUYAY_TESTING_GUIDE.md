@@ -114,3 +114,4 @@ Para que cuando la llamada termine, Vapi envíe la grabación y la transcripció
 - [ ] El webhook recibió el audio y transcripción en el backend.
 - [ ] Gemini extrajo correctamente los datos en JSON en la base de datos de Supabase.
 - [ ] En caso de reporte de dolor o molestia, se disparó la alerta de Bandera Roja.
+
