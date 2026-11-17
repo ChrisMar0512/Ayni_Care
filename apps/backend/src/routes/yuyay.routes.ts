@@ -9,6 +9,7 @@ import {
   testScenario,
   setupTestPatient,
   updateCallPreferences,
+  enrollPatient,
 } from '../controllers/yuyay.controller';
 import {
   blockInProduction,
@@ -45,6 +46,9 @@ router.post('/test-scenario', blockInProduction, requireYuyayAdmin, testScenario
 
 // Creación rápida de paciente de prueba en Supabase para llamadas personalizadas
 router.post('/setup-test-patient', blockInProduction, requireYuyayAdmin, setupTestPatient);
+
+// Inscripción de una familia (desde un lead o con datos directos) + llamada de inducción
+router.post('/enroll', requireYuyayAdmin, enrollPatient);
 
 // Actualizar horarios y frecuencia de llamadas (1, 2 o 3 llamadas al día)
 router.patch('/preferences/:elderlyId', requireYuyayAdmin, updateCallPreferences);

@@ -126,3 +126,76 @@ export const downloadMetaMediaAsBase64 = async (mediaId: string): Promise<{ base
 
   return { base64, mimeType };
 };
+
+export interface MetaSendTemplateOptions {
+  to: string;
+  /** Nombre exacto de la plantilla aprobada en Meta, ej. "yuyay_alerta" */
+  templateName: string;
+  /** Código de idioma con el que se aprobó la plantilla (Meta no tiene "es_PE"; se usa "es") */
+  languageCode?: string;
+  /** Valores para {{1}}, {{2}}, ... del cuerpo de la plantilla, en orden */
+  bodyParams: string[];
+}
+
+/**
+ * Meta rechaza parámetros de plantilla vacíos, con saltos de línea, tabulaciones o
+ * más de 4 espacios seguidos. Se limpian aquí para que el envío no falle.
+ */
+export const sanitizeTemplateParam = (value: string, maxLength = 900): string => {
+  const clean = (value ?? '')
+    .replace(/[\r\n\t]+/g, ' · ')
+    .replace(/ {2,}/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+  return clean.length > 0 ? clean : '—';
+};
+
+/**
+ * Envía un mensaje de plantilla aprobada. Es la única forma permitida por Meta de escribirle
+ * a alguien que no nos escribió en las últimas 24 horas (reportes, alertas, bienvenida).
+ */
+export const sendMetaWhatsAppTemplate = async ({
+  to,
+  templateName,
+  languageCode = 'es',
+  bodyParams,
+}: MetaSendTemplateOptions): Promise<unknown> => {
+  const { phoneNumberId, accessToken } = getMetaCredentials();
+
+  if (!phoneNumberId || !accessToken) {
+    console.warn(`[Meta WhatsApp] Credenciales no configuradas. Simulación de plantilla "${templateName}".`);
+    return { simulated: true, to, templateName, bodyParams };
+  }
+
+  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+  const payload = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: to.replace(/\D/g, ''),
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: languageCode },
+      components: [
+        {
+          type: 'body',
+          parameters: bodyParams.map((text) => ({ type: 'text', text: sanitizeTemplateParam(text) })),
+        },
+      ],
+    },
+  };
+
+  try {
+    const response = await axios.post(url, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    const detail = axios.isAxiosError(error) ? error.response?.data ?? error.message : error;
+    console.error(`[Meta WhatsApp] Error enviando plantilla "${templateName}":`, detail);
+    throw error;
+  }
+};

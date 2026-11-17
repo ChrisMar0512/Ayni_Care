@@ -1,4 +1,6 @@
+import { randomUUID } from 'crypto';
 import { Request, Response } from 'express';
+import { enrollSchema } from '../schemas/yuyay.schema';
 import { prisma } from '../prisma/client';
 import {
   analyzeCallTranscript,
@@ -6,6 +8,7 @@ import {
   dispatchOutboundCall,
   handleMissedCallAttempt,
   mapVapiEndedReason,
+  normalizePeruPhone,
   processInductionConsent,
   triggerImmediateRedFlagAlert,
 } from '../services/yuyay-call.service';
@@ -14,7 +17,7 @@ import {
   runDailyNightReportJob,
 } from '../services/yuyay-report.service';
 import { runSchedulerCycle } from '../services/yuyay-scheduler.service';
-import { sendMetaWhatsAppMessage } from '../services/meta-whatsapp.service';
+import { notifyWelcome } from '../services/yuyay-notify.service';
 import { getLimaStartOfDay, getTimeSlotForHHmm, parseHHmm } from '../services/yuyay-time';
 
 const isProduction = (): boolean => process.env.NODE_ENV === 'production';
@@ -77,21 +80,14 @@ export const registerLead = async (req: Request, res: Response) => {
     });
 
     // Mensaje automático de confirmación por WhatsApp al hijo
-    const cleanChildPhone = childPhone.replace(/\D/g, '');
-    const welcomeText =
-      `🌿 *¡Bienvenido a Yuyay, ${childName}!* 🌿\n\n` +
-      `Hemos registrado con éxito a tu familiar *${seniorName}* para el piloto de teleasistencia.\n\n` +
-      `📞 *Próximo paso:* Nuestro equipo revisará los horarios de llamada programados (${callPreferences || 'Mañana y noche'}). Antes de la primera llamada regular, realizaremos una breve llamada de inducción a Don/Doña ${seniorName} para explicarle el servicio y solicitar su consentimiento verbal.\n\n` +
-      `Recibirás todas las alertas y tus reportes nocturnos en este mismo chat de WhatsApp.\n\n` +
-      `_Equipo Yuyay — Cuidando a quienes más quieres._`;
-
     try {
-      await sendMetaWhatsAppMessage({
-        to: cleanChildPhone,
-        text: welcomeText,
+      await notifyWelcome({
+        to: normalizePeruPhone(childPhone),
+        childName,
+        seniorName,
       });
     } catch (msgErr) {
-      console.warn('[Yuyay Lead] No se pudo enviar WhatsApp de bienvenida:', msgErr);
+      console.warn('[Yuyay Lead] No se pudo enviar WhatsApp de bienvenida:', msgErr instanceof Error ? msgErr.message : msgErr);
     }
 
     return res.status(201).json({
@@ -232,6 +228,12 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
     if (status === 'no_answer' || status === 'busy' || status === 'machine' || status === 'failed') {
       if (scheduledCallId) {
         await handleMissedCallAttempt(scheduledCallId);
+      } else if (isInduction) {
+        // La inducción no tiene reintentos automáticos: el equipo debe volver a dispararla.
+        console.warn(
+          `[Yuyay Webhook] Llamada de inducción no contestada (${status}) para elderlyId ${elderlyId ?? 'desconocido'}. ` +
+            'Reintentar con POST /api/yuyay/trigger-call { elderlyId, isInduction: true }.'
+        );
       }
       return res.status(200).json({
         success: true,
@@ -743,3 +745,185 @@ export const updateCallPreferences = async (req: Request, res: Response) => {
   }
 };
 
+
+const splitFreeText = (value: string | null | undefined): string[] =>
+  (value ?? '')
+    .split(/[,;\n]+/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)
+    .slice(0, 20);
+
+/**
+ * POST /api/yuyay/enroll  (requiere token de admin)
+ *
+ * Convierte un lead (o datos enviados directamente) en un paciente inscrito:
+ * familia + cuidador principal + adulto mayor + medicamentos + agenda de llamadas.
+ * El adulto mayor queda SIN consentimiento: las llamadas diarias empiezan solo cuando
+ * acepta en la llamada de inducción, que se dispara al final (startInduction).
+ */
+export const enrollPatient = async (req: Request, res: Response) => {
+  const parsed = enrollSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const first = parsed.error.errors[0];
+    return res.status(400).json({
+      success: false,
+      data: null,
+      error: `${first.path.join('.') || 'body'}: ${first.message}`,
+    });
+  }
+  const input = parsed.data;
+
+  try {
+    const lead = input.leadId ? await prisma.yuyayLead.findUnique({ where: { id: input.leadId } }) : null;
+    if (input.leadId && !lead) {
+      return res.status(404).json({ success: false, data: null, error: 'Lead no encontrado.' });
+    }
+    if (lead && lead.status === 'pilot_active') {
+      return res.status(409).json({ success: false, data: null, error: 'Este lead ya fue inscrito.' });
+    }
+
+    const childName = input.childName ?? lead?.childName;
+    const childPhone = input.childPhone ?? lead?.childPhone;
+    const seniorName = input.seniorName ?? lead?.seniorName;
+    const seniorPhone = input.seniorPhone ?? lead?.seniorPhone;
+
+    if (!childName || !childPhone || !seniorName || !seniorPhone) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: 'Faltan datos: childName, childPhone, seniorName y seniorPhone (en el body o en el lead).',
+      });
+    }
+
+    const normalizedSeniorPhone = normalizePeruPhone(seniorPhone);
+    const normalizedChildPhone = normalizePeruPhone(childPhone);
+
+    // Evitar inscribir dos veces al mismo adulto mayor (mismo celular).
+    const existing = await prisma.elderlyPerson.findFirst({
+      where: { phone: { endsWith: normalizedSeniorPhone.slice(-9) } },
+    });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        data: { elderlyId: existing.id },
+        error: 'Ya existe un adulto mayor inscrito con ese teléfono.',
+      });
+    }
+
+    const medications =
+      input.medications ??
+      splitFreeText(lead?.seniorMeds).map((name) => ({
+        name,
+        dosage: 'según receta',
+        instructions: undefined,
+        times: undefined,
+      }));
+    const conditions = input.conditions ?? splitFreeText(lead?.seniorConditions);
+    const callTimes = Array.from(new Set(input.preferredCallTimes ?? ['08:30'])).sort();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const family = await tx.family.create({ data: { name: `Familia de ${seniorName}` } });
+
+      const caregiver = await tx.familyMember.create({
+        data: {
+          familyId: family.id,
+          // El cuidador de Yuyay no tiene cuenta en la app: userId es un marcador único.
+          userId: `yuyay_${randomUUID()}`,
+          name: childName,
+          phone: normalizedChildPhone,
+          email: input.childEmail ?? lead?.childEmail ?? null,
+          role: 'primary_caregiver',
+          isActive: true,
+        },
+      });
+
+      const elderly = await tx.elderlyPerson.create({
+        data: {
+          familyId: family.id,
+          name: seniorName,
+          phone: normalizedSeniorPhone,
+          conditions,
+          allergies: input.allergies ?? [],
+          preferredCallTimes: callTimes,
+          consentVerbal: false,
+        },
+      });
+
+      if (medications.length > 0) {
+        await tx.medication.createMany({
+          data: medications.map((m) => ({
+            familyId: family.id,
+            name: m.name,
+            dosage: m.dosage,
+            instructions: m.instructions ?? null,
+            frequency: m.times && m.times.length > 1 ? `${m.times.length} veces al día` : 'una vez al día',
+            times: m.times ?? callTimes,
+            startDate: new Date(),
+            isActive: true,
+          })),
+        });
+      }
+
+      await tx.scheduledCall.createMany({
+        data: callTimes.map((time) => ({
+          elderlyId: elderly.id,
+          scheduledTime: time,
+          timeSlot: getTimeSlotForHHmm(time),
+          status: 'pending',
+        })),
+      });
+
+      if (lead) {
+        await tx.yuyayLead.update({
+          where: { id: lead.id },
+          data: {
+            status: 'pilot_active',
+            notes: `${lead.notes ? lead.notes + ' | ' : ''}Inscrito: elderlyId ${elderly.id}`,
+          },
+        });
+      }
+
+      return { family, caregiver, elderly };
+    });
+
+    // Llamada de inducción para pedir el consentimiento (fuera de la transacción: es una llamada externa).
+    let induction: { started: boolean; callId?: string; error?: string } = { started: false };
+    if (input.startInduction) {
+      try {
+        const call = await dispatchOutboundCall({
+          elderlyId: result.elderly.id,
+          timeSlot: getTimeSlotForHHmm(callTimes[0]),
+          isInduction: true,
+        });
+        induction = { started: true, callId: call.callId };
+      } catch (err) {
+        induction = { started: false, error: err instanceof Error ? err.message : String(err) };
+        console.error('[Yuyay Enroll] No se pudo iniciar la llamada de inducción:', induction.error);
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        familyId: result.family.id,
+        elderlyId: result.elderly.id,
+        caregiverId: result.caregiver.id,
+        seniorName: result.elderly.name,
+        preferredCallTimes: callTimes,
+        medicationsCount: medications.length,
+        consentVerbal: false,
+        induction,
+        nextStep: induction.started
+          ? 'Esperando el resultado de la llamada de inducción. Si acepta, las llamadas diarias empiezan solas.'
+          : 'Dispara la inducción con POST /api/yuyay/trigger-call { elderlyId, isInduction: true }.',
+      },
+    });
+  } catch (err) {
+    console.error('[Yuyay Controller] Error en enrollPatient:', err instanceof Error ? err.message : err);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Error al inscribir al paciente.',
+    });
+  }
+};

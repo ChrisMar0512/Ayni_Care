@@ -1,5 +1,5 @@
 import { prisma } from '../prisma/client';
-import { sendMetaWhatsAppMessage } from './meta-whatsapp.service';
+import { notifyNightlyReport } from './yuyay-notify.service';
 import { normalizePeruPhone } from './yuyay-call.service';
 import { formatLimaLongDate, formatLimaTime, getLimaStartOfDay } from './yuyay-time';
 
@@ -69,55 +69,46 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
   // Calcular tomas confirmadas
   const confirmedMeds: string[] = [];
   const missedMeds: string[] = [];
-  let reportedMood = 'Tranquilo y sereno';
-  let reportedSymptoms = 'Sin molestias reportadas';
+  // Sin llamadas contestadas no se inventa un estado: se dice que no se pudo hablar con él/ella.
+  const noAnswerText = 'No logramos hablar hoy';
+  let reportedMood = answeredToday.length > 0 ? 'Sin cambios reportados' : noAnswerText;
+  let reportedSymptoms = answeredToday.length > 0 ? 'Sin molestias reportadas' : noAnswerText;
 
-  for (const call of todayCalls) {
+  for (const call of answeredToday) {
     if (call.mood) reportedMood = call.mood;
     if (call.symptoms && call.symptoms !== 'Ninguno') reportedSymptoms = call.symptoms;
 
-    const meds = readMeds(call.medsConfirmed);
-    for (const med of meds) {
-      const timeStr = formatLimaTime(call.createdAt);
-
+    const timeStr = formatLimaTime(call.createdAt);
+    for (const med of readMeds(call.medsConfirmed)) {
       if (med.taken) {
-        confirmedMeds.push(`✅ ${timeStr} — *${med.name}* (Confirmado)`);
+        confirmedMeds.push(`${med.name} (${timeStr})`);
       } else {
-        missedMeds.push(`⚠️ ${timeStr} — *${med.name}* (${med.reason || 'No tomada'})`);
+        missedMeds.push(`${med.name}: ${med.reason || 'no la tomó'} (${timeStr})`);
       }
     }
   }
 
-  const dateStr = formatLimaLongDate(new Date());
+  if (!caregiver.phone) return false;
+  const cleanPhone = normalizePeruPhone(caregiver.phone);
 
-  const reportText =
-    `🌿 *Reporte Nocturno Yuyay — ${senior.name}*\n` +
-    `📅 _${dateStr}_\n\n` +
-    `💊 *Supervisión de Medicamentos:*\n` +
-    (confirmedMeds.length > 0 ? confirmedMeds.join('\n') + '\n' : '• Sin tomas registradas hoy.\n') +
-    (missedMeds.length > 0 ? '\n*Tomas pendientes/omitidas:*\n' + missedMeds.join('\n') + '\n' : '') +
-    `\n😊 *Estado de ánimo:* ${reportedMood}\n` +
-    `🩺 *Bienestar físico:* ${reportedSymptoms}\n` +
-    `📞 *Llamadas contestadas hoy:* ${answeredToday.length}\n\n` +
-    (weeklyAdherence !== null ? `📊 *Adherencia de los últimos 7 días:* ${weeklyAdherence}%\n\n` : '') +
-    `_Yuyay: Cuidando a quienes cuidaron de ti._`;
-
-  if (caregiver.phone) {
-    const cleanPhone = normalizePeruPhone(caregiver.phone);
-    try {
-      await sendMetaWhatsAppMessage({
-        to: cleanPhone,
-        text: reportText,
-      });
-      console.log(`[Yuyay Report] 📋 Reporte nocturno enviado a ${caregiver.name} (${cleanPhone})`);
-      return true;
-    } catch (err: any) {
-      console.error(`[Yuyay Report] Error enviando reporte a ${cleanPhone}:`, err.message || err);
-      return false;
-    }
+  try {
+    await notifyNightlyReport({
+      to: cleanPhone,
+      seniorName: senior.name,
+      dateLabel: formatLimaLongDate(new Date()),
+      confirmedMeds,
+      missedMeds,
+      mood: reportedMood,
+      symptoms: reportedSymptoms,
+      answeredCalls: answeredToday.length,
+      weeklyAdherence,
+    });
+    console.log(`[Yuyay Report] 📋 Reporte nocturno enviado a ${caregiver.name} (${cleanPhone})`);
+    return true;
+  } catch (err) {
+    console.error(`[Yuyay Report] Error enviando reporte a ${cleanPhone}:`, err instanceof Error ? err.message : err);
+    return false;
   }
-
-  return false;
 };
 
 /**

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { prisma } from '../prisma/client';
 import { getGeminiClient, callGeminiWithFallback, MODEL_CANDIDATES } from './ai.service';
-import { sendMetaWhatsAppMessage } from './meta-whatsapp.service';
+import { notifyAlert, notifyConsentResult } from './yuyay-notify.service';
 
 export interface MicroCallContext {
   seniorName: string;
@@ -211,30 +211,18 @@ export const processInductionConsent = async (params: {
   const caregiver = elderly.family.members[0];
   if (caregiver && caregiver.phone) {
     const cleanPhone = normalizePeruPhone(caregiver.phone);
-    let messageText = '';
-
-    if (consentGranted) {
-      messageText =
-        `🌿 *¡Consentimiento Confirmado — Yuyay!*\n\n` +
-        `Hola ${caregiver.name}, completamos la llamada de inducción con tu familiar *${elderly.name}*.\n\n` +
-        `✅ Aceptó verbalmente el acompañamiento telefónico preventivo de acuerdo con la Ley N.° 29733.\n` +
-        `📞 A partir de ahora, recibirá sus llamadas automáticas de supervisión en sus horarios habituales (${elderly.preferredCallTimes.join(' y ')}).\n\n` +
-        `_Recibirás tus reportes nocturnos diarios en este mismo chat._`;
-    } else {
-      messageText =
-        `⚠️ *Atención — Inducción Yuyay*\n\n` +
-        `Hola ${caregiver.name}, nos comunicamos con *${elderly.name}* para la llamada de inducción, pero no logramos obtener su consentimiento verbal (${consentNotes || 'Prefirió no recibir llamadas'}).\n\n` +
-        `Las llamadas regulares han quedado en pausa hasta que coordines con tu familiar. Contáctanos si deseas reprogramar.`;
-    }
-
     try {
-      await sendMetaWhatsAppMessage({
+      await notifyConsentResult({
         to: cleanPhone,
-        text: messageText,
+        childName: caregiver.name,
+        seniorName: elderly.name,
+        granted: consentGranted,
+        callTimes: elderly.preferredCallTimes,
+        notes: consentNotes,
       });
       console.log(`[Yuyay] Notificación de inducción enviada a ${cleanPhone}`);
-    } catch (err: any) {
-      console.error(`[Yuyay] Error enviando WhatsApp de inducción:`, err.message || err);
+    } catch (err) {
+      console.error('[Yuyay] Error enviando WhatsApp de inducción:', err instanceof Error ? err.message : err);
     }
   }
 };
@@ -250,24 +238,14 @@ export const triggerImmediateRedFlagAlert = async (params: {
   transcriptSnippet?: string;
 }): Promise<boolean> => {
   const { childPhone, childName, seniorName, reason, transcriptSnippet } = params;
-
-  const alertMessage =
-    `🚨 *ALERTA MÉDICA PREVENTIVA — YUYAY*\n\n` +
-    `Hola ${childName}, en la supervisión de teleasistencia con tu familiar *${seniorName}*, nuestro sistema detectó una situación de atención:\n\n` +
-    `⚠️ *Motivo de alarma:* ${reason}\n` +
-    (transcriptSnippet ? `💬 *Lo que mencionó:* _"${transcriptSnippet.slice(0, 140)}..."_\n\n` : '\n') +
-    `📞 *Acción sugerida:* Comunícate de inmediato con tu familiar. Si no contesta o los síntomas son agudos, coordina asistencia médica o contacta al *SAMU (106)*.\n\n` +
-    `_(Yuyay es un servicio preventivo de acompañamiento y no reemplaza la atención de emergencias)_`;
+  const to = normalizePeruPhone(childPhone);
 
   try {
-    await sendMetaWhatsAppMessage({
-      to: normalizePeruPhone(childPhone),
-      text: alertMessage,
-    });
-    console.log(`[Yuyay] 🚨 Alerta de bandera roja enviada con éxito a ${childPhone}`);
+    await notifyAlert({ to, childName, seniorName, reason, transcriptSnippet });
+    console.log(`[Yuyay] 🚨 Alerta de bandera roja enviada con éxito a ${to}`);
     return true;
-  } catch (err: any) {
-    console.error(`[Yuyay] Error enviando alerta de WhatsApp a ${childPhone}:`, err.message || err);
+  } catch (err) {
+    console.error(`[Yuyay] Error enviando alerta de WhatsApp a ${to}:`, err instanceof Error ? err.message : err);
     return false;
   }
 };
