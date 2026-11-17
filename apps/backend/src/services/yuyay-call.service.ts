@@ -140,8 +140,10 @@ Extrae ÚNICAMENTE un objeto JSON válido con este formato exacto:
       },
     });
 
-    const text = response?.text || '{}';
-    const parsed: ExtractedCallResult = JSON.parse(text);
+    const rawText = (response?.text || '{}').trim();
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const cleanJson = jsonMatch ? jsonMatch[0] : rawText;
+    const parsed: ExtractedCallResult = JSON.parse(cleanJson);
 
     return {
       medsConfirmed: parsed.medsConfirmed || [],
