@@ -17,7 +17,6 @@
     "whatsapp": "ts-node src/scripts/run-whatsapp-bot.ts"
   },
   "dependencies": {
-    "@ayni-care/shared": "*",
     "@google/genai": "^2.17.1",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.46.2",
