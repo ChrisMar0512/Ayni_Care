@@ -23,19 +23,20 @@ export const getGeminiClient = () => {
 
 // Cascada de modelos disponibles para máxima resiliencia ante alta demanda (503 / 429)
 export const MODEL_CANDIDATES = [
-  'gemini-3.6-flash',
-  'gemini-flash-latest',
-  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
   'gemini-flash-lite-latest',
 ];
 
 export const TRANSCRIBE_CANDIDATES = [
-  'gemini-3.6-flash',
-  'gemini-flash-latest',
-  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-3.8-flash',
 ];
 
 // Helper con reintentos automáticos y fallback instantáneo de modelos
