@@ -9,10 +9,6 @@
     "apps/*",
     "packages/*"
   ],
-  "dependencies": {
-    "react": "19.2.3",
-    "react-native": "0.86.3"
-  },
   "scripts": {
     "bootstrap": "npm install",
     "dev:backend": "npm run dev --workspace=apps/backend",
