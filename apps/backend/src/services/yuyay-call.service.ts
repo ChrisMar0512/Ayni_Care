@@ -105,7 +105,6 @@ export const analyzeCallTranscript = async (
   expectedMeds: string[] = [],
   isInduction: boolean = false
 ): Promise<ExtractedCallResult> => {
-  const gemini = getGeminiClient();
 
   const prompt = `
 Eres el motor clínico de teleasistencia de Yuyay (Perú).
@@ -132,6 +131,8 @@ Extrae ÚNICAMENTE un objeto JSON válido con este formato exacto:
 `;
 
   try {
+    // Dentro del try: si falta la clave o Gemini falla, se usa el respaldo por palabras clave.
+    const gemini = getGeminiClient();
     const response = await callGeminiWithFallback(gemini, MODEL_CANDIDATES, {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
@@ -161,7 +162,9 @@ Extrae ÚNICAMENTE un objeto JSON válido con este formato exacto:
       symptoms: 'Revisión requerida',
       hasRedFlag: hasEmergencyKeywords,
       redFlagReason: hasEmergencyKeywords ? 'Palabras clave de riesgo detectadas en el audio' : null,
-      consentGranted: isInduction ? true : undefined,
+      // Nunca asumir consentimiento si la IA falló: queda sin registrar para revisión manual (Ley 29733).
+      consentGranted: undefined,
+      consentNotes: isInduction ? 'No se pudo analizar la llamada de inducción; requiere revisión manual.' : null,
     };
   }
 };
@@ -207,7 +210,7 @@ export const processInductionConsent = async (params: {
 
   const caregiver = elderly.family.members[0];
   if (caregiver && caregiver.phone) {
-    const cleanPhone = caregiver.phone.replace(/\D/g, '');
+    const cleanPhone = normalizePeruPhone(caregiver.phone);
     let messageText = '';
 
     if (consentGranted) {
@@ -258,7 +261,7 @@ export const triggerImmediateRedFlagAlert = async (params: {
 
   try {
     await sendMetaWhatsAppMessage({
-      to: childPhone,
+      to: normalizePeruPhone(childPhone),
       text: alertMessage,
     });
     console.log(`[Yuyay] 🚨 Alerta de bandera roja enviada con éxito a ${childPhone}`);
@@ -296,19 +299,38 @@ export const handleMissedCallAttempt = async (scheduledCallId: string): Promise<
   const currentRetries = scheduledCall.retryCount + 1;
   const senior = scheduledCall.elderly;
   const caregiver = senior.family.members[0];
+  const isFinalAttempt = currentRetries >= 3;
 
-  if (currentRetries >= 3) {
+  // Solo se procesa una llamada que está en curso. Evita contar dos veces el mismo intento
+  // (webhook duplicado, o webhook tardío después de que el scheduler ya la dio por no contestada).
+  const claim = await prisma.scheduledCall.updateMany({
+    where: { id: scheduledCallId, status: 'calling', retryCount: scheduledCall.retryCount },
+    data: {
+      status: isFinalAttempt ? 'failed' : 'no_answer',
+      retryCount: currentRetries,
+      lastCallAt: new Date(),
+    },
+  });
+  if (claim.count !== 1) {
+    console.log(`[Yuyay] Intento no contestado ignorado para ${scheduledCallId}: la llamada ya no estaba en curso.`);
+    return;
+  }
+
+  if (isFinalAttempt) {
     // 3 intentos sin contestar: Bandera Roja por inubicabilidad
-    await prisma.scheduledCall.update({
-      where: { id: scheduledCallId },
-      data: {
-        status: 'failed',
-        retryCount: currentRetries,
-        lastCallAt: new Date(),
-      },
-    });
+    let alertSent = false;
+    if (caregiver && caregiver.phone) {
+      alertSent = await triggerImmediateRedFlagAlert({
+        childPhone: caregiver.phone,
+        childName: caregiver.name,
+        seniorName: senior.name,
+        reason: 'Tu familiar no contestó el teléfono tras 3 llamadas consecutivas de supervisión.',
+      });
+    } else {
+      console.error(`[Yuyay] 🚨 ${senior.name} no contestó 3 veces y su familia no tiene cuidador con teléfono.`);
+    }
 
-    const log = await prisma.callLog.create({
+    await prisma.callLog.create({
       data: {
         scheduledCallId,
         elderlyId: senior.id,
@@ -316,31 +338,13 @@ export const handleMissedCallAttempt = async (scheduledCallId: string): Promise<
         status: 'no_answer',
         hasRedFlag: true,
         redFlagReason: 'El adulto mayor no respondió la llamada tras 3 intentos consecutivos.',
-        alertSentAt: new Date(),
+        alertSentAt: alertSent ? new Date() : null,
       },
     });
-
-    if (caregiver && caregiver.phone) {
-      await triggerImmediateRedFlagAlert({
-        childPhone: caregiver.phone,
-        childName: caregiver.name,
-        seniorName: senior.name,
-        reason: 'Tu familiar no contestó el teléfono tras 3 llamadas consecutivas de supervisión.',
-      });
-    }
 
     console.log(`[Yuyay] 🚨 Alerta de 3 intentos fallidos disparada para ${senior.name}`);
   } else {
-    // Reintento programado
-    await prisma.scheduledCall.update({
-      where: { id: scheduledCallId },
-      data: {
-        status: 'no_answer',
-        retryCount: currentRetries,
-        lastCallAt: new Date(),
-      },
-    });
-
+    // Reintento programado (el scheduler vuelve a marcar en 15 minutos)
     await prisma.callLog.create({
       data: {
         scheduledCallId,
@@ -354,9 +358,59 @@ export const handleMissedCallAttempt = async (scheduledCallId: string): Promise<
   }
 };
 
+
+type VoiceProvider = 'vapi' | 'simulation';
+
+/**
+ * Elige el proveedor de voz.
+ *
+ * YUYAY_VOICE_PROVIDER=vapi | simulation. Si no está definido: Vapi si hay credenciales,
+ * simulación solo fuera de producción. En producción nunca se simula en silencio:
+ * si no hay proveedor configurado se lanza un error.
+ *
+ * Plivo y Twilio quedaron fuera porque su integración estaba incompleta (Plivo apuntaba a
+ * /api/yuyay/plivo-answer, que no existe, y Twilio esperaba TwiML que nadie genera).
+ * El código original sigue en la rama pivot/yuyay.
+ */
+const resolveVoiceProvider = (forceSimulate: boolean): VoiceProvider => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const configured = process.env.YUYAY_VOICE_PROVIDER?.toLowerCase();
+  const hasVapi = Boolean(
+    process.env.VAPI_API_KEY && process.env.VAPI_PHONE_NUMBER_ID && process.env.VAPI_ASSISTANT_ID
+  );
+
+  if (forceSimulate || configured === 'simulation') {
+    if (isProduction) throw new Error('La simulación de llamadas no está permitida en producción.');
+    return 'simulation';
+  }
+
+  if (configured === 'plivo' || configured === 'twilio') {
+    throw new Error(`El proveedor "${configured}" todavía no está implementado. Usa YUYAY_VOICE_PROVIDER=vapi.`);
+  }
+
+  if (configured === 'vapi' || hasVapi) {
+    if (!hasVapi) throw new Error('Faltan VAPI_API_KEY, VAPI_PHONE_NUMBER_ID o VAPI_ASSISTANT_ID.');
+    return 'vapi';
+  }
+
+  if (isProduction) {
+    throw new Error('No hay proveedor de voz configurado (YUYAY_VOICE_PROVIDER / credenciales de Vapi).');
+  }
+  return 'simulation';
+};
+
+/**
+ * Normaliza un número peruano a E.164 sin "+": "939 959 366" → "51939959366".
+ */
+export const normalizePeruPhone = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 9 && digits.startsWith('9')) return `51${digits}`;
+  return digits;
+};
+
 /**
  * 6. Dispara una llamada telefónica saliente (Dispatch Outbound Call).
- * Soporta Plivo SIP (Stack Yuyay Oficial), Vapi, Twilio Voice y Modo Simulación.
+ * Si el proveedor falla, lanza error (no cae a simulación) para que el scheduler lo registre.
  */
 export const dispatchOutboundCall = async (
   options: OutboundCallOptions
@@ -377,18 +431,8 @@ export const dispatchOutboundCall = async (
     throw new Error(`Adulto mayor (${elderlyId}) no encontrado o sin número de teléfono configurado.`);
   }
 
-  const targetPhone = elderly.phone.replace(/\D/g, '');
-  const plivoAuthId = process.env.PLIVO_AUTH_ID;
-  const plivoAuthToken = process.env.PLIVO_AUTH_TOKEN;
-  const plivoFromNumber = process.env.PLIVO_PHONE_NUMBER;
-
-  const vapiApiKey = process.env.VAPI_API_KEY;
-  const vapiPhoneNumberId = process.env.VAPI_PHONE_NUMBER_ID;
-  const vapiAssistantId = process.env.VAPI_ASSISTANT_ID;
-
-  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-  const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioFromNumber = process.env.TWILIO_PHONE_NUMBER;
+  const provider = resolveVoiceProvider(forceSimulate);
+  const targetPhone = normalizePeruPhone(elderly.phone);
 
   // Actualizar ScheduledCall a "calling" si se proveyó el id
   if (scheduledCallId) {
@@ -398,71 +442,43 @@ export const dispatchOutboundCall = async (
     });
   }
 
-  // 1. Stack Oficial Plivo SIP
-  if (!forceSimulate && plivoAuthId && plivoAuthToken && plivoFromNumber) {
-    try {
-      const plivoEndpoint = `https://api.plivo.com/v1/Account/${plivoAuthId}/Call/`;
-      const authHeader = Buffer.from(`${plivoAuthId}:${plivoAuthToken}`).toString('base64');
-      const webhookBase = process.env.BACKEND_PUBLIC_URL || 'https://api.aynicare.com';
+  if (provider === 'vapi') {
+    const context = await buildMicroContextForCall(elderlyId, timeSlot, isInduction);
+    const medicationsText =
+      context?.medications.map((m) => `${m.name} ${m.dosage}${m.instructions ? ` (${m.instructions})` : ''}`).join('; ') ||
+      'sin medicamentos registrados';
 
-      const response = await axios.post(
-        plivoEndpoint,
-        {
-          from: plivoFromNumber,
-          to: targetPhone,
-          answer_url: `${webhookBase}/api/yuyay/plivo-answer?elderlyId=${elderly.id}&timeSlot=${timeSlot}&isInduction=${isInduction}`,
-          hangup_url: `${webhookBase}/api/yuyay/voice-webhook`,
-          machine_detection: 'hangup', // Answering Machine Detection (AMD) para evitar costo de buzón
-          time_limit: 300, // Hard cap de 5.0 minutos (300 segundos)
-        },
-        {
-          headers: {
-            Authorization: `Basic ${authHeader}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const callUuid = response.data?.request_uuid || `plivo_${Date.now()}`;
-      return {
-        success: true,
-        callId: callUuid,
-        provider: 'plivo',
-        isInduction,
-        targetPhone,
-        status: 'calling',
-        message: 'Llamada iniciada exitosamente a través de Plivo SIP.',
-      };
-    } catch (err: any) {
-      console.error('[Yuyay Plivo Call] Error iniciando llamada:', err.response?.data || err.message);
-    }
-  }
-
-  // 2. Vapi Voice AI (Alternativa Fast-Track)
-  if (!forceSimulate && vapiApiKey && vapiPhoneNumberId && vapiAssistantId) {
     try {
       const response = await axios.post(
         'https://api.vapi.ai/call',
         {
-          phoneNumberId: vapiPhoneNumberId,
-          assistantId: vapiAssistantId,
+          phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
+          assistantId: process.env.VAPI_ASSISTANT_ID,
           customer: {
             number: `+${targetPhone}`,
             name: elderly.name,
           },
           assistantOverrides: {
+            // El webhook usa elderlyId y scheduledCallId para saber a quién pertenece la llamada.
+            // El prompt del asistente en Vapi puede usar {{medications}}, {{conditions}} y {{lastMood}}.
             variableValues: {
+              elderlyId: elderly.id,
+              scheduledCallId: scheduledCallId ?? '',
               seniorName: elderly.name,
               timeSlot,
               isInduction,
+              medications: medicationsText,
+              conditions: context?.conditions.join(', ') || 'no registradas',
+              lastMood: context?.lastMood || 'sin registro previo',
             },
           },
         },
         {
           headers: {
-            Authorization: `Bearer ${vapiApiKey}`,
+            Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
             'Content-Type': 'application/json',
           },
+          timeout: 15000,
         }
       );
 
@@ -475,40 +491,13 @@ export const dispatchOutboundCall = async (
         status: 'calling',
         message: 'Llamada iniciada exitosamente a través de Vapi AI.',
       };
-    } catch (err: any) {
-      console.error('[Yuyay Vapi Call] Error iniciando llamada:', err.response?.data || err.message);
+    } catch (err) {
+      const detail = axios.isAxiosError(err) ? JSON.stringify(err.response?.data ?? err.message) : String(err);
+      throw new Error(`Vapi rechazó la llamada: ${detail}`);
     }
   }
 
-  // 3. Twilio Voice (Alternativa preinstalada)
-  if (!forceSimulate && twilioSid && twilioAuthToken && twilioFromNumber) {
-    try {
-      const twilio = require('twilio')(twilioSid, twilioAuthToken);
-      const webhookBase = process.env.BACKEND_PUBLIC_URL || 'https://api.aynicare.com';
-
-      const call = await twilio.calls.create({
-        url: `${webhookBase}/api/yuyay/runtime-context/${elderly.id}?twiml=true`,
-        to: `+${targetPhone}`,
-        from: twilioFromNumber,
-        timeLimit: 300,
-        statusCallback: `${webhookBase}/api/yuyay/voice-webhook`,
-      });
-
-      return {
-        success: true,
-        callId: call.sid,
-        provider: 'twilio',
-        isInduction,
-        targetPhone,
-        status: 'calling',
-        message: 'Llamada iniciada exitosamente a través de Twilio Voice.',
-      };
-    } catch (err: any) {
-      console.error('[Yuyay Twilio Call] Error iniciando llamada:', err.message);
-    }
-  }
-
-  // 4. Modo Simulación Seguro (Permite probar todo el backend y WhatsApp de inmediato sin saldo)
+  // Modo simulación (solo desarrollo): permite probar el backend sin saldo.
   const simCallId = `sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   console.log(
     `[Yuyay Simulator] 📞 Llamada simulada a Don/Doña ${elderly.name} (${targetPhone}) | Tipo: ${
@@ -525,4 +514,20 @@ export const dispatchOutboundCall = async (
     status: 'calling',
     message: 'Llamada simulada exitosamente. Listo para enviar webhook de transcripción.',
   };
+};
+
+/**
+ * Traduce el "endedReason" del end-of-call-report de Vapi a nuestro estado de llamada.
+ * Devuelve null si la llamada fue atendida.
+ */
+export const mapVapiEndedReason = (
+  endedReason: string | null | undefined
+): 'no_answer' | 'busy' | 'machine' | 'failed' | null => {
+  if (!endedReason) return null;
+  const reason = endedReason.toLowerCase();
+  if (reason.includes('did-not-answer') || reason.includes('no-answer')) return 'no_answer';
+  if (reason.includes('busy')) return 'busy';
+  if (reason.includes('voicemail')) return 'machine';
+  if (reason.includes('failed-to-connect') || reason.startsWith('call.start.error')) return 'failed';
+  return null;
 };

@@ -5,6 +5,7 @@ import {
   buildMicroContextForCall,
   dispatchOutboundCall,
   handleMissedCallAttempt,
+  mapVapiEndedReason,
   processInductionConsent,
   triggerImmediateRedFlagAlert,
 } from '../services/yuyay-call.service';
@@ -14,6 +15,23 @@ import {
 } from '../services/yuyay-report.service';
 import { runSchedulerCycle } from '../services/yuyay-scheduler.service';
 import { sendMetaWhatsAppMessage } from '../services/meta-whatsapp.service';
+import { getLimaStartOfDay, getTimeSlotForHHmm, parseHHmm } from '../services/yuyay-time';
+
+const isProduction = (): boolean => process.env.NODE_ENV === 'production';
+
+/** Datos del adulto mayor que necesita el webhook: cuidador principal y medicamentos activos. */
+const elderlyWebhookInclude = {
+  family: {
+    include: {
+      members: {
+        where: { role: 'primary_caregiver', isActive: true },
+      },
+      medications: {
+        where: { isActive: true },
+      },
+    },
+  },
+} as const;
 
 /**
  * POST /api/yuyay/register-lead
@@ -194,11 +212,21 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
       vapiCall.id ||
       null;
 
-    const status = body.status || 'completed';
-    const isInduction =
-      body.isInduction ||
-      vapiCall.assistantOverrides?.variableValues?.isInduction ||
-      false;
+    // Vapi no manda "status": indica en endedReason si no contestaron, estaba ocupado o saltó el buzón.
+    const status: string = body.status || mapVapiEndedReason(vapiMessage.endedReason) || 'completed';
+    const rawInduction = body.isInduction ?? vapiCall.assistantOverrides?.variableValues?.isInduction;
+    const isInduction = rawInduction === true || rawInduction === 'true';
+
+    // Idempotencia: si el proveedor reenvía el mismo reporte, no se duplica el registro ni la alerta.
+    if (externalCallId) {
+      const existing = await prisma.callLog.findFirst({ where: { externalCallId } });
+      if (existing) {
+        return res.status(200).json({
+          success: true,
+          data: { callLogId: existing.id, duplicate: true },
+        });
+      }
+    }
 
     // 1. Si la llamada no fue contestada (no_answer, busy, machine)
     if (status === 'no_answer' || status === 'busy' || status === 'machine' || status === 'failed') {
@@ -212,6 +240,14 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
     }
 
     if (!transcript) {
+      // Contestó pero no hubo conversación (colgó al instante, silencio): cuenta como intento fallido.
+      if (scheduledCallId) {
+        await handleMissedCallAttempt(scheduledCallId);
+        return res.status(200).json({
+          success: true,
+          message: 'Llamada sin conversación procesada como intento no contestado.',
+        });
+      }
       return res.status(400).json({
         success: false,
         data: null,
@@ -219,58 +255,45 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Buscar al adulto mayor por ID, teléfono o fallback al último registrado
+    // 2. Buscar al adulto mayor por ID o por teléfono (últimos 9 dígitos, con o sin +51)
     let elderly = null;
     if (elderlyId) {
       elderly = await prisma.elderlyPerson.findUnique({
         where: { id: elderlyId },
-        include: {
-          family: {
-            include: {
-              members: {
-                where: { role: 'primary_caregiver', isActive: true },
-              },
-            },
-          },
-        },
+        include: elderlyWebhookInclude,
       });
     } else if (seniorPhone) {
-      const cleanPhone = seniorPhone.replace(/\D/g, '');
+      const lastDigits = String(seniorPhone).replace(/\D/g, '').slice(-9);
       elderly = await prisma.elderlyPerson.findFirst({
-        where: { phone: { contains: cleanPhone } },
-        include: {
-          family: {
-            include: {
-              members: {
-                where: { role: 'primary_caregiver', isActive: true },
-              },
-            },
-          },
-        },
+        where: { phone: { endsWith: lastDigits } },
+        include: elderlyWebhookInclude,
       });
     }
 
-    // Fallback: Si se probó desde el navegador web de Vapi (sin número de celular)
-    if (!elderly) {
+    // Fallback SOLO en desarrollo (prueba desde el navegador de Vapi, sin número).
+    // En producción asignar la llamada a "el último paciente" mezclaría historias clínicas.
+    if (!elderly && !isProduction()) {
       elderly = await prisma.elderlyPerson.findFirst({
         orderBy: { createdAt: 'desc' },
-        include: {
-          family: {
-            include: {
-              members: {
-                where: { role: 'primary_caregiver', isActive: true },
-              },
-            },
-          },
-        },
+        include: elderlyWebhookInclude,
+      });
+    }
+
+    if (!elderly) {
+      console.error(`[Yuyay Webhook] Llamada ${externalCallId ?? 'sin id'} no corresponde a ningún adulto mayor.`);
+      return res.status(404).json({
+        success: false,
+        data: null,
+        error: 'No se encontró el adulto mayor de esta llamada.',
       });
     }
 
     // 3. Analizar la transcripción con Gemini 2.0 Flash
-    const analysis = await analyzeCallTranscript(transcript, [], isInduction);
+    const expectedMeds = elderly.family.medications.map((m) => m.name);
+    const analysis = await analyzeCallTranscript(transcript, expectedMeds, isInduction);
 
     // 4. Si fue llamada de inducción, registrar consentimiento informado (Ley 29733)
-    if (isInduction && elderly && analysis.consentGranted !== undefined) {
+    if (isInduction && analysis.consentGranted !== undefined) {
       await processInductionConsent({
         elderlyId: elderly.id,
         consentGranted: Boolean(analysis.consentGranted),
@@ -290,7 +313,7 @@ export const handleVoiceWebhook = async (req: Request, res: Response) => {
           durationSeconds: Number(durationSeconds) || 0,
           recordingUrl,
           transcript,
-          medsConfirmed: analysis.medsConfirmed as any,
+          medsConfirmed: analysis.medsConfirmed.map((m) => ({ name: m.name, taken: m.taken, reason: m.reason ?? null })),
           mood: analysis.mood,
           symptoms: analysis.symptoms,
           hasRedFlag: analysis.hasRedFlag,
@@ -648,45 +671,57 @@ export const updateCallPreferences = async (req: Request, res: Response) => {
     const { elderlyId } = req.params;
     const { preferredCallTimes } = req.body; // array de strings: ej. ["08:30"] o ["08:00", "20:00"]
 
-    if (!preferredCallTimes || !Array.isArray(preferredCallTimes) || preferredCallTimes.length === 0) {
+    const isValidList =
+      Array.isArray(preferredCallTimes) &&
+      preferredCallTimes.length >= 1 &&
+      preferredCallTimes.length <= 3 &&
+      preferredCallTimes.every((t: unknown) => typeof t === 'string' && parseHHmm(t) !== null);
+
+    if (!isValidList) {
       return res.status(400).json({
         success: false,
         data: null,
-        error: 'preferredCallTimes debe ser un arreglo de horas válido (ej. ["08:00"] o ["08:00", "20:00"]).',
+        error: 'preferredCallTimes debe tener de 1 a 3 horas en formato HH:mm (ej. ["08:00"] o ["08:00", "20:00"]).',
       });
     }
 
-    const getTimeSlot = (time: string): 'mañana' | 'tarde' | 'noche' => {
-      const hour = parseInt(time.split(':')[0], 10);
-      if (hour < 12) return 'mañana';
-      if (hour < 18) return 'tarde';
-      return 'noche';
-    };
+    const times: string[] = Array.from(new Set<string>(preferredCallTimes)).sort();
 
     // 1. Actualizar las preferencias en el adulto mayor
     const updatedElderly = await prisma.elderlyPerson.update({
       where: { id: elderlyId },
-      data: { preferredCallTimes },
+      data: { preferredCallTimes: times },
     });
 
-    // 2. Limpiar llamadas pendientes anteriores y crear las nuevas
-    await prisma.scheduledCall.deleteMany({
-      where: {
-        elderlyId,
-        status: 'pending',
-      },
-    });
-
-    const callsToCreate = preferredCallTimes.map((time: string) => ({
+    // 2. Reemplazar la agenda. Se conserva solo una llamada que esté en curso o en reintentos HOY,
+    //    para no cortar el protocolo de 3 intentos. Las demás (de cualquier estado) se borran:
+    //    antes solo se borraban las "pending" y las ya completadas seguían sonando cada día.
+    const startOfToday = getLimaStartOfDay();
+    const inProgressFilter = {
       elderlyId,
-      scheduledTime: time,
-      timeSlot: getTimeSlot(time),
-      status: 'pending',
-    }));
+      status: { in: ['calling', 'no_answer'] },
+      lastCallAt: { gte: startOfToday },
+    };
 
-    await prisma.scheduledCall.createMany({
-      data: callsToCreate,
+    await prisma.scheduledCall.deleteMany({
+      where: { elderlyId, NOT: inProgressFilter },
     });
+
+    const kept = await prisma.scheduledCall.findMany({ where: inProgressFilter });
+    const keptTimes = new Set(kept.map((c) => c.scheduledTime));
+
+    const callsToCreate = times
+      .filter((time) => !keptTimes.has(time))
+      .map((time) => ({
+        elderlyId,
+        scheduledTime: time,
+        timeSlot: getTimeSlotForHHmm(time),
+        status: 'pending',
+      }));
+
+    if (callsToCreate.length > 0) {
+      await prisma.scheduledCall.createMany({ data: callsToCreate });
+    }
 
     return res.status(200).json({
       success: true,

@@ -1,10 +1,30 @@
 import { prisma } from '../prisma/client';
 import { sendMetaWhatsAppMessage } from './meta-whatsapp.service';
+import { normalizePeruPhone } from './yuyay-call.service';
+import { formatLimaLongDate, formatLimaTime, getLimaStartOfDay } from './yuyay-time';
+
+interface MedConfirmation {
+  name: string;
+  taken: boolean;
+  reason?: string | null;
+}
+
+const readMeds = (value: unknown): MedConfirmation[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (m): m is MedConfirmation =>
+          typeof m === 'object' && m !== null && typeof (m as MedConfirmation).name === 'string'
+      )
+    : [];
 
 /**
  * Genera y envía el reporte diario consolidado (20:30 hrs) al WhatsApp del hijo cuidador.
  */
 export const sendDailyNightReportForFamily = async (familyId: string): Promise<boolean> => {
+  // "Hoy" en hora de Lima: el servidor suele estar en UTC.
+  const startOfToday = getLimaStartOfDay();
+  const startOfWeek = new Date(startOfToday.getTime() - 6 * 24 * 60 * 60 * 1000);
+
   const family = await prisma.family.findUnique({
     where: { id: familyId },
     include: {
@@ -13,7 +33,7 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
           callLogs: {
             where: {
               createdAt: {
-                gte: new Date(new Date().setHours(0, 0, 0, 0)), // llamadas de hoy
+                gte: startOfWeek, // últimos 7 días (hoy se filtra abajo)
               },
             },
             orderBy: { createdAt: 'asc' },
@@ -37,7 +57,14 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
 
   const senior = family.elderly;
   const caregiver = family.members[0];
-  const todayCalls = senior.callLogs || [];
+  const weekCalls = senior.callLogs || [];
+  const todayCalls = weekCalls.filter((c) => c.createdAt >= startOfToday);
+  const answeredToday = todayCalls.filter((c) => c.status === 'answered');
+
+  // Adherencia real de los últimos 7 días: tomas confirmadas / tomas preguntadas.
+  const weekMeds = weekCalls.flatMap((c) => readMeds(c.medsConfirmed));
+  const weeklyAdherence =
+    weekMeds.length > 0 ? Math.round((weekMeds.filter((m) => m.taken).length / weekMeds.length) * 100) : null;
 
   // Calcular tomas confirmadas
   const confirmedMeds: string[] = [];
@@ -49,13 +76,9 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
     if (call.mood) reportedMood = call.mood;
     if (call.symptoms && call.symptoms !== 'Ninguno') reportedSymptoms = call.symptoms;
 
-    const meds = (call.medsConfirmed as any[]) || [];
+    const meds = readMeds(call.medsConfirmed);
     for (const med of meds) {
-      const timeStr = new Date(call.createdAt).toLocaleTimeString('es-PE', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
+      const timeStr = formatLimaTime(call.createdAt);
 
       if (med.taken) {
         confirmedMeds.push(`✅ ${timeStr} — *${med.name}* (Confirmado)`);
@@ -65,11 +88,7 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
     }
   }
 
-  const dateStr = new Date().toLocaleDateString('es-PE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  const dateStr = formatLimaLongDate(new Date());
 
   const reportText =
     `🌿 *Reporte Nocturno Yuyay — ${senior.name}*\n` +
@@ -79,12 +98,12 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
     (missedMeds.length > 0 ? '\n*Tomas pendientes/omitidas:*\n' + missedMeds.join('\n') + '\n' : '') +
     `\n😊 *Estado de ánimo:* ${reportedMood}\n` +
     `🩺 *Bienestar físico:* ${reportedSymptoms}\n` +
-    `📞 *Llamadas completadas hoy:* ${todayCalls.length}\n\n` +
-    `📊 *Adherencia semanal estimada:* 92%\n\n` +
+    `📞 *Llamadas contestadas hoy:* ${answeredToday.length}\n\n` +
+    (weeklyAdherence !== null ? `📊 *Adherencia de los últimos 7 días:* ${weeklyAdherence}%\n\n` : '') +
     `_Yuyay: Cuidando a quienes cuidaron de ti._`;
 
   if (caregiver.phone) {
-    const cleanPhone = caregiver.phone.replace(/\D/g, '');
+    const cleanPhone = normalizePeruPhone(caregiver.phone);
     try {
       await sendMetaWhatsAppMessage({
         to: cleanPhone,
@@ -107,8 +126,15 @@ export const sendDailyNightReportForFamily = async (familyId: string): Promise<b
 export const runDailyNightReportJob = async (): Promise<{ totalSent: number }> => {
   console.log('[Yuyay Report] 🌙 Iniciando corrida de reportes nocturnos para todas las familias...');
   const families = await prisma.family.findMany({
+    // Solo familias inscritas en Yuyay (con llamadas programadas y consentimiento),
+    // no todas las familias de la app Ayni Care.
     where: {
-      elderly: { isNot: null },
+      elderly: {
+        is: {
+          consentVerbal: true,
+          scheduledCalls: { some: {} },
+        },
+      },
     },
   });
 

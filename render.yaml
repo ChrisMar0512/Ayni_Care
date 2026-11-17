@@ -13,4 +13,4 @@ services:
       - key: PORT
         value: 10000
       - key: ADMIN_TOKEN
-        value: aynicare-admin-2026
+        sync: false # definir en el panel de Render, nunca en el repo
