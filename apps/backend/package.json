@@ -2,6 +2,9 @@
   "name": "@ayni-care/backend",
   "private": true,
   "version": "0.1.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon",
